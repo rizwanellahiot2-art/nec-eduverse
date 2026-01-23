@@ -8,3 +8,6 @@ verify_jwt = true
 
 [functions.eduverse-staff-governance]
 verify_jwt = true
+
+[functions.eduverse-bulk-staff-import]
+verify_jwt = true
