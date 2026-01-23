@@ -46,8 +46,9 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const anon = Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!;
+    const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? "";
     const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    if (!anon) return json({ error: "Missing SUPABASE_ANON_KEY" }, 500);
 
     // user-scoped client (to identify caller)
     const userClient = createClient(supabaseUrl, anon, {
