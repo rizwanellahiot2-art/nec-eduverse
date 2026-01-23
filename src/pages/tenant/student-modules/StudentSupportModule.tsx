@@ -43,6 +43,27 @@ export function StudentSupportModule({ myStudent, schoolId }: { myStudent: any; 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myStudent.status]);
 
+  useEffect(() => {
+    if (myStudent.status !== "ready") return;
+    if (!conversation?.id) return;
+
+    const channel = supabase
+      .channel(`support:${conversation.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "support_messages", filter: `conversation_id=eq.${conversation.id}` },
+        () => {
+          void refresh();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversation?.id, myStudent.status]);
+
   const ensureConversation = async () => {
     if (myStudent.status !== "ready") return null;
     if (conversation) return conversation;
@@ -63,14 +84,18 @@ export function StudentSupportModule({ myStudent, schoolId }: { myStudent: any; 
     try {
       const conv = await ensureConversation();
       if (!conv) return;
+      const authed = await supabase.auth.getUser();
+      const senderId = authed.data.user?.id;
+      if (!senderId) return;
+
       await supabase.from("support_messages").insert({
         school_id: schoolId,
         conversation_id: conv.id,
-        sender_user_id: (await supabase.auth.getUser()).data.user?.id,
+        sender_user_id: senderId,
         content,
       });
       setDraft("");
-      await refresh();
+      // Realtime subscription will refresh.
     } finally {
       setBusy(false);
     }

@@ -2439,6 +2439,15 @@ export type Database = {
         Args: { _class_section_id: string; _school_id: string }
         Returns: boolean
       }
+      list_school_user_profiles: {
+        Args: { _school_id: string }
+        Returns: {
+          display_name: string
+          email: string
+          profile_id: string
+          user_id: string
+        }[]
+      }
       my_student_id: { Args: { _school_id: string }; Returns: string }
     }
     Enums: {
