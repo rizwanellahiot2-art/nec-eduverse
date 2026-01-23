@@ -181,7 +181,7 @@ const TenantAuth = () => {
                     <Button
                       type="button"
                       variant="soft"
-                      onClick={() => navigate(`/${tenant.slug}/super_admin/admin`)}
+                      onClick={() => navigate(`/${tenant.slug}/bootstrap`)}
                     >
                       Open Bootstrap
                     </Button>
