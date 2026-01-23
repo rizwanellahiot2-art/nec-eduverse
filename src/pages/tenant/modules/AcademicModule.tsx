@@ -13,7 +13,8 @@ import { toast } from "sonner";
 
 type ClassRow = { id: string; name: string; grade_level: number | null };
 type SectionRow = { id: string; name: string; class_id: string; room: string | null };
-type StudentRow = { id: string; first_name: string; last_name: string | null; status: string };
+type StudentRow = { id: string; first_name: string; last_name: string | null; status: string; profile_id: string | null };
+type DirectoryProfileRow = { user_id: string; profile_id: string | null; email: string; display_name: string | null };
 
 export function AcademicModule() {
   const { schoolSlug } = useParams();
@@ -23,6 +24,7 @@ export function AcademicModule() {
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [sections, setSections] = useState<SectionRow[]>([]);
   const [students, setStudents] = useState<StudentRow[]>([]);
+  const [directoryUsers, setDirectoryUsers] = useState<DirectoryProfileRow[]>([]);
 
   const [newClassName, setNewClassName] = useState("");
   const [newSectionName, setNewSectionName] = useState("");
@@ -31,6 +33,9 @@ export function AcademicModule() {
   const [studentFirst, setStudentFirst] = useState("");
   const [studentLast, setStudentLast] = useState("");
   const [selectedSectionId, setSelectedSectionId] = useState<string>("");
+
+  const [linkStudentId, setLinkStudentId] = useState<string>("");
+  const [linkUserId, setLinkUserId] = useState<string>("");
 
   const [teachers, setTeachers] = useState<{ user_id: string; email: string; display_name: string | null }[]>([]);
   const [teacherUserId, setTeacherUserId] = useState<string>("");
@@ -50,11 +55,14 @@ export function AcademicModule() {
 
     const { data: st } = await supabase
       .from("students")
-      .select("id,first_name,last_name,status")
+      .select("id,first_name,last_name,status,profile_id")
       .eq("school_id", schoolId)
       .order("created_at", { ascending: false })
       .limit(50);
     setStudents((st ?? []) as StudentRow[]);
+
+    const { data: dirUsers } = await supabase.rpc("list_school_user_profiles", { _school_id: schoolId });
+    setDirectoryUsers((dirUsers ?? []) as DirectoryProfileRow[]);
 
     // Teachers = directory rows that have teacher role
     const { data: roleRows } = await supabase
@@ -131,6 +139,31 @@ export function AcademicModule() {
       .upsert({ school_id: schoolId, teacher_user_id: teacherUserId, class_section_id: assignSectionId }, { onConflict: "school_id,teacher_user_id,class_section_id" });
     if (error) return toast.error(error.message);
     toast.success("Teacher assigned");
+  };
+
+  const linkStudentToProfile = async () => {
+    if (!schoolId) return;
+    if (!linkStudentId) return toast.error("Pick a student");
+    if (!linkUserId) return toast.error("Pick a user");
+    const row = directoryUsers.find((u) => u.user_id === linkUserId);
+    if (!row?.profile_id) return toast.error("That user does not have a profile yet (ask them to sign in once).");
+
+    const { error } = await supabase
+      .from("students")
+      .update({ profile_id: row.profile_id })
+      .eq("school_id", schoolId)
+      .eq("id", linkStudentId);
+    if (error) return toast.error(error.message);
+    toast.success("Student linked to user profile");
+    await refresh();
+  };
+
+  const unlinkStudentProfile = async (studentId: string) => {
+    if (!schoolId) return;
+    const { error } = await supabase.from("students").update({ profile_id: null }).eq("school_id", schoolId).eq("id", studentId);
+    if (error) return toast.error(error.message);
+    toast.success("Student unlinked");
+    await refresh();
   };
 
   return (
@@ -239,7 +272,7 @@ export function AcademicModule() {
           <CardTitle className="font-display text-xl">Students</CardTitle>
           <p className="text-sm text-muted-foreground">Create and enroll students into sections</p>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
           <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
             <Input value={studentFirst} onChange={(e) => setStudentFirst(e.target.value)} placeholder="First name" />
             <Input value={studentLast} onChange={(e) => setStudentLast(e.target.value)} placeholder="Last name" />
@@ -266,6 +299,8 @@ export function AcademicModule() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Linked profile</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -273,17 +308,61 @@ export function AcademicModule() {
                   <TableRow key={s.id}>
                     <TableCell className="font-medium">{s.first_name} {s.last_name ?? ""}</TableCell>
                     <TableCell>{s.status}</TableCell>
+                    <TableCell className="text-muted-foreground">{s.profile_id ?? "—"}</TableCell>
+                    <TableCell className="text-right">
+                      {s.profile_id ? (
+                        <Button variant="outline" size="sm" onClick={() => unlinkStudentProfile(s.id)}>
+                          Unlink
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
                 {students.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={2} className="text-muted-foreground">
+                    <TableCell colSpan={4} className="text-muted-foreground">
                       No students yet.
                     </TableCell>
                   </TableRow>
                 )}
               </TableBody>
             </Table>
+          </div>
+
+          <div className="rounded-2xl bg-surface-2 p-4">
+            <p className="font-medium">Link student to portal user</p>
+            <p className="mt-1 text-xs text-muted-foreground">This enables the Student panel to show the correct data for that login.</p>
+            <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
+              <Select value={linkStudentId} onValueChange={setLinkStudentId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pick student" />
+                </SelectTrigger>
+                <SelectContent>
+                  {students.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.first_name} {s.last_name ?? ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={linkUserId} onValueChange={setLinkUserId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pick user" />
+                </SelectTrigger>
+                <SelectContent>
+                  {directoryUsers.map((u) => (
+                    <SelectItem key={u.user_id} value={u.user_id}>
+                      {u.display_name ?? u.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button variant="hero" onClick={linkStudentToProfile}>
+                Link
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

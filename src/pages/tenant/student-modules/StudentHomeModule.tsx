@@ -1,7 +1,6 @@
-import type { ReturnType } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export function StudentHomeModule({ myStudent }: { myStudent: ReturnType<any> }) {
+export function StudentHomeModule({ myStudent }: { myStudent: any }) {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
       <Card className="shadow-elevated">
