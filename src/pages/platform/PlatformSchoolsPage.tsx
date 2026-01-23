@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ExternalLink, LogOut, Search, ShieldCheck } from "lucide-react";
+import { ExternalLink, LogOut, Search, ShieldCheck, UserPlus } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner";
 
 type SchoolRow = {
   id: string;
@@ -39,6 +41,27 @@ export default function PlatformSchoolsPage() {
   const [schools, setSchools] = useState<SchoolRow[]>([]);
   const [audit, setAudit] = useState<AuditRow[]>([]);
   const [auditSchoolId, setAuditSchoolId] = useState<string>("all");
+
+  // Direct school creation (no bootstrap secret)
+  const [newSlug, setNewSlug] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newActive, setNewActive] = useState(true);
+  const [principalEmail, setPrincipalEmail] = useState("");
+  const [principalPassword, setPrincipalPassword] = useState("");
+  const [principalDisplayName, setPrincipalDisplayName] = useState("Principal");
+  const [creatingSchool, setCreatingSchool] = useState(false);
+
+  // Direct staff creation
+  const [staffSchoolId, setStaffSchoolId] = useState<string>("__none__");
+  const [staffEmail, setStaffEmail] = useState("");
+  const [staffPassword, setStaffPassword] = useState("");
+  const [staffDisplayName, setStaffDisplayName] = useState("");
+  const [staffRole, setStaffRole] = useState<string>("teacher");
+  const [creatingStaff, setCreatingStaff] = useState(false);
+
+  // Bootstrap unlock
+  const [unlockSchoolId, setUnlockSchoolId] = useState<string>("__none__");
+  const [unlocking, setUnlocking] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -94,11 +117,120 @@ export default function PlatformSchoolsPage() {
     if (!aErr) setAudit((a ?? []) as AuditRow[]);
   };
 
+  const getDetailFromInvokeError = (error: unknown) => {
+    const raw = (error as any)?.context?.body;
+    if (typeof raw !== "string") return null;
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed?.error ? String(parsed.error) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const createSchoolDirect = async () => {
+    if (!newSlug.trim()) return toast.error("School slug is required");
+    if (!newName.trim()) return toast.error("School name is required");
+    if (!principalEmail.trim()) return toast.error("Principal email is required");
+    if (principalPassword.trim().length < 8) return toast.error("Principal password must be at least 8 characters");
+
+    setCreatingSchool(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("eduverse-admin-create-school", {
+        body: {
+          slug: newSlug.trim(),
+          name: newName.trim(),
+          isActive: newActive,
+          principalEmail: principalEmail.trim().toLowerCase(),
+          principalPassword: principalPassword,
+          principalDisplayName: principalDisplayName.trim() || "Principal",
+        },
+      });
+      if (error) {
+        toast.error(getDetailFromInvokeError(error) ?? error.message);
+        return;
+      }
+
+      toast.success("School created + principal set");
+      setNewSlug("");
+      setNewName("");
+      setPrincipalEmail("");
+      setPrincipalPassword("");
+      setPrincipalDisplayName("Principal");
+      await refresh();
+
+      const created = (data as any)?.school as { slug?: string } | undefined;
+      if (created?.slug) {
+        navigate(`/${created.slug}/auth`);
+      }
+    } finally {
+      setCreatingSchool(false);
+    }
+  };
+
+  const createStaffDirect = async () => {
+    const s = schools.find((x) => x.id === staffSchoolId);
+    if (!s) return toast.error("Select a school");
+    if (!staffEmail.trim()) return toast.error("Email is required");
+    if (staffPassword.trim().length < 8) return toast.error("Password must be at least 8 characters");
+
+    setCreatingStaff(true);
+    try {
+      const { error } = await supabase.functions.invoke("eduverse-admin-create-user", {
+        body: {
+          schoolSlug: s.slug,
+          email: staffEmail.trim().toLowerCase(),
+          password: staffPassword,
+          displayName: staffDisplayName.trim() || undefined,
+          role: staffRole,
+        },
+      });
+      if (error) {
+        toast.error(getDetailFromInvokeError(error) ?? error.message);
+        return;
+      }
+      toast.success("User created (password set)");
+      setStaffEmail("");
+      setStaffPassword("");
+      setStaffDisplayName("");
+      setStaffRole("teacher");
+      await refresh();
+    } finally {
+      setCreatingStaff(false);
+    }
+  };
+
+  const unlockBootstrap = async () => {
+    const s = schools.find((x) => x.id === unlockSchoolId);
+    if (!s) return toast.error("Select a school");
+    setUnlocking(true);
+    try {
+      const { error } = await supabase.functions.invoke("eduverse-admin-unlock-bootstrap", {
+        body: { schoolSlug: s.slug },
+      });
+      if (error) {
+        toast.error(getDetailFromInvokeError(error) ?? error.message);
+        return;
+      }
+      toast.success("Bootstrap unlocked");
+      await refresh();
+    } finally {
+      setUnlocking(false);
+    }
+  };
+
   useEffect(() => {
     if (authz !== "ok") return;
     void refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authz]);
+
+  useEffect(() => {
+    if (schools.length === 0) return;
+    if (staffSchoolId === "__none__") setStaffSchoolId(schools[0].id);
+    if (unlockSchoolId === "__none__") setUnlockSchoolId(schools[0].id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [schools.length]);
 
   const filteredSchools = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -163,6 +295,149 @@ export default function PlatformSchoolsPage() {
 
         {authz === "ok" && (
           <>
+            <Card className="shadow-elevated">
+              <CardHeader>
+                <CardTitle className="font-display text-xl">Create School (Direct)</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Create a school + first Principal with an explicit password (no bootstrap secret).
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">School Slug</label>
+                    <Input value={newSlug} onChange={(e) => setNewSlug(e.target.value)} placeholder="e.g. beacon" />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="text-sm font-medium">School Name</label>
+                    <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Beacon International School" />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-4 rounded-2xl bg-accent p-4">
+                  <div>
+                    <p className="text-sm font-medium text-accent-foreground">Active school</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Disable to block tenant logins until ready.</p>
+                  </div>
+                  <Switch checked={newActive} onCheckedChange={setNewActive} />
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Principal Email</label>
+                    <Input value={principalEmail} onChange={(e) => setPrincipalEmail(e.target.value)} placeholder="principal@school.com" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Principal Password</label>
+                    <Input value={principalPassword} onChange={(e) => setPrincipalPassword(e.target.value)} type="password" placeholder="Minimum 8 characters" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Principal Display Name</label>
+                    <Input value={principalDisplayName} onChange={(e) => setPrincipalDisplayName(e.target.value)} placeholder="Principal" />
+                  </div>
+                </div>
+
+                <Button variant="hero" size="xl" onClick={createSchoolDirect} disabled={creatingSchool} className="w-full">
+                  Create school + principal
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-elevated">
+              <CardHeader>
+                <CardTitle className="font-display text-xl">Create Staff (Direct Password)</CardTitle>
+                <p className="text-sm text-muted-foreground">Create any staff (e.g. Teacher) instantly with an explicit password.</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">School</label>
+                    <Select value={staffSchoolId} onValueChange={setStaffSchoolId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a school" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {schools.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.slug} — {s.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Role</label>
+                    <Select value={staffRole} onValueChange={setStaffRole}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[
+                          "principal",
+                          "vice_principal",
+                          "academic_coordinator",
+                          "teacher",
+                          "accountant",
+                          "hr_manager",
+                          "counselor",
+                          "marketing_staff",
+                          "student",
+                          "parent",
+                        ].map((r) => (
+                          <SelectItem key={r} value={r}>
+                            {r.replace(/_/g, " ")}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Display Name</label>
+                    <Input value={staffDisplayName} onChange={(e) => setStaffDisplayName(e.target.value)} placeholder="Optional" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Email</label>
+                    <Input value={staffEmail} onChange={(e) => setStaffEmail(e.target.value)} placeholder="teacher@school.com" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Password</label>
+                    <Input value={staffPassword} onChange={(e) => setStaffPassword(e.target.value)} type="password" placeholder="Minimum 8 characters" />
+                  </div>
+                </div>
+
+                <Button variant="hero" size="xl" onClick={createStaffDirect} disabled={creatingStaff} className="w-full">
+                  <UserPlus className="mr-2 h-4 w-4" /> Create user now
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-elevated">
+              <CardHeader>
+                <CardTitle className="font-display text-xl">Bootstrap Lock</CardTitle>
+                <p className="text-sm text-muted-foreground">Unlock a school’s bootstrap (for emergency re-bootstrap flows).</p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Select value={unlockSchoolId} onValueChange={setUnlockSchoolId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a school" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {schools.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.slug} — {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" onClick={unlockBootstrap} disabled={unlocking} className="w-full">
+                  Unlock bootstrap
+                </Button>
+              </CardContent>
+            </Card>
+
             <Card className="shadow-elevated">
               <CardHeader>
                 <CardTitle className="font-display text-xl">All Schools</CardTitle>
