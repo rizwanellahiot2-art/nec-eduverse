@@ -16,6 +16,8 @@ import { AcademicModule } from "@/pages/tenant/modules/AcademicModule";
 import { AttendanceModule } from "@/pages/tenant/modules/AttendanceModule";
 import { PlatformSchoolsModule } from "@/pages/tenant/modules/PlatformSchoolsModule";
 import { AttendanceReportsModule } from "@/pages/tenant/modules/AttendanceReportsModule";
+import { FinanceModule } from "@/pages/tenant/modules/FinanceModule";
+import { PrincipalHome } from "@/pages/tenant/role-homes/PrincipalHome";
 
 const TenantDashboard = () => {
   const { schoolSlug, role: roleParam } = useParams();
@@ -199,13 +201,14 @@ const TenantDashboard = () => {
 
         {authzState === "ok" && (
           <Routes>
-            <Route index element={<DashboardHome />} />
+            <Route index element={role === "principal" ? <PrincipalHome /> : <DashboardHome />} />
             <Route path="admin" element={<AdminConsole />} />
             <Route path="schools" element={<PlatformSchoolsModule />} />
             <Route path="users" element={<UsersModule />} />
             <Route path="crm" element={<CrmModule />} />
             <Route path="academic" element={<AcademicModule />} />
             <Route path="attendance" element={<AttendanceModule />} />
+            <Route path="finance" element={<FinanceModule />} />
             <Route path="reports" element={<AttendanceReportsModule />} />
             <Route path="*" element={<Navigate to={`/${tenant.slug}/${role}`} replace />} />
           </Routes>
