@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import PlatformAuth from "./pages/platform/PlatformAuth";
+import PlatformDashboardPage from "./pages/platform/PlatformDashboardPage";
+import PlatformDirectoryPage from "./pages/platform/PlatformDirectoryPage";
 import PlatformSchoolsPage from "./pages/platform/PlatformSchoolsPage";
 import PlatformUpdatePassword from "./pages/platform/PlatformUpdatePassword";
 import TenantAuth from "./pages/tenant/TenantAuth";
@@ -24,6 +26,8 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<PlatformAuth />} />
           <Route path="/auth/update-password" element={<PlatformUpdatePassword />} />
+          <Route path="/platform" element={<PlatformDashboardPage />} />
+          <Route path="/platform/directory" element={<PlatformDirectoryPage />} />
           <Route path="/platform/schools" element={<PlatformSchoolsPage />} />
           <Route path="/:schoolSlug/auth" element={<TenantAuth />} />
           <Route path="/:schoolSlug/bootstrap" element={<TenantBootstrap />} />
