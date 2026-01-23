@@ -1620,6 +1620,45 @@ export type Database = {
         }
         Relationships: []
       }
+      parent_notifications: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_read: boolean
+          notification_type: string
+          parent_user_id: string
+          read_at: string | null
+          school_id: string
+          student_id: string
+          title: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          notification_type?: string
+          parent_user_id: string
+          read_at?: string | null
+          school_id: string
+          student_id: string
+          title: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          notification_type?: string
+          parent_user_id?: string
+          read_at?: string | null
+          school_id?: string
+          student_id?: string
+          title?: string
+        }
+        Relationships: []
+      }
       platform_super_admins: {
         Row: {
           created_at: string
@@ -2428,6 +2467,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_my_child: {
+        Args: { _school_id: string; _student_id: string }
+        Returns: boolean
+      }
       is_my_student: {
         Args: { _school_id: string; _student_id: string }
         Returns: boolean
@@ -2448,6 +2491,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      my_children: { Args: { _school_id: string }; Returns: string[] }
       my_student_id: { Args: { _school_id: string }; Returns: string }
     }
     Enums: {

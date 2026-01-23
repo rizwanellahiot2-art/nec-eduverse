@@ -21,6 +21,7 @@ const roleToPathSegment = (role: EduverseRole) => {
   if (role === "hr_manager") return "hr";
   if (role === "marketing_staff") return "marketing";
   if (role === "student") return "student";
+  if (role === "parent") return "parent";
   return role;
 };
 
