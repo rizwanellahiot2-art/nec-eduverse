@@ -129,7 +129,7 @@ export default function PlatformDirectoryPage() {
               <ShieldCheck className="h-4 w-4" /> Platform Super Admin
             </div>
             <div className="flex gap-2">
-              <Button variant="soft" onClick={() => navigate("/platform")}>
+              <Button variant="soft" onClick={() => navigate("/super_admin")}>
                 Back to dashboard
               </Button>
               <Button

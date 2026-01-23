@@ -63,6 +63,14 @@ export default function PlatformSchoolsPage() {
   const [unlockSchoolId, setUnlockSchoolId] = useState<string>("__none__");
   const [unlocking, setUnlocking] = useState(false);
 
+  // Impersonation (audited)
+  const [impSchoolId, setImpSchoolId] = useState<string>("__none__");
+  const [impRolePath, setImpRolePath] = useState<string>("principal");
+  const [impEmail, setImpEmail] = useState<string>("");
+  const [impReason, setImpReason] = useState<string>("");
+  const [impBusy, setImpBusy] = useState(false);
+  const [impLink, setImpLink] = useState<string | null>(null);
+
   useEffect(() => {
     if (loading) return;
     if (!user) navigate("/auth", { replace: true });
@@ -229,8 +237,42 @@ export default function PlatformSchoolsPage() {
     if (schools.length === 0) return;
     if (staffSchoolId === "__none__") setStaffSchoolId(schools[0].id);
     if (unlockSchoolId === "__none__") setUnlockSchoolId(schools[0].id);
+    if (impSchoolId === "__none__") setImpSchoolId(schools[0].id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [schools.length]);
+
+  const impersonate = async () => {
+    const s = schools.find((x) => x.id === impSchoolId);
+    if (!s) return toast.error("Select a school");
+    if (!impEmail.trim()) return toast.error("Target email is required");
+
+    setImpBusy(true);
+    setImpLink(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("eduverse-admin-impersonate", {
+        body: {
+          targetEmail: impEmail.trim().toLowerCase(),
+          schoolSlug: s.slug,
+          rolePath: impRolePath,
+          reason: impReason.trim() || undefined,
+          appOrigin: window.location.origin,
+        },
+      });
+      if (error) {
+        toast.error(getDetailFromInvokeError(error) ?? error.message);
+        return;
+      }
+      const link = (data as any)?.actionLink as string | null;
+      if (!link) {
+        toast.error("No impersonation link returned");
+        return;
+      }
+      setImpLink(link);
+      toast.success("Impersonation link generated (audited)");
+    } finally {
+      setImpBusy(false);
+    }
+  };
 
   const filteredSchools = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -435,6 +477,97 @@ export default function PlatformSchoolsPage() {
                 <Button variant="outline" onClick={unlockBootstrap} disabled={unlocking} className="w-full">
                   Unlock bootstrap
                 </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-elevated">
+              <CardHeader>
+                <CardTitle className="font-display text-xl">Impersonate (Audited)</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Generates a one-time secure login link for a target user and redirects into their role panel.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">School</label>
+                    <Select value={impSchoolId} onValueChange={setImpSchoolId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a school" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {schools.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.slug} — {s.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Role route</label>
+                    <Select value={impRolePath} onValueChange={setImpRolePath}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[
+                          "super_admin",
+                          "principal",
+                          "vice_principal",
+                          "teacher",
+                          "hr",
+                          "accountant",
+                          "marketing",
+                          "student",
+                          "parent",
+                        ].map((r) => (
+                          <SelectItem key={r} value={r}>
+                            /{`{school}`}/{r}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Target user email</label>
+                    <Input value={impEmail} onChange={(e) => setImpEmail(e.target.value)} placeholder="user@school.com" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Reason (required for audits in production)</label>
+                  <Input value={impReason} onChange={(e) => setImpReason(e.target.value)} placeholder="Support ticket / investigation" />
+                </div>
+
+                <Button variant="hero" size="xl" onClick={impersonate} disabled={impBusy} className="w-full">
+                  Generate impersonation link
+                </Button>
+
+                {impLink && (
+                  <div className="rounded-2xl bg-accent p-4">
+                    <p className="text-sm font-medium text-accent-foreground">One-time login link</p>
+                    <p className="mt-1 break-all text-xs text-muted-foreground">{impLink}</p>
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                      <Button
+                        variant="soft"
+                        onClick={async () => {
+                          await navigator.clipboard.writeText(impLink);
+                          toast.success("Copied");
+                        }}
+                      >
+                        Copy link
+                      </Button>
+                      <Button variant="outline" asChild>
+                        <a href={impLink} target="_blank" rel="noreferrer">
+                          Open in new tab
+                        </a>
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 

@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import PlatformAuth from "./pages/platform/PlatformAuth";
@@ -26,9 +26,15 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<PlatformAuth />} />
           <Route path="/auth/update-password" element={<PlatformUpdatePassword />} />
-          <Route path="/platform" element={<PlatformDashboardPage />} />
-          <Route path="/platform/directory" element={<PlatformDirectoryPage />} />
-          <Route path="/platform/schools" element={<PlatformSchoolsPage />} />
+          {/* Global Super Admin (platform-level) */}
+          <Route path="/super_admin" element={<PlatformDashboardPage />} />
+          <Route path="/super_admin/directory" element={<PlatformDirectoryPage />} />
+          <Route path="/super_admin/schools" element={<PlatformSchoolsPage />} />
+
+          {/* Back-compat aliases */}
+          <Route path="/platform" element={<Navigate to="/super_admin" replace />} />
+          <Route path="/platform/directory" element={<Navigate to="/super_admin/directory" replace />} />
+          <Route path="/platform/schools" element={<Navigate to="/super_admin/schools" replace />} />
           <Route path="/:schoolSlug/auth" element={<TenantAuth />} />
           <Route path="/:schoolSlug/bootstrap" element={<TenantBootstrap />} />
           <Route path="/:schoolSlug/:role/*" element={<TenantDashboard />} />
