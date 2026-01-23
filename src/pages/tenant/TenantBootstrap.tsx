@@ -8,6 +8,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 
 const TenantBootstrap = () => {
@@ -21,6 +22,7 @@ const TenantBootstrap = () => {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [passwordSetLink, setPasswordSetLink] = useState<string | null>(null);
+  const [force, setForce] = useState(false);
 
   const slug = useMemo(() => tenant.slug || "", [tenant.slug]);
 
@@ -41,6 +43,7 @@ const TenantBootstrap = () => {
           schoolName: schoolName.trim() || slug,
           adminEmail: adminEmail.trim().toLowerCase(),
           displayName: "Super Admin",
+          force,
         },
       });
 
@@ -101,6 +104,16 @@ const TenantBootstrap = () => {
                   <label className="text-sm font-medium">Password setup</label>
                   <Input value="A secure password-set link will be generated" disabled />
                 </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-4 rounded-2xl bg-accent p-4">
+                <div>
+                  <p className="text-sm font-medium text-accent-foreground">Force re-issue link</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    If the school is already bootstrapped, enable this to generate a fresh password-set link (safe).
+                  </p>
+                </div>
+                <Switch checked={force} onCheckedChange={setForce} />
               </div>
 
               {passwordSetLink && (
