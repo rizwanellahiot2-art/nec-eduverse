@@ -59,6 +59,21 @@ All colors MUST be HSL.
 
     --shadow-elevated: 0 18px 60px -24px hsl(226 50% 20% / 0.25);
     --shadow-glow: 0 18px 70px -28px hsl(var(--brand) / 0.45);
+    --shadow-soft: 0 10px 30px -18px hsl(226 50% 20% / 0.18);
+
+    /* Button gradients (high-contrast on light surfaces) */
+    --gradient-primary-strong: linear-gradient(
+      135deg,
+      hsl(var(--brand) / 1) 0%,
+      hsl(var(--brand) / 0.92) 45%,
+      hsl(var(--brand) / 0.82) 100%
+    );
+    --gradient-primary-strong-hover: linear-gradient(
+      135deg,
+      hsl(var(--brand) / 1) 0%,
+      hsl(var(--brand) / 0.98) 35%,
+      hsl(var(--brand) / 0.88) 100%
+    );
 
     --sidebar-background: 220 30% 97%;
 
@@ -117,6 +132,20 @@ All colors MUST be HSL.
 
     --shadow-elevated: 0 18px 60px -26px hsl(0 0% 0% / 0.55);
     --shadow-glow: 0 18px 70px -30px hsl(var(--brand) / 0.35);
+    --shadow-soft: 0 12px 36px -22px hsl(0 0% 0% / 0.55);
+
+    --gradient-primary-strong: linear-gradient(
+      135deg,
+      hsl(var(--brand) / 1) 0%,
+      hsl(var(--brand) / 0.9) 55%,
+      hsl(var(--brand) / 0.82) 100%
+    );
+    --gradient-primary-strong-hover: linear-gradient(
+      135deg,
+      hsl(var(--brand) / 1) 0%,
+      hsl(var(--brand) / 0.95) 45%,
+      hsl(var(--brand) / 0.86) 100%
+    );
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
