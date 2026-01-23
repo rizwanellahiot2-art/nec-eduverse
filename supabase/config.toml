@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.eduverse-invite]
 verify_jwt = true
+
+[functions.eduverse-staff-governance]
+verify_jwt = true
