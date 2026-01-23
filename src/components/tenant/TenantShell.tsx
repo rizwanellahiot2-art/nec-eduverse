@@ -1,7 +1,7 @@
 import { PropsWithChildren, useEffect } from "react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
-import { GraduationCap, KanbanSquare, LayoutGrid, Settings, ShieldCheck, Sparkles, Users } from "lucide-react";
+import { BarChart3, GraduationCap, KanbanSquare, LayoutGrid, Settings, ShieldCheck, Sparkles, Users } from "lucide-react";
 import type { EduverseRole } from "@/lib/eduverse-roles";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -70,6 +70,16 @@ export function TenantShell({ title, subtitle, role, schoolSlug, children }: Pro
               </NavLink>
             )}
 
+            {role === "super_admin" && (
+              <NavLink
+                to={`/${schoolSlug}/${role}/schools`}
+                className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
+                activeClassName="bg-accent text-accent-foreground"
+              >
+                <ShieldCheck className="h-4 w-4" /> All Schools
+              </NavLink>
+            )}
+
             <NavLink
               to={`/${schoolSlug}/${role}/users`}
               className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
@@ -100,6 +110,14 @@ export function TenantShell({ title, subtitle, role, schoolSlug, children }: Pro
               activeClassName="bg-accent text-accent-foreground"
             >
               <GraduationCap className="h-4 w-4" /> Attendance
+            </NavLink>
+
+            <NavLink
+              to={`/${schoolSlug}/${role}/reports`}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
+              activeClassName="bg-accent text-accent-foreground"
+            >
+              <BarChart3 className="h-4 w-4" /> Reports
             </NavLink>
 
             <NavLink

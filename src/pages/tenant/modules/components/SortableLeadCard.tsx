@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 export function SortableLeadCard({
   lead,
   onBumpScore,
+  onOpen,
 }: {
   lead: { id: string; full_name: string; score: number; notes: string | null };
   onBumpScore: () => void;
+  onOpen: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lead.id });
   const style = {
@@ -47,9 +49,14 @@ export function SortableLeadCard({
           <Star className="h-3 w-3" />
           <span className="font-medium text-foreground">{lead.score ?? 0}</span>
         </div>
-        <Button variant="soft" size="sm" onClick={onBumpScore}>
-          +5
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="soft" size="sm" onClick={onOpen}>
+            Open
+          </Button>
+          <Button variant="soft" size="sm" onClick={onBumpScore}>
+            +5
+          </Button>
+        </div>
       </div>
     </div>
   );
