@@ -130,6 +130,48 @@ export type Database = {
         }
         Relationships: []
       }
+      app_notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          created_by: string | null
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          read_at: string | null
+          school_id: string
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          created_by?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          read_at?: string | null
+          school_id: string
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          created_by?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          read_at?: string | null
+          school_id?: string
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       assignments: {
         Row: {
           assignment_type: string
