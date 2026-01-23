@@ -109,6 +109,19 @@ serve(async (req) => {
       .upsert({ school_id: school.id, user_id: userId, role: body.role, created_by: actorUserId }, { onConflict: "school_id,user_id,role" });
     if (assignErr) return json({ error: assignErr.message }, 400);
 
+    // Directory for UI
+    await admin
+      .from("school_user_directory")
+      .upsert(
+        {
+          school_id: school.id,
+          user_id: userId,
+          email: inviteEmail,
+          display_name: body.displayName ?? null,
+        },
+        { onConflict: "school_id,user_id" },
+      );
+
     // Create password-set (recovery) link that admin can deliver via email/WhatsApp
     const redirectTo = `${new URL(req.url).origin}/${school.slug}/auth`;
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({

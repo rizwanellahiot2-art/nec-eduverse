@@ -1,7 +1,7 @@
 import { PropsWithChildren, useEffect } from "react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
-import { LayoutGrid, Settings, Sparkles } from "lucide-react";
+import { GraduationCap, KanbanSquare, LayoutGrid, Settings, ShieldCheck, Sparkles, Users } from "lucide-react";
 import type { EduverseRole } from "@/lib/eduverse-roles";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -59,6 +59,49 @@ export function TenantShell({ title, subtitle, role, schoolSlug, children }: Pro
             >
               <LayoutGrid className="h-4 w-4" /> Dashboard
             </NavLink>
+
+            {role === "super_admin" && (
+              <NavLink
+                to={`/${schoolSlug}/${role}/admin`}
+                className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
+                activeClassName="bg-accent text-accent-foreground"
+              >
+                <ShieldCheck className="h-4 w-4" /> Admin Console
+              </NavLink>
+            )}
+
+            <NavLink
+              to={`/${schoolSlug}/${role}/users`}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
+              activeClassName="bg-accent text-accent-foreground"
+            >
+              <Users className="h-4 w-4" /> Staff & Users
+            </NavLink>
+
+            <NavLink
+              to={`/${schoolSlug}/${role}/crm`}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
+              activeClassName="bg-accent text-accent-foreground"
+            >
+              <KanbanSquare className="h-4 w-4" /> Admissions CRM
+            </NavLink>
+
+            <NavLink
+              to={`/${schoolSlug}/${role}/academic`}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
+              activeClassName="bg-accent text-accent-foreground"
+            >
+              <GraduationCap className="h-4 w-4" /> Academic Core
+            </NavLink>
+
+            <NavLink
+              to={`/${schoolSlug}/${role}/attendance`}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
+              activeClassName="bg-accent text-accent-foreground"
+            >
+              <GraduationCap className="h-4 w-4" /> Attendance
+            </NavLink>
+
             <NavLink
               to={`/${schoolSlug}/${role}?settings=1`}
               className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"

@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import TenantAuth from "./pages/tenant/TenantAuth";
 import TenantDashboard from "./pages/tenant/TenantDashboard";
+import TenantBootstrap from "./pages/tenant/TenantBootstrap";
 
 const queryClient = new QueryClient();
 
@@ -19,7 +20,8 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/:schoolSlug/auth" element={<TenantAuth />} />
-          <Route path="/:schoolSlug/:role" element={<TenantDashboard />} />
+          <Route path="/:schoolSlug/bootstrap" element={<TenantBootstrap />} />
+          <Route path="/:schoolSlug/:role/*" element={<TenantDashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
