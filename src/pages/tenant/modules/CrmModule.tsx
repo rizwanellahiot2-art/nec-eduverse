@@ -12,6 +12,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { SortableLeadCard } from "@/pages/tenant/modules/components/SortableLeadCard";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { LeadActivityTimeline } from "@/pages/tenant/modules/components/LeadActivityTimeline";
+import { useSchoolPermissions } from "@/hooks/useSchoolPermissions";
 
 type Stage = { id: string; name: string; sort_order: number };
 type Lead = { id: string; full_name: string; score: number; stage_id: string; notes: string | null };
@@ -21,6 +24,8 @@ export function CrmModule() {
   const tenant = useTenant(schoolSlug);
   const schoolId = useMemo(() => (tenant.status === "ready" ? tenant.schoolId : null), [tenant.status, tenant.schoolId]);
 
+  const perms = useSchoolPermissions(schoolId);
+
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   const [pipelineId, setPipelineId] = useState<string | null>(null);
@@ -29,6 +34,9 @@ export function CrmModule() {
 
   const [newLeadName, setNewLeadName] = useState("");
   const [newLeadNotes, setNewLeadNotes] = useState("");
+
+  const [openLeadId, setOpenLeadId] = useState<string | null>(null);
+  const openLead = useMemo(() => leads.find((l) => l.id === openLeadId) ?? null, [leads, openLeadId]);
 
   const refresh = async () => {
     if (!schoolId) return;
@@ -124,10 +132,24 @@ export function CrmModule() {
 
   return (
     <div className="space-y-4">
+      {!perms.loading && !perms.canWorkCrm && (
+        <Card className="shadow-elevated">
+          <CardHeader>
+            <CardTitle className="font-display text-xl">Admissions CRM</CardTitle>
+            <p className="text-sm text-muted-foreground">Access restricted</p>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-2xl bg-accent p-4 text-sm text-accent-foreground">
+              You don’t have CRM permissions in this school (counselor/marketing/staff manager).
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="shadow-elevated">
         <CardHeader>
           <CardTitle className="font-display text-xl">Admissions CRM</CardTitle>
-          <p className="text-sm text-muted-foreground">Pipelines • Kanban • Lead scoring • Activity timeline (next)</p>
+          <p className="text-sm text-muted-foreground">Pipelines • Kanban • Lead scoring • Activity timeline</p>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
@@ -160,6 +182,7 @@ export function CrmModule() {
                         <SortableLeadCard
                           key={l.id}
                           lead={l}
+                          onOpen={() => setOpenLeadId(l.id)}
                           onBumpScore={async () => {
                             const next = Math.min(100, (l.score ?? 0) + 5);
                             setLeads((prev) => prev.map((x) => (x.id === l.id ? { ...x, score: next } : x)));
@@ -191,6 +214,19 @@ export function CrmModule() {
           })}
         </div>
       </DndContext>
+
+      <Dialog open={!!openLeadId} onOpenChange={(v) => !v && setOpenLeadId(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="font-display">{openLead?.full_name ?? "Lead"}</DialogTitle>
+          </DialogHeader>
+          {schoolId && openLeadId ? (
+            <LeadActivityTimeline schoolId={schoolId} leadId={openLeadId} />
+          ) : (
+            <div className="text-sm text-muted-foreground">Loading…</div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

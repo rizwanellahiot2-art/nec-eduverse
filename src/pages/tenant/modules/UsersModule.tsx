@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useSession } from "@/hooks/useSession";
 import { EDUVERSE_ROLES, roleLabel, type EduverseRole } from "@/lib/eduverse-roles";
+import { useSchoolPermissions } from "@/hooks/useSchoolPermissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ export function UsersModule() {
   const { user } = useSession();
 
   const schoolId = useMemo(() => (tenant.status === "ready" ? tenant.schoolId : null), [tenant.status, tenant.schoolId]);
+  const perms = useSchoolPermissions(schoolId);
 
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -63,9 +65,25 @@ export function UsersModule() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [schoolId]);
 
+  const allowedRoles = useMemo((): EduverseRole[] => {
+    // Teachers can only create students/parents.
+    // Principals/VP (staff managers) can create staff.
+    // Platform super admin can create anything except super_admin (reserved).
+    const base = EDUVERSE_ROLES.filter((r): r is EduverseRole => r !== "super_admin");
+    if (perms.isPlatformSuperAdmin) return base;
+    if (perms.canManageStaff) return base;
+    return base.filter((r) => r === "student" || r === "parent");
+  }, [perms.canManageStaff, perms.isPlatformSuperAdmin]);
+
   const invite = async () => {
     if (!tenant.slug) return;
     if (!email.trim()) return toast.error("Email is required");
+
+    if (!allowedRoles.includes(role)) {
+      return toast.error(
+        "Not allowed: principals/VP create staff; teachers can create students/parents.",
+      );
+    }
 
     setBusy(true);
     setInviteLink(null);
@@ -110,6 +128,11 @@ export function UsersModule() {
           <p className="text-sm text-muted-foreground">Admin-created accounts only • No self-registration</p>
         </CardHeader>
         <CardContent className="space-y-4">
+          {!perms.loading && !perms.isPlatformSuperAdmin && !perms.canManageStaff && (
+            <div className="rounded-2xl bg-accent p-4 text-sm text-accent-foreground">
+              Limited access: you can only create <span className="font-medium">students</span> and <span className="font-medium">parents</span>.
+            </div>
+          )}
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <div className="space-y-2">
               <label className="text-sm font-medium">Email</label>
@@ -126,7 +149,7 @@ export function UsersModule() {
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
                 <SelectContent>
-                  {EDUVERSE_ROLES.filter((r) => r !== "super_admin").map((r) => (
+                  {allowedRoles.map((r) => (
                     <SelectItem key={r} value={r}>
                       {roleLabel[r]}
                     </SelectItem>
