@@ -17,6 +17,7 @@ import HrDashboard from "./pages/tenant/HrDashboard";
 import AccountantDashboard from "./pages/tenant/AccountantDashboard";
 import MarketingDashboard from "./pages/tenant/MarketingDashboard";
 import StudentDashboard from "./pages/tenant/StudentDashboard";
+import ParentDashboard from "./pages/tenant/ParentDashboard";
 import TenantBootstrap from "./pages/tenant/TenantBootstrap";
 
 const queryClient = new QueryClient();
@@ -47,6 +48,7 @@ const App = () => (
           <Route path="/:schoolSlug/accountant/*" element={<AccountantDashboard />} />
           <Route path="/:schoolSlug/marketing/*" element={<MarketingDashboard />} />
           <Route path="/:schoolSlug/student/*" element={<StudentDashboard />} />
+          <Route path="/:schoolSlug/parent/*" element={<ParentDashboard />} />
           <Route path="/:schoolSlug/:role/*" element={<TenantDashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
