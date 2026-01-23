@@ -34,7 +34,7 @@ export default function PlatformUpdatePassword() {
     try {
       const { error } = await supabase.auth.updateUser({ password: parsed.data });
       if (error) return setMessage(error.message);
-      navigate("/platform/schools", { replace: true });
+      navigate("/platform", { replace: true });
     } finally {
       setBusy(false);
     }
