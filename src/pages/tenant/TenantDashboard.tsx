@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Navigate, useNavigate, useParams } from "react-router-dom";
+import { Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { BarChart3, LogOut, UserRound } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +8,12 @@ import { useTenant } from "@/hooks/useTenant";
 import { isEduverseRole, roleLabel, type EduverseRole } from "@/lib/eduverse-roles";
 import { TenantShell } from "@/components/tenant/TenantShell";
 import { Button } from "@/components/ui/button";
+import { DashboardHome } from "@/pages/tenant/modules/DashboardHome";
+import { AdminConsole } from "@/pages/tenant/modules/AdminConsole";
+import { UsersModule } from "@/pages/tenant/modules/UsersModule";
+import { CrmModule } from "@/pages/tenant/modules/CrmModule";
+import { AcademicModule } from "@/pages/tenant/modules/AcademicModule";
+import { AttendanceModule } from "@/pages/tenant/modules/AttendanceModule";
 
 const TenantDashboard = () => {
   const { schoolSlug, role: roleParam } = useParams();
@@ -35,6 +41,23 @@ const TenantDashboard = () => {
     setAuthzMessage(null);
 
     (async () => {
+      // Global platform Super Admin bypass
+      const { data: psa, error: psaErr } = await supabase
+        .from("platform_super_admins")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (cancelled) return;
+      if (psaErr) {
+        setAuthzState("denied");
+        setAuthzMessage(psaErr.message);
+        return;
+      }
+      if (psa?.user_id) {
+        setAuthzState("ok");
+        return;
+      }
+
       const { data: membership, error: memErr } = await supabase
         .from("school_memberships")
         .select("id")
@@ -162,6 +185,18 @@ const TenantDashboard = () => {
             </div>
           )}
         </div>
+
+        {authzState === "ok" && (
+          <Routes>
+            <Route index element={<DashboardHome />} />
+            <Route path="admin" element={<AdminConsole />} />
+            <Route path="users" element={<UsersModule />} />
+            <Route path="crm" element={<CrmModule />} />
+            <Route path="academic" element={<AcademicModule />} />
+            <Route path="attendance" element={<AttendanceModule />} />
+            <Route path="*" element={<Navigate to={`/${tenant.slug}/${role}`} replace />} />
+          </Routes>
+        )}
       </div>
     </TenantShell>
   );

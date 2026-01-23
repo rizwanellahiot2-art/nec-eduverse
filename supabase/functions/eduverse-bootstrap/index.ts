@@ -11,10 +11,10 @@ const corsHeaders = {
 
 type BootstrapRequest = {
   bootstrapSecret: string;
+  appOrigin?: string;
   schoolSlug: string;
   schoolName: string;
   adminEmail: string;
-  adminPassword: string;
   displayName?: string;
   force?: boolean;
 };
@@ -62,14 +62,37 @@ serve(async (req) => {
     }
 
     // 2) Create admin user
+    const email = body.adminEmail.trim().toLowerCase();
+    if (!email) return json({ error: "Invalid adminEmail." }, 400);
+
+    // We do NOT accept a password from the UI (avoid leaking secrets / logs).
+    // Create a strong random password, then generate a password-set link.
+    const tmpPassword = crypto.randomUUID() + crypto.randomUUID();
+
     const { data: createdUser, error: createUserErr } = await admin.auth.admin.createUser({
-      email: body.adminEmail.trim().toLowerCase(),
-      password: body.adminPassword,
+      email,
+      password: tmpPassword,
       email_confirm: true,
     });
     if (createUserErr) return json({ error: createUserErr.message }, 400);
     const userId = createdUser.user?.id;
     if (!userId) return json({ error: "Failed to create admin user." }, 500);
+
+    // Mark as PLATFORM Super Admin (global)
+    const { error: psaErr } = await admin.from("platform_super_admins").upsert({ user_id: userId }, { onConflict: "user_id" });
+    if (psaErr) return json({ error: psaErr.message }, 400);
+
+    // Generate password set link (recovery)
+    const redirectTo = (body.appOrigin && body.appOrigin.startsWith("http") ? body.appOrigin : null)
+      ? `${body.appOrigin}/${schoolSlug}/auth`
+      : undefined;
+
+    const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
+      type: "recovery",
+      email,
+      options: redirectTo ? { redirectTo } : undefined,
+    });
+    if (linkErr) return json({ error: linkErr.message }, 400);
 
     // 3) Profile
     const { error: profileErr } = await admin
@@ -84,7 +107,7 @@ serve(async (req) => {
         {
           school_id: schoolRow.id,
           user_id: userId,
-          email: body.adminEmail.trim().toLowerCase(),
+          email,
           display_name: body.displayName ?? "Super Admin",
         },
         { onConflict: "school_id,user_id" },
@@ -129,6 +152,7 @@ serve(async (req) => {
       ok: true,
       school: schoolRow,
       adminUserId: userId,
+      passwordSetLink: linkData?.properties?.action_link ?? null,
       message: "Bootstrap complete. You can now sign in via /:school/auth as Super Admin/Principal.",
     });
   } catch (e) {
