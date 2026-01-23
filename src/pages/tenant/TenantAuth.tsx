@@ -16,6 +16,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 const emailSchema = z.string().email();
 const passwordSchema = z.string().min(8);
 
+const roleToPathSegment = (role: EduverseRole) => {
+  // Friendly URLs for some roles that have dedicated dashboards.
+  if (role === "hr_manager") return "hr";
+  if (role === "marketing_staff") return "marketing";
+  if (role === "student") return "student";
+  return role;
+};
+
 const TenantAuth = () => {
   const { schoolSlug } = useParams();
   const tenant = useTenant(schoolSlug);
@@ -49,7 +57,7 @@ const TenantAuth = () => {
         password,
       });
       if (error) return setMessage(error.message);
-      navigate(`/${tenant.slug}/${role}`);
+      navigate(`/${tenant.slug}/${roleToPathSegment(role)}`);
     } finally {
       setBusy(false);
     }
@@ -62,7 +70,7 @@ const TenantAuth = () => {
 
     setBusy(true);
     try {
-      const redirectUrl = `${window.location.origin}/${tenant.slug}/${role}`;
+      const redirectUrl = `${window.location.origin}/${tenant.slug}/${roleToPathSegment(role)}`;
       const { error } = await supabase.auth.signInWithOtp({
         email: parsedEmail.data,
         options: {
