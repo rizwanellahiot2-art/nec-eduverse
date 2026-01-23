@@ -61,22 +61,32 @@ serve(async (req) => {
       return json({ error: "Bootstrap is locked for this school." }, 409);
     }
 
-    // 2) Create admin user
+    // 2) Create (or reuse) admin user
     const email = body.adminEmail.trim().toLowerCase();
     if (!email) return json({ error: "Invalid adminEmail." }, 400);
 
-    // We do NOT accept a password from the UI (avoid leaking secrets / logs).
-    // Create a strong random password, then generate a password-set link.
-    const tmpPassword = crypto.randomUUID() + crypto.randomUUID();
+    // If force is enabled (or school is already bootstrapped), we should be able to re-issue
+    // a password-set link without trying to re-create the user.
+    let userId: string | null = null;
+    const { data: usersList, error: listErr } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    if (listErr) return json({ error: listErr.message }, 400);
+    const existing = usersList.users.find((u) => (u.email ?? "").toLowerCase() === email);
+    userId = existing?.id ?? null;
 
-    const { data: createdUser, error: createUserErr } = await admin.auth.admin.createUser({
-      email,
-      password: tmpPassword,
-      email_confirm: true,
-    });
-    if (createUserErr) return json({ error: createUserErr.message }, 400);
-    const userId = createdUser.user?.id;
-    if (!userId) return json({ error: "Failed to create admin user." }, 500);
+    if (!userId) {
+      // We do NOT accept a password from the UI (avoid leaking secrets / logs).
+      // Create a strong random password, then generate a password-set link.
+      const tmpPassword = crypto.randomUUID() + crypto.randomUUID();
+
+      const { data: createdUser, error: createUserErr } = await admin.auth.admin.createUser({
+        email,
+        password: tmpPassword,
+        email_confirm: true,
+      });
+      if (createUserErr) return json({ error: createUserErr.message }, 400);
+      userId = createdUser.user?.id ?? null;
+      if (!userId) return json({ error: "Failed to create admin user." }, 500);
+    }
 
     // Mark as PLATFORM Super Admin (global)
     const { error: psaErr } = await admin.from("platform_super_admins").upsert({ user_id: userId }, { onConflict: "user_id" });
@@ -84,7 +94,7 @@ serve(async (req) => {
 
     // Generate password set link (recovery)
     const redirectTo = (body.appOrigin && body.appOrigin.startsWith("http") ? body.appOrigin : null)
-      ? `${body.appOrigin}/${schoolSlug}/auth`
+      ? `${body.appOrigin}/auth/update-password`
       : undefined;
 
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
