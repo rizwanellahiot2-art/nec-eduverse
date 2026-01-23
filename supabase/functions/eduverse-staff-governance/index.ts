@@ -13,19 +13,20 @@ const corsHeaders = {
 type GovernanceAction =
   | "deactivate" // remove all roles for user in a school
   | "set_roles" // replace roles for user in a school
-  | "generate_recovery_link"
-  | "generate_magic_link";
+  | "set_password";
 
 type GovernanceRequest = {
   schoolSlug: string;
   targetUserId: string;
   roles?: string[]; // required for set_roles
-  appOrigin?: string; // window.location.origin
+  password?: string; // required for set_password
   reason?: string;
 };
 
-const json = (data: unknown, status = 200) =>
-  new Response(JSON.stringify(data), {
+const makeTraceId = () => crypto.randomUUID();
+
+const json = (data: unknown, status = 200, traceId?: string) =>
+  new Response(JSON.stringify({ traceId, ...((data ?? {}) as any) }), {
     status,
     headers: { "Content-Type": "application/json", ...corsHeaders },
   });
@@ -36,31 +37,33 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    const traceId = makeTraceId();
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? "";
     const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    if (!anon) return json({ error: "Missing SUPABASE_ANON_KEY" }, 500);
+    if (!anon) return json({ ok: false, error: "Missing SUPABASE_ANON_KEY" }, 500, traceId);
 
     // user-scoped client: identify caller
     const authHeader = req.headers.get("Authorization") ?? "";
-    if (!authHeader.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
+    if (!authHeader.startsWith("Bearer ")) return json({ ok: false, error: "Unauthorized" }, 401, traceId);
     const token = authHeader.slice("Bearer ".length);
     const userClient = createClient(supabaseUrl, anon, {
       global: { headers: { Authorization: authHeader } },
     });
     const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token);
     const actorUserId = claimsData?.claims?.sub;
-    if (claimsErr || !actorUserId) return json({ error: "Unauthorized" }, 401);
+    if (claimsErr || !actorUserId) return json({ ok: false, error: "Unauthorized" }, 401, traceId);
 
     const body = (await req.json()) as GovernanceRequest & { action?: GovernanceAction };
     const action = (body.action ?? "").trim() as GovernanceAction;
-    if (!action) return json({ error: "Missing action" }, 400);
+    if (!action) return json({ ok: false, error: "Missing action" }, 400, traceId);
 
     const schoolSlug = normalizeSlug(body.schoolSlug ?? "");
-    if (!schoolSlug) return json({ error: "Invalid schoolSlug" }, 400);
+    if (!schoolSlug) return json({ ok: false, error: "Invalid schoolSlug" }, 400, traceId);
 
     const targetUserId = (body.targetUserId ?? "").trim();
-    if (!targetUserId) return json({ error: "Invalid targetUserId" }, 400);
+    if (!targetUserId) return json({ ok: false, error: "Invalid targetUserId" }, 400, traceId);
 
     const admin = createClient(supabaseUrl, serviceRole);
 
@@ -70,7 +73,7 @@ serve(async (req) => {
       .select("id,slug")
       .eq("slug", schoolSlug)
       .maybeSingle();
-    if (schoolErr || !school) return json({ error: schoolErr?.message ?? "School not found" }, 400);
+    if (schoolErr || !school) return json({ ok: false, error: schoolErr?.message ?? "School not found" }, 400, traceId);
 
     // Permission check: platform super admin OR one of the governance roles in the school
     const { data: psa, error: psaErr } = await admin
@@ -78,7 +81,7 @@ serve(async (req) => {
       .select("user_id")
       .eq("user_id", actorUserId)
       .maybeSingle();
-    if (psaErr) return json({ error: psaErr.message }, 400);
+    if (psaErr) return json({ ok: false, error: psaErr.message }, 400, traceId);
     const isPlatformSuperAdmin = !!psa?.user_id;
 
     if (!isPlatformSuperAdmin) {
@@ -89,8 +92,8 @@ serve(async (req) => {
         .eq("user_id", actorUserId)
         .in("role", ["super_admin", "school_owner", "principal", "vice_principal", "hr_manager"])
         .limit(1);
-      if (roleErr) return json({ error: roleErr.message }, 400);
-      if (!roleRows || roleRows.length === 0) return json({ error: "Forbidden" }, 403);
+      if (roleErr) return json({ ok: false, error: roleErr.message }, 400, traceId);
+      if (!roleRows || roleRows.length === 0) return json({ ok: false, error: "Forbidden" }, 403, traceId);
     }
 
     // Snapshot existing roles for audit metadata
@@ -107,7 +110,7 @@ serve(async (req) => {
         .delete()
         .eq("school_id", school.id)
         .eq("user_id", targetUserId);
-      if (delErr) return json({ error: delErr.message }, 400);
+      if (delErr) return json({ ok: false, error: delErr.message }, 400, traceId);
 
       await admin.from("audit_logs").insert({
         school_id: school.id,
@@ -118,12 +121,12 @@ serve(async (req) => {
         metadata: { beforeRoles, reason: body.reason ?? null },
       });
 
-      return json({ ok: true });
+      return json({ ok: true }, 200, traceId);
     }
 
     if (action === "set_roles") {
       const roles = Array.isArray(body.roles) ? body.roles.map(String) : [];
-      if (roles.length === 0) return json({ error: "roles is required" }, 400);
+      if (roles.length === 0) return json({ ok: false, error: "roles is required" }, 400, traceId);
 
       // Replace roles: delete then insert
       const { error: delErr } = await admin
@@ -131,7 +134,7 @@ serve(async (req) => {
         .delete()
         .eq("school_id", school.id)
         .eq("user_id", targetUserId);
-      if (delErr) return json({ error: delErr.message }, 400);
+      if (delErr) return json({ ok: false, error: delErr.message }, 400, traceId);
 
       const rows = roles.map((role) => ({
         school_id: school.id,
@@ -140,7 +143,7 @@ serve(async (req) => {
         created_by: actorUserId,
       }));
       const { error: insErr } = await admin.from("user_roles").insert(rows);
-      if (insErr) return json({ error: insErr.message }, 400);
+      if (insErr) return json({ ok: false, error: insErr.message }, 400, traceId);
 
       await admin.from("audit_logs").insert({
         school_id: school.id,
@@ -151,52 +154,36 @@ serve(async (req) => {
         metadata: { beforeRoles, afterRoles: roles, reason: body.reason ?? null },
       });
 
-      return json({ ok: true, roles });
+      return json({ ok: true, roles }, 200, traceId);
     }
 
-    if (action === "generate_recovery_link" || action === "generate_magic_link") {
-      const rawOrigin = (body.appOrigin ?? req.headers.get("origin") ?? "").trim();
-      let appOrigin: string;
-      try {
-        appOrigin = new URL(rawOrigin).origin;
-      } catch {
-        return json({ error: "Invalid appOrigin. Pass window.location.origin from the client." }, 400);
+    if (action === "set_password") {
+      const password = String(body.password ?? "");
+      if (!password || password.length < 8) {
+        return json({ ok: false, error: "Password must be at least 8 characters." }, 400, traceId);
       }
 
-      const { data: userResp, error: userErr } = await admin.auth.admin.getUserById(targetUserId);
-      if (userErr) return json({ error: userErr.message }, 400);
-      const email = (userResp.user?.email ?? "").toLowerCase();
-      if (!email.includes("@")) return json({ error: "Target user has no email" }, 400);
+      const { error: updErr } = await admin.auth.admin.updateUserById(targetUserId, { password });
+      if (updErr) return json({ ok: false, error: updErr.message }, 400, traceId);
 
-      const redirectTo = `${appOrigin.replace(/\/$/, "")}/${schoolSlug}/auth`;
-      const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
-        type: action === "generate_magic_link" ? "magiclink" : "recovery",
-        email,
-        options: { redirectTo },
-      });
-      if (linkErr) return json({ error: linkErr.message }, 400);
-
-      const linkType = action === "generate_magic_link" ? "magiclink" : "recovery";
       await admin.from("audit_logs").insert({
         school_id: school.id,
         actor_user_id: actorUserId,
-        action: linkType === "recovery" ? "password_reset_link_generated" : "magic_link_generated",
+        action: "staff_password_set_direct",
         entity_type: "user",
         entity_id: targetUserId,
         metadata: {
-          targetEmail: email,
-          redirectTo,
           reason: body.reason ?? null,
         },
       });
 
-      return json({ ok: true, actionLink: linkData.properties?.action_link ?? null, linkType });
+      return json({ ok: true }, 200, traceId);
     }
 
-    return json({ error: "Unknown action" }, 400);
+    return json({ ok: false, error: "Unknown action" }, 400, traceId);
   } catch (e) {
     console.error("eduverse-staff-governance error:", e);
     const err = e as { message?: string };
-    return json({ error: err?.message ?? "Unknown error" }, 500);
+    return json({ ok: false, error: err?.message ?? "Unknown error" }, 500, makeTraceId());
   }
 });

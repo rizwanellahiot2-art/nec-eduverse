@@ -18,8 +18,10 @@ type CreateSchoolRequest = {
   principalDisplayName?: string;
 };
 
-const json = (data: unknown, status = 200) =>
-  new Response(JSON.stringify(data), {
+const makeTraceId = () => crypto.randomUUID();
+
+const json = (data: unknown, status = 200, traceId?: string) =>
+  new Response(JSON.stringify({ traceId, ...((data ?? {}) as any) }), {
     status,
     headers: { "Content-Type": "application/json", ...corsHeaders },
   });
@@ -28,31 +30,33 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    const traceId = makeTraceId();
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? "";
     const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    if (!anon) return json({ error: "Missing SUPABASE_ANON_KEY" }, 500);
+    if (!anon) return json({ ok: false, error: "Missing SUPABASE_ANON_KEY" }, 500, traceId);
 
     const authHeader = req.headers.get("Authorization") ?? "";
-    if (!authHeader.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
+    if (!authHeader.startsWith("Bearer ")) return json({ ok: false, error: "Unauthorized" }, 401, traceId);
     const token = authHeader.slice("Bearer ".length);
     const userClient = createClient(supabaseUrl, anon, {
       global: { headers: { Authorization: authHeader } },
     });
     const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token);
     const actorUserId = claimsData?.claims?.sub;
-    if (claimsErr || !actorUserId) return json({ error: "Unauthorized" }, 401);
+    if (claimsErr || !actorUserId) return json({ ok: false, error: "Unauthorized" }, 401, traceId);
 
     const body = (await req.json()) as CreateSchoolRequest;
     const slug = body.slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
-    if (!slug) return json({ error: "Invalid slug" }, 400);
+    if (!slug) return json({ ok: false, error: "Invalid slug" }, 400, traceId);
     const name = (body.name || slug).trim();
-    if (!name) return json({ error: "Invalid name" }, 400);
+    if (!name) return json({ ok: false, error: "Invalid name" }, 400, traceId);
 
     const principalEmail = body.principalEmail.trim().toLowerCase();
-    if (!principalEmail.includes("@")) return json({ error: "Invalid principalEmail" }, 400);
+    if (!principalEmail.includes("@")) return json({ ok: false, error: "Invalid principalEmail" }, 400, traceId);
     if (!body.principalPassword || body.principalPassword.length < 8) {
-      return json({ error: "Principal password must be at least 8 characters." }, 400);
+      return json({ ok: false, error: "Principal password must be at least 8 characters." }, 400, traceId);
     }
 
     const admin = createClient(supabaseUrl, serviceRole);
@@ -62,8 +66,8 @@ serve(async (req) => {
       .select("user_id")
       .eq("user_id", actorUserId)
       .maybeSingle();
-    if (psaErr) return json({ error: psaErr.message }, 400);
-    if (!psa?.user_id) return json({ error: "Forbidden" }, 403);
+    if (psaErr) return json({ ok: false, error: psaErr.message }, 400, traceId);
+    if (!psa?.user_id) return json({ ok: false, error: "Forbidden" }, 403, traceId);
 
     // Upsert school
     const { data: school, error: schoolErr } = await admin
@@ -74,7 +78,7 @@ serve(async (req) => {
       )
       .select("id,slug,name,is_active")
       .single();
-    if (schoolErr) return json({ error: schoolErr.message }, 400);
+    if (schoolErr) return json({ ok: false, error: schoolErr.message }, 400, traceId);
 
     // Ensure default related rows
     await admin.from("school_branding").upsert({ school_id: school.id }, { onConflict: "school_id" });
@@ -91,13 +95,13 @@ serve(async (req) => {
         password: body.principalPassword,
         email_confirm: true,
       });
-      if (createErr) return json({ error: createErr.message }, 400);
+      if (createErr) return json({ ok: false, error: createErr.message }, 400, traceId);
       principalUserId = createdUser.user?.id ?? null;
     } else {
       const { error: updErr } = await admin.auth.admin.updateUserById(principalUserId, { password: body.principalPassword });
-      if (updErr) return json({ error: updErr.message }, 400);
+      if (updErr) return json({ ok: false, error: updErr.message }, 400, traceId);
     }
-    if (!principalUserId) return json({ error: "Failed to create principal user" }, 500);
+    if (!principalUserId) return json({ ok: false, error: "Failed to create principal user" }, 500, traceId);
 
     const displayName = body.principalDisplayName?.trim() || "Principal";
 
@@ -109,7 +113,7 @@ serve(async (req) => {
     const { error: memErr } = await admin
       .from("school_memberships")
       .upsert({ school_id: school.id, user_id: principalUserId, status: "active", created_by: actorUserId }, { onConflict: "school_id,user_id" });
-    if (memErr) return json({ error: memErr.message }, 400);
+    if (memErr) return json({ ok: false, error: memErr.message }, 400, traceId);
 
     // Principal role
     const { error: roleErr } = await admin
@@ -118,7 +122,7 @@ serve(async (req) => {
         { school_id: school.id, user_id: principalUserId, role: "principal", created_by: actorUserId },
         { onConflict: "school_id,user_id,role" },
       );
-    if (roleErr) return json({ error: roleErr.message }, 400);
+    if (roleErr) return json({ ok: false, error: roleErr.message }, 400, traceId);
 
     await admin.from("school_user_directory").upsert(
       { school_id: school.id, user_id: principalUserId, email: principalEmail, display_name: displayName },
@@ -147,10 +151,10 @@ serve(async (req) => {
       metadata: { principalEmail },
     });
 
-    return json({ ok: true, school, principalUserId });
+    return json({ ok: true, school, principalUserId }, 200, traceId);
   } catch (e) {
     console.error("eduverse-admin-create-school error:", e);
     const err = e as { message?: string };
-    return json({ error: err?.message ?? "Unknown error" }, 500);
+    return json({ ok: false, error: err?.message ?? "Unknown error" }, 500, makeTraceId());
   }
 });

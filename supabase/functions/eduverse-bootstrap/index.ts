@@ -11,16 +11,18 @@ const corsHeaders = {
 
 type BootstrapRequest = {
   bootstrapSecret: string;
-  appOrigin?: string;
   schoolSlug: string;
   schoolName: string;
   adminEmail: string;
+  adminPassword: string;
   displayName?: string;
   force?: boolean;
 };
 
-const json = (data: unknown, status = 200) =>
-  new Response(JSON.stringify(data), {
+const makeTraceId = () => crypto.randomUUID();
+
+const json = (data: unknown, status = 200, traceId?: string) =>
+  new Response(JSON.stringify({ traceId, ...((data ?? {}) as any) }), {
     status,
     headers: { "Content-Type": "application/json", ...corsHeaders },
   });
@@ -29,11 +31,13 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    const traceId = makeTraceId();
+
     const body = (await req.json()) as BootstrapRequest;
 
     const expected = Deno.env.get("EDUVERSE_BOOTSTRAP_SECRET") ?? "";
     if (!expected || body.bootstrapSecret !== expected) {
-      return json({ error: "Invalid bootstrap secret." }, 401);
+      return json({ ok: false, error: "Invalid bootstrap secret." }, 401, traceId);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -41,7 +45,7 @@ serve(async (req) => {
     const admin = createClient(supabaseUrl, serviceRole);
 
     const schoolSlug = body.schoolSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
-    if (!schoolSlug) return json({ error: "Invalid schoolSlug." }, 400);
+    if (!schoolSlug) return json({ ok: false, error: "Invalid schoolSlug." }, 400, traceId);
 
     // 1) Create school (idempotent)
     const { data: schoolRow, error: schoolInsertErr } = await admin
@@ -49,7 +53,7 @@ serve(async (req) => {
       .upsert({ slug: schoolSlug, name: body.schoolName || schoolSlug }, { onConflict: "slug" })
       .select("id,slug,name")
       .single();
-    if (schoolInsertErr) return json({ error: schoolInsertErr.message }, 400);
+    if (schoolInsertErr) return json({ ok: false, error: schoolInsertErr.message }, 400, traceId);
 
     // 1b) Check bootstrap lock
     const { data: bsState } = await admin
@@ -58,12 +62,17 @@ serve(async (req) => {
       .eq("school_id", schoolRow.id)
       .maybeSingle();
     if (bsState?.locked && !body.force) {
-      return json({ error: "Bootstrap is locked for this school." }, 409);
+      return json({ ok: false, error: "Bootstrap is locked for this school." }, 409, traceId);
     }
 
     // 2) Create (or reuse) admin user
     const email = body.adminEmail.trim().toLowerCase();
-    if (!email) return json({ error: "Invalid adminEmail." }, 400);
+    if (!email) return json({ ok: false, error: "Invalid adminEmail." }, 400, traceId);
+
+    const password = String(body.adminPassword ?? "");
+    if (!password || password.length < 8) {
+      return json({ ok: false, error: "Admin password must be at least 8 characters." }, 400, traceId);
+    }
 
     // If force is enabled (or school is already bootstrapped), we should be able to re-issue
     // a password-set link without trying to re-create the user.
@@ -74,41 +83,29 @@ serve(async (req) => {
     userId = existing?.id ?? null;
 
     if (!userId) {
-      // We do NOT accept a password from the UI (avoid leaking secrets / logs).
-      // Create a strong random password, then generate a password-set link.
-      const tmpPassword = crypto.randomUUID() + crypto.randomUUID();
-
       const { data: createdUser, error: createUserErr } = await admin.auth.admin.createUser({
         email,
-        password: tmpPassword,
+        password,
         email_confirm: true,
       });
-      if (createUserErr) return json({ error: createUserErr.message }, 400);
+      if (createUserErr) return json({ ok: false, error: createUserErr.message }, 400, traceId);
       userId = createdUser.user?.id ?? null;
-      if (!userId) return json({ error: "Failed to create admin user." }, 500);
+      if (!userId) return json({ ok: false, error: "Failed to create admin user." }, 500, traceId);
+    } else {
+      // Force mode allows resetting the admin password for already-bootstrapped schools.
+      const { error: updErr } = await admin.auth.admin.updateUserById(userId, { password });
+      if (updErr) return json({ ok: false, error: updErr.message }, 400, traceId);
     }
 
     // Mark as PLATFORM Super Admin (global)
     const { error: psaErr } = await admin.from("platform_super_admins").upsert({ user_id: userId }, { onConflict: "user_id" });
-    if (psaErr) return json({ error: psaErr.message }, 400);
-
-    // Generate password set link (recovery)
-    const redirectTo = (body.appOrigin && body.appOrigin.startsWith("http") ? body.appOrigin : null)
-      ? `${body.appOrigin}/auth/update-password`
-      : undefined;
-
-    const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
-      type: "recovery",
-      email,
-      options: redirectTo ? { redirectTo } : undefined,
-    });
-    if (linkErr) return json({ error: linkErr.message }, 400);
+    if (psaErr) return json({ ok: false, error: psaErr.message }, 400, traceId);
 
     // 3) Profile
     const { error: profileErr } = await admin
       .from("profiles")
       .upsert({ user_id: userId, display_name: body.displayName ?? "Super Admin" }, { onConflict: "user_id" });
-    if (profileErr) return json({ error: profileErr.message }, 400);
+    if (profileErr) return json({ ok: false, error: profileErr.message }, 400, traceId);
 
     // Directory (for UI visibility)
     await admin
@@ -130,7 +127,7 @@ serve(async (req) => {
         { school_id: schoolRow.id, user_id: userId, status: "active", created_by: userId },
         { onConflict: "school_id,user_id" },
       );
-    if (memErr) return json({ error: memErr.message }, 400);
+    if (memErr) return json({ ok: false, error: memErr.message }, 400, traceId);
 
     const { error: roleErr } = await admin.from("user_roles").insert([
       { school_id: schoolRow.id, user_id: userId, role: "super_admin", created_by: userId },
@@ -162,12 +159,11 @@ serve(async (req) => {
       ok: true,
       school: schoolRow,
       adminUserId: userId,
-      passwordSetLink: linkData?.properties?.action_link ?? null,
       message: "Bootstrap complete. You can now sign in via /:school/auth as Super Admin/Principal.",
-    });
+    }, 200, traceId);
   } catch (e) {
     console.error("eduverse-bootstrap error:", e);
     const err = e as { message?: string };
-    return json({ error: err?.message ?? "Unknown error" }, 500);
+    return json({ ok: false, error: err?.message ?? "Unknown error" }, 500, makeTraceId());
   }
 });

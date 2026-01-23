@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Copy, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
@@ -19,7 +19,7 @@ export function AdminConsole() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [locked, setLocked] = useState<boolean | null>(null);
-  const [passwordSetLink, setPasswordSetLink] = useState<string | null>(null);
+  const [adminPassword, setAdminPassword] = useState<string>("");
 
   const [schoolName, setSchoolName] = useState("New School");
   const [adminEmail, setAdminEmail] = useState("");
@@ -38,27 +38,25 @@ export function AdminConsole() {
 
   const run = async () => {
     setStatus(null);
-    setPasswordSetLink(null);
     if (!tenant.slug) return;
     if (!secret.trim()) return setStatus("Secret required.");
     if (!adminEmail.trim()) return setStatus("Admin email required.");
+    if (adminPassword.trim().length < 8) return setStatus("Admin password must be at least 8 characters.");
 
     setBusy(true);
     try {
       const { data, error } = await supabase.functions.invoke("eduverse-bootstrap", {
         body: {
           bootstrapSecret: secret.trim(),
-          appOrigin: window.location.origin,
           schoolSlug: tenant.slug,
           schoolName: schoolName.trim() || tenant.slug,
           adminEmail: adminEmail.trim().toLowerCase(),
+          adminPassword,
           displayName: "Super Admin",
           force: false,
         },
       });
       if (error) return setStatus(error.message);
-
-      setPasswordSetLink((data as any)?.passwordSetLink ?? null);
       setStatus(JSON.stringify(data, null, 2));
       // refresh lock state
       if (schoolId) {
@@ -119,32 +117,19 @@ export function AdminConsole() {
               <Input value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Password setup</label>
-              <Input value="A secure password-set link will be generated" disabled />
+              <label className="text-sm font-medium">Admin password</label>
+              <Input
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                type="password"
+                placeholder="Minimum 8 characters"
+              />
             </div>
           </div>
 
           <Button variant="hero" size="xl" className="w-full" disabled={busy || locked === true} onClick={run}>
             Run bootstrap (once)
           </Button>
-
-          {passwordSetLink && (
-            <div className="rounded-2xl bg-accent p-4">
-              <p className="text-sm font-medium text-accent-foreground">Super Admin password-set link</p>
-              <p className="mt-1 break-all text-xs text-muted-foreground">{passwordSetLink}</p>
-              <div className="mt-3">
-                <Button
-                  variant="soft"
-                  onClick={async () => {
-                    await navigator.clipboard.writeText(passwordSetLink);
-                    toast.success("Copied");
-                  }}
-                >
-                  <Copy className="mr-2 h-4 w-4" /> Copy link
-                </Button>
-              </div>
-            </div>
-          )}
 
           {status && (
             <pre className="max-h-[260px] overflow-auto rounded-2xl bg-accent p-4 text-xs text-accent-foreground">

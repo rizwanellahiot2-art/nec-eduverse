@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Copy, Download, FileUp, KeyRound, Link2, UserMinus, UserPlus } from "lucide-react";
+import { Download, FileUp, KeyRound, UserMinus, UserPlus } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
@@ -25,6 +25,7 @@ type BulkRow = {
   rowNumber: number; // CSV line number
   email: string;
   roles: string[];
+  password: string;
   displayName?: string;
   phone?: string;
 };
@@ -36,7 +37,6 @@ type BulkResult = {
   errors: string[];
   normalizedRoles: string[];
   userId?: string;
-  actionLink?: string;
 };
 
 export function UsersModule() {
@@ -49,9 +49,10 @@ export function UsersModule() {
 
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [password, setPassword] = useState("");
   const [role, setRole] = useState<EduverseRole>("teacher");
   const [busy, setBusy] = useState(false);
-  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [createdUserId, setCreatedUserId] = useState<string | null>(null);
 
   const [bulkRows, setBulkRows] = useState<BulkRow[]>([]);
   const [bulkResults, setBulkResults] = useState<BulkResult[] | null>(null);
@@ -62,7 +63,7 @@ export function UsersModule() {
 
   const [govRoleByUser, setGovRoleByUser] = useState<Record<string, EduverseRole>>({});
   const [govReason, setGovReason] = useState<string>("");
-  const [generatedLink, setGeneratedLink] = useState<{ userId: string; type: "recovery" | "magiclink"; link: string } | null>(null);
+  // Link-based flows removed: we set explicit passwords directly.
 
   const refresh = async () => {
     if (!schoolId) return;
@@ -118,6 +119,7 @@ export function UsersModule() {
   const invite = async () => {
     if (!tenant.slug) return;
     if (!email.trim()) return toast.error("Email is required");
+    if (password.trim().length < 8) return toast.error("Password must be at least 8 characters");
 
     if (!allowedRoles.includes(role)) {
       return toast.error(
@@ -126,15 +128,15 @@ export function UsersModule() {
     }
 
     setBusy(true);
-    setInviteLink(null);
+    setCreatedUserId(null);
     try {
       const { data, error } = await supabase.functions.invoke("eduverse-invite", {
         body: {
           schoolSlug: tenant.slug,
           email: email.trim().toLowerCase(),
+          password,
           role,
           displayName: displayName.trim() || undefined,
-          appOrigin: window.location.origin,
         },
       });
       if (error) {
@@ -152,7 +154,7 @@ export function UsersModule() {
         return toast.error(detail ?? error.message);
       }
 
-      setInviteLink((data as any)?.actionLink ?? null);
+      setCreatedUserId((data as any)?.userId ?? null);
 
       if (schoolId && user?.id) {
         await supabase.from("audit_logs").insert({
@@ -168,6 +170,7 @@ export function UsersModule() {
       toast.success("User created and role assigned");
       setEmail("");
       setDisplayName("");
+      setPassword("");
       await refresh();
     } finally {
       setBusy(false);
@@ -229,6 +232,7 @@ export function UsersModule() {
 
     const rows: BulkRow[] = parsed.map((r, idx) => {
       const email = (r["email"] ?? "").trim().toLowerCase();
+      const password = (r["password"] ?? "").toString().trim();
       const roleCell = (r["role"] ?? r["roles"] ?? "").trim();
       const roles = roleCell
         .split(/[;,]/)
@@ -241,6 +245,7 @@ export function UsersModule() {
         rowNumber: idx + 2,
         email,
         roles,
+        password,
         displayName: displayName || undefined,
         phone: phone || undefined,
       };
@@ -288,27 +293,25 @@ export function UsersModule() {
             </div>
           </div>
 
-          <Button variant="hero" size="xl" onClick={invite} disabled={busy} className="w-full">
-            <UserPlus className="mr-2 h-4 w-4" /> Create user + generate invite
-          </Button>
-
-          {inviteLink && (
-            <div className="rounded-2xl bg-accent p-4">
-              <p className="text-sm font-medium text-accent-foreground">Invite link (password set)</p>
-              <p className="mt-1 break-all text-xs text-muted-foreground">{inviteLink}</p>
-              <div className="mt-3">
-                <Button
-                  variant="soft"
-                  onClick={async () => {
-                    await navigator.clipboard.writeText(inviteLink);
-                    toast.success("Copied");
-                  }}
-                >
-                  <Copy className="mr-2 h-4 w-4" /> Copy link
-                </Button>
-              </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Password</label>
+              <Input
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                type="password"
+                placeholder="Minimum 8 characters"
+              />
             </div>
-          )}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Created user</label>
+              <Input value={createdUserId ?? "—"} disabled />
+            </div>
+          </div>
+
+          <Button variant="hero" size="xl" onClick={invite} disabled={busy} className="w-full">
+            <UserPlus className="mr-2 h-4 w-4" /> Create user (set password)
+          </Button>
 
           {canGovernStaff && (
             <div className="rounded-3xl border bg-surface p-4">
@@ -326,12 +329,14 @@ export function UsersModule() {
                       const sample = toCsv([
                         {
                           email: "teacher1@school.com",
+                          password: "Teacher@123",
                           role: "teacher",
                           display_name: "Teacher One",
                           phone: "+1 555 000 0000",
                         },
                         {
                           email: "vp@school.com",
+                          password: "Vp@123456",
                           role: "vice_principal;academic_coordinator",
                           display_name: "VP",
                           phone: "",
@@ -370,7 +375,7 @@ export function UsersModule() {
                     }}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Columns: <span className="font-medium">email</span>, <span className="font-medium">role</span>
+                    Columns: <span className="font-medium">email</span>, <span className="font-medium">password</span>, <span className="font-medium">role</span>
                     (multi-role via <span className="font-medium">; or ,</span>), optional <span className="font-medium">display_name</span>, <span className="font-medium">phone</span>.
                   </p>
                 </div>
@@ -393,7 +398,6 @@ export function UsersModule() {
                         mode: "dry_run",
                         schoolSlug: tenant.slug,
                         rows: bulkRows,
-                        appOrigin: window.location.origin,
                         reason: govReason.trim() || undefined,
                       });
                       setBulkResults((res?.results ?? []) as BulkResult[]);
@@ -425,20 +429,18 @@ export function UsersModule() {
                         mode: "commit",
                         schoolSlug: tenant.slug,
                         rows: bulkRows,
-                        appOrigin: window.location.origin,
                         reason: govReason.trim() || undefined,
                       });
                       const results = (res?.results ?? []) as BulkResult[];
                       setBulkResults(results);
-                      const links = results
-                        .map((r) => ({
+                      const csv = toCsv(
+                        bulkRows.map((r) => ({
                           row: String(r.rowNumber),
                           email: r.email,
-                          roles: (r.normalizedRoles ?? []).join(";"),
-                          password_set_link: r.actionLink ?? "",
-                        }))
-                        .filter((r) => r.email);
-                      const csv = toCsv(links);
+                          password: r.password,
+                          roles: (r.roles ?? []).join(";"),
+                        })),
+                      );
                       setBulkLinksCsv(csv);
                       toast.success("Import committed");
                       await refresh();
@@ -457,7 +459,7 @@ export function UsersModule() {
                     variant="outline"
                     onClick={() => downloadTextFile(`staff-import-links-${tenant.slug}.csv`, bulkLinksCsv, "text/csv")}
                   >
-                    <Download className="mr-2 h-4 w-4" /> Download links CSV
+                    <Download className="mr-2 h-4 w-4" /> Download credentials CSV
                   </Button>
                 )}
               </div>
@@ -517,34 +519,8 @@ export function UsersModule() {
                     placeholder="e.g. Staff left the school / role change approved"
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Generated link</label>
-                  <Input value={generatedLink ? `${generatedLink.type}: ${generatedLink.link}` : "—"} disabled />
-                </div>
+                <div className="space-y-2" />
               </div>
-
-              {generatedLink && (
-                <div className="rounded-2xl bg-accent p-4">
-                  <p className="text-sm font-medium text-accent-foreground">
-                    {generatedLink.type === "recovery" ? "Password reset link" : "One-time magic link"}
-                  </p>
-                  <p className="mt-1 break-all text-xs text-muted-foreground">{generatedLink.link}</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <Button
-                      variant="soft"
-                      onClick={async () => {
-                        await navigator.clipboard.writeText(generatedLink.link);
-                        toast.success("Copied");
-                      }}
-                    >
-                      <Copy className="mr-2 h-4 w-4" /> Copy link
-                    </Button>
-                    <Button variant="outline" onClick={() => setGeneratedLink(null)}>
-                      Clear
-                    </Button>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
@@ -642,19 +618,19 @@ export function UsersModule() {
                             variant="outline"
                             size="sm"
                             onClick={async () => {
+                              const next = window.prompt("Set a new password for this user (min 8 chars):");
+                              if (!next) return;
+                              if (next.trim().length < 8) return toast.error("Password must be at least 8 characters");
                               try {
                                 setBusy(true);
-                                const res = await governanceInvoke({
-                                  action: "generate_recovery_link",
+                                await governanceInvoke({
+                                  action: "set_password",
                                   schoolSlug: tenant.slug,
                                   targetUserId: r.user_id,
-                                  appOrigin: window.location.origin,
+                                  password: next.trim(),
                                   reason: govReason.trim() || undefined,
                                 });
-                                const link = String(res?.actionLink ?? "");
-                                if (!link) throw new Error("No link returned");
-                                setGeneratedLink({ userId: r.user_id, type: "recovery", link });
-                                toast.success("Reset link generated");
+                                toast.success("Password updated");
                               } catch (e) {
                                 toast.error((e as Error).message);
                               } finally {
@@ -663,35 +639,7 @@ export function UsersModule() {
                             }}
                             disabled={busy}
                           >
-                            <KeyRound className="mr-2 h-4 w-4" /> Reset link
-                          </Button>
-
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={async () => {
-                              try {
-                                setBusy(true);
-                                const res = await governanceInvoke({
-                                  action: "generate_magic_link",
-                                  schoolSlug: tenant.slug,
-                                  targetUserId: r.user_id,
-                                  appOrigin: window.location.origin,
-                                  reason: govReason.trim() || undefined,
-                                });
-                                const link = String(res?.actionLink ?? "");
-                                if (!link) throw new Error("No link returned");
-                                setGeneratedLink({ userId: r.user_id, type: "magiclink", link });
-                                toast.success("Magic link generated");
-                              } catch (e) {
-                                toast.error((e as Error).message);
-                              } finally {
-                                setBusy(false);
-                              }
-                            }}
-                            disabled={busy}
-                          >
-                            <Link2 className="mr-2 h-4 w-4" /> Magic link
+                            <KeyRound className="mr-2 h-4 w-4" /> Set password
                           </Button>
                         </div>
                       </TableCell>
