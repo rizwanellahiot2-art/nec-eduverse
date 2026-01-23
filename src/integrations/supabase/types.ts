@@ -952,6 +952,494 @@ export type Database = {
         }
         Relationships: []
       }
+      hr_contracts: {
+        Row: {
+          contract_type: string
+          created_at: string
+          created_by: string | null
+          department: string | null
+          document_url: string | null
+          end_date: string | null
+          id: string
+          position: string | null
+          school_id: string
+          start_date: string
+          status: string
+          terms: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          contract_type?: string
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          document_url?: string | null
+          end_date?: string | null
+          id?: string
+          position?: string | null
+          school_id: string
+          start_date: string
+          status?: string
+          terms?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          contract_type?: string
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          document_url?: string | null
+          end_date?: string | null
+          id?: string
+          position?: string | null
+          school_id?: string
+          start_date?: string
+          status?: string
+          terms?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_contracts_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_documents: {
+        Row: {
+          created_at: string
+          document_name: string
+          document_type: string
+          file_url: string
+          id: string
+          notes: string | null
+          school_id: string
+          updated_at: string
+          uploaded_by: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          document_name: string
+          document_type: string
+          file_url: string
+          id?: string
+          notes?: string | null
+          school_id: string
+          updated_at?: string
+          uploaded_by?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          document_name?: string
+          document_type?: string
+          file_url?: string
+          id?: string
+          notes?: string | null
+          school_id?: string
+          updated_at?: string
+          uploaded_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_documents_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_leave_balances: {
+        Row: {
+          created_at: string
+          id: string
+          leave_type_id: string
+          remaining_days: number
+          school_id: string
+          total_days: number
+          updated_at: string
+          used_days: number
+          user_id: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          leave_type_id: string
+          remaining_days?: number
+          school_id: string
+          total_days?: number
+          updated_at?: string
+          used_days?: number
+          user_id: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          leave_type_id?: string
+          remaining_days?: number
+          school_id?: string
+          total_days?: number
+          updated_at?: string
+          used_days?: number
+          user_id?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_leave_balances_leave_type_id_fkey"
+            columns: ["leave_type_id"]
+            isOneToOne: false
+            referencedRelation: "hr_leave_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_leave_balances_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_leave_requests: {
+        Row: {
+          created_at: string
+          days_count: number
+          end_date: string
+          id: string
+          leave_type_id: string
+          notes: string | null
+          reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          school_id: string
+          start_date: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          days_count: number
+          end_date: string
+          id?: string
+          leave_type_id: string
+          notes?: string | null
+          reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          school_id: string
+          start_date: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          days_count?: number
+          end_date?: string
+          id?: string
+          leave_type_id?: string
+          notes?: string | null
+          reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          school_id?: string
+          start_date?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_leave_requests_leave_type_id_fkey"
+            columns: ["leave_type_id"]
+            isOneToOne: false
+            referencedRelation: "hr_leave_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hr_leave_requests_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_leave_types: {
+        Row: {
+          created_at: string
+          days_per_year: number
+          id: string
+          is_active: boolean
+          name: string
+          school_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          days_per_year?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          school_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          days_per_year?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          school_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_leave_types_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_pay_runs: {
+        Row: {
+          created_at: string
+          deductions: number
+          gross_amount: number
+          id: string
+          net_amount: number
+          notes: string | null
+          paid_at: string | null
+          paid_by: string | null
+          period_end: string
+          period_start: string
+          school_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deductions?: number
+          gross_amount?: number
+          id?: string
+          net_amount?: number
+          notes?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          period_end: string
+          period_start: string
+          school_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deductions?: number
+          gross_amount?: number
+          id?: string
+          net_amount?: number
+          notes?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          period_end?: string
+          period_start?: string
+          school_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_pay_runs_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_performance_reviews: {
+        Row: {
+          areas_for_improvement: string | null
+          created_at: string
+          goals: string | null
+          id: string
+          notes: string | null
+          rating: number | null
+          review_period_end: string
+          review_period_start: string
+          reviewer_user_id: string
+          school_id: string
+          status: string
+          strengths: string | null
+          submitted_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          areas_for_improvement?: string | null
+          created_at?: string
+          goals?: string | null
+          id?: string
+          notes?: string | null
+          rating?: number | null
+          review_period_end: string
+          review_period_start: string
+          reviewer_user_id: string
+          school_id: string
+          status?: string
+          strengths?: string | null
+          submitted_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          areas_for_improvement?: string | null
+          created_at?: string
+          goals?: string | null
+          id?: string
+          notes?: string | null
+          rating?: number | null
+          review_period_end?: string
+          review_period_start?: string
+          reviewer_user_id?: string
+          school_id?: string
+          status?: string
+          strengths?: string | null
+          submitted_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_performance_reviews_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_salary_records: {
+        Row: {
+          base_salary: number
+          created_at: string
+          created_by: string | null
+          currency: string
+          effective_from: string
+          effective_to: string | null
+          id: string
+          notes: string | null
+          pay_frequency: string
+          school_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          base_salary?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          effective_from: string
+          effective_to?: string | null
+          id?: string
+          notes?: string | null
+          pay_frequency?: string
+          school_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          base_salary?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          notes?: string | null
+          pay_frequency?: string
+          school_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_salary_records_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hr_staff_attendance: {
+        Row: {
+          attendance_date: string
+          check_in_time: string | null
+          check_out_time: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          recorded_by: string | null
+          school_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attendance_date: string
+          check_in_time?: string | null
+          check_out_time?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          recorded_by?: string | null
+          school_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attendance_date?: string
+          check_in_time?: string | null
+          check_out_time?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          recorded_by?: string | null
+          school_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_staff_attendance_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       parent_messages: {
         Row: {
           content: string
@@ -1634,6 +2122,7 @@ export type Database = {
     }
     Functions: {
       can_manage_finance: { Args: { _school_id: string }; Returns: boolean }
+      can_manage_hr: { Args: { _school_id: string }; Returns: boolean }
       can_manage_staff: { Args: { _school_id: string }; Returns: boolean }
       can_manage_students: { Args: { _school_id: string }; Returns: boolean }
       can_work_crm: { Args: { _school_id: string }; Returns: boolean }
