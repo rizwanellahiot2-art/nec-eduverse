@@ -64,13 +64,17 @@ export function useSchoolPermissions(schoolId: string | null) {
         return;
       }
 
-      const [staff, students, crm] = await Promise.all([
+      // Staff governance scope:
+      // - can_manage_staff covers: super_admin, school_owner, principal, vice_principal
+      // - HR Managers also need staff governance permissions (role stored in user_roles)
+      const [staff, students, crm, hrRole] = await Promise.all([
         supabase.rpc("can_manage_staff", { _school_id: resolvedSchoolId }),
         supabase.rpc("can_manage_students", { _school_id: resolvedSchoolId }),
         supabase.rpc("can_work_crm", { _school_id: resolvedSchoolId }),
+        supabase.rpc("has_role", { _school_id: resolvedSchoolId, _role: "hr_manager" }),
       ]);
 
-      const err = staff.error ?? students.error ?? crm.error;
+      const err = staff.error ?? students.error ?? crm.error ?? hrRole.error;
       if (err) {
         if (!cancelled) setState((s) => ({ ...s, loading: false, error: err.message }));
         return;
@@ -81,7 +85,7 @@ export function useSchoolPermissions(schoolId: string | null) {
           loading: false,
           error: null,
           isPlatformSuperAdmin: false,
-          canManageStaff: !!staff.data,
+          canManageStaff: !!staff.data || !!hrRole.data,
           canManageStudents: !!students.data,
           canWorkCrm: !!crm.data,
         });
