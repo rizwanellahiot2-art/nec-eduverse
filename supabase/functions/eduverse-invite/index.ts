@@ -12,6 +12,9 @@ const corsHeaders = {
 type InviteRequest = {
   schoolSlug: string;
   email: string;
+  // Needed for auth admin.generateLink redirectTo (must be an allowed URL)
+  // Example: https://your-app-domain.com
+  appOrigin?: string;
   role:
     | "school_owner"
     | "principal"
@@ -69,15 +72,26 @@ serve(async (req) => {
       .maybeSingle();
     if (schoolErr || !school) return json({ error: schoolErr?.message ?? "School not found" }, 400);
 
-    const { data: roleRow, error: roleCheckErr } = await admin
-      .from("user_roles")
-      .select("role")
-      .eq("school_id", school.id)
+    // Platform Super Admins can invite for ANY school
+    const { data: psaRows, error: psaErr } = await admin
+      .from("platform_super_admins")
+      .select("user_id")
       .eq("user_id", actorUserId)
-      .in("role", ["super_admin", "school_owner", "principal", "vice_principal"])
       .limit(1);
-    if (roleCheckErr) return json({ error: roleCheckErr.message }, 400);
-    if (!roleRow || roleRow.length === 0) return json({ error: "Forbidden" }, 403);
+    if (psaErr) return json({ error: psaErr.message }, 400);
+    const isPlatformSuperAdmin = !!(psaRows && psaRows.length > 0);
+
+    if (!isPlatformSuperAdmin) {
+      const { data: roleRow, error: roleCheckErr } = await admin
+        .from("user_roles")
+        .select("role")
+        .eq("school_id", school.id)
+        .eq("user_id", actorUserId)
+        .in("role", ["super_admin", "school_owner", "principal", "vice_principal"])
+        .limit(1);
+      if (roleCheckErr) return json({ error: roleCheckErr.message }, 400);
+      if (!roleRow || roleRow.length === 0) return json({ error: "Forbidden" }, 403);
+    }
 
     const inviteEmail = body.email.trim().toLowerCase();
     if (!inviteEmail.includes("@")) return json({ error: "Invalid email" }, 400);
@@ -123,7 +137,16 @@ serve(async (req) => {
       );
 
     // Create password-set (recovery) link that admin can deliver via email/WhatsApp
-    const redirectTo = `${new URL(req.url).origin}/${school.slug}/auth`;
+    // IMPORTANT: the URL origin for edge functions is NOT the app origin.
+    // The redirectTo must be a valid, allowlisted app URL.
+    const rawOrigin = (body.appOrigin ?? req.headers.get("origin") ?? "").trim();
+    let appOrigin: string;
+    try {
+      appOrigin = new URL(rawOrigin).origin;
+    } catch {
+      return json({ error: "Invalid appOrigin. Pass window.location.origin from the client." }, 400);
+    }
+    const redirectTo = `${appOrigin.replace(/\/$/, "")}/${school.slug}/auth`;
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
       type: "recovery",
       email: inviteEmail,
