@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      academic_assessments: {
+        Row: {
+          assessment_date: string
+          class_section_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          max_marks: number
+          school_id: string
+          title: string
+        }
+        Insert: {
+          assessment_date?: string
+          class_section_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          max_marks?: number
+          school_id: string
+          title: string
+        }
+        Update: {
+          assessment_date?: string
+          class_section_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          max_marks?: number
+          school_id?: string
+          title?: string
+        }
+        Relationships: []
+      }
       academic_classes: {
         Row: {
           created_at: string
@@ -414,6 +447,111 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      crm_call_logs: {
+        Row: {
+          called_at: string
+          created_at: string
+          created_by: string | null
+          duration_seconds: number
+          id: string
+          lead_id: string
+          notes: string | null
+          outcome: string
+          school_id: string
+        }
+        Insert: {
+          called_at?: string
+          created_at?: string
+          created_by?: string | null
+          duration_seconds?: number
+          id?: string
+          lead_id: string
+          notes?: string | null
+          outcome?: string
+          school_id: string
+        }
+        Update: {
+          called_at?: string
+          created_at?: string
+          created_by?: string | null
+          duration_seconds?: number
+          id?: string
+          lead_id?: string
+          notes?: string | null
+          outcome?: string
+          school_id?: string
+        }
+        Relationships: []
+      }
+      crm_campaigns: {
+        Row: {
+          budget: number
+          channel: string
+          created_at: string
+          created_by: string | null
+          end_date: string | null
+          id: string
+          name: string
+          school_id: string
+          start_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          budget?: number
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          id?: string
+          name: string
+          school_id: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          budget?: number
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          id?: string
+          name?: string
+          school_id?: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      crm_lead_attributions: {
+        Row: {
+          attributed_at: string
+          campaign_id: string
+          created_by: string | null
+          id: string
+          lead_id: string
+          school_id: string
+        }
+        Insert: {
+          attributed_at?: string
+          campaign_id: string
+          created_by?: string | null
+          id?: string
+          lead_id: string
+          school_id: string
+        }
+        Update: {
+          attributed_at?: string
+          campaign_id?: string
+          created_by?: string | null
+          id?: string
+          lead_id?: string
+          school_id?: string
+        }
+        Relationships: []
       }
       crm_leads: {
         Row: {
@@ -1706,6 +1844,42 @@ export type Database = {
         }
         Relationships: []
       }
+      student_certificates: {
+        Row: {
+          certificate_type: string
+          created_at: string
+          created_by: string | null
+          file_url: string
+          id: string
+          issued_at: string
+          school_id: string
+          student_id: string
+          title: string
+        }
+        Insert: {
+          certificate_type?: string
+          created_at?: string
+          created_by?: string | null
+          file_url: string
+          id?: string
+          issued_at?: string
+          school_id: string
+          student_id: string
+          title: string
+        }
+        Update: {
+          certificate_type?: string
+          created_at?: string
+          created_by?: string | null
+          file_url?: string
+          id?: string
+          issued_at?: string
+          school_id?: string
+          student_id?: string
+          title?: string
+        }
+        Relationships: []
+      }
       student_enrollments: {
         Row: {
           class_section_id: string
@@ -1854,6 +2028,39 @@ export type Database = {
         }
         Relationships: []
       }
+      student_marks: {
+        Row: {
+          assessment_id: string
+          graded_at: string
+          graded_by: string | null
+          id: string
+          marks: number | null
+          remarks: string | null
+          school_id: string
+          student_id: string
+        }
+        Insert: {
+          assessment_id: string
+          graded_at?: string
+          graded_by?: string | null
+          id?: string
+          marks?: number | null
+          remarks?: string | null
+          school_id: string
+          student_id: string
+        }
+        Update: {
+          assessment_id?: string
+          graded_at?: string
+          graded_by?: string | null
+          id?: string
+          marks?: number | null
+          remarks?: string | null
+          school_id?: string
+          student_id?: string
+        }
+        Relationships: []
+      }
       student_results: {
         Row: {
           assignment_id: string
@@ -1953,6 +2160,60 @@ export type Database = {
           },
         ]
       }
+      support_conversations: {
+        Row: {
+          created_at: string
+          id: string
+          school_id: string
+          status: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          school_id: string
+          status?: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          school_id?: string
+          status?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      support_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          school_id: string
+          sender_user_id: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          school_id: string
+          sender_user_id: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          school_id?: string
+          sender_user_id?: string
+        }
+        Relationships: []
+      }
       teacher_assignments: {
         Row: {
           class_section_id: string
@@ -2034,6 +2295,27 @@ export type Database = {
           subject_name?: string
           teacher_user_id?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      timetable_periods: {
+        Row: {
+          id: string
+          label: string
+          school_id: string
+          sort_order: number
+        }
+        Insert: {
+          id?: string
+          label: string
+          school_id: string
+          sort_order?: number
+        }
+        Update: {
+          id?: string
+          label?: string
+          school_id?: string
+          sort_order?: number
         }
         Relationships: []
       }
@@ -2146,6 +2428,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_my_student: {
+        Args: { _school_id: string; _student_id: string }
+        Returns: boolean
+      }
       is_platform_super_admin: { Args: never; Returns: boolean }
       is_school_member: { Args: { _school_id: string }; Returns: boolean }
       is_super_admin: { Args: { _school_id: string }; Returns: boolean }
@@ -2153,6 +2439,7 @@ export type Database = {
         Args: { _class_section_id: string; _school_id: string }
         Returns: boolean
       }
+      my_student_id: { Args: { _school_id: string }; Returns: string }
     }
     Enums: {
       app_role:
