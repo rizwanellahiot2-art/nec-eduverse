@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { BarChart3, Coins, GraduationCap, Headphones, KanbanSquare, LayoutGrid, Settings, ShieldCheck, Sparkles, Users } from "lucide-react";
 import type { EduverseRole } from "@/lib/eduverse-roles";
 import { supabase } from "@/integrations/supabase/client";
+import { GlobalCommandPalette } from "@/components/global/GlobalCommandPalette";
 
 type Props = PropsWithChildren<{
   title: string;
@@ -39,6 +40,7 @@ export function TenantShell({ title, subtitle, role, schoolSlug, children }: Pro
 
   return (
     <div className="min-h-screen bg-background">
+      <GlobalCommandPalette basePath={`/${schoolSlug}/${role}`} />
       <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-6 px-6 py-6 lg:grid-cols-[280px_1fr]">
         <aside className="rounded-3xl bg-surface p-4 shadow-elevated">
           <div className="flex items-center justify-between">
@@ -46,9 +48,16 @@ export function TenantShell({ title, subtitle, role, schoolSlug, children }: Pro
               <p className="font-display text-lg font-semibold tracking-tight">EDUVERSE</p>
               <p className="text-xs text-muted-foreground">/{schoolSlug} • {role}</p>
             </div>
-            <Button variant="soft" size="icon" aria-label="AI">
-              <Sparkles />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="soft"
+                size="icon"
+                aria-label="Search"
+                onClick={() => window.dispatchEvent(new Event("eduverse:open-search"))}
+              >
+                <Sparkles />
+              </Button>
+            </div>
           </div>
 
           <nav className="mt-6 space-y-1">

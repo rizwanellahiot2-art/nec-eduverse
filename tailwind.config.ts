@@ -76,10 +76,13 @@ export default {
       boxShadow: {
         elevated: "var(--shadow-elevated)",
         glow: "var(--shadow-glow)",
+        soft: "var(--shadow-soft)",
       },
       backgroundImage: {
         "hero-grid": "var(--bg-hero-grid)",
         "brand-gradient": "var(--gradient-brand)",
+        "primary-strong": "var(--gradient-primary-strong)",
+        "primary-strong-hover": "var(--gradient-primary-strong-hover)",
       },
       keyframes: {
         "accordion-down": {
