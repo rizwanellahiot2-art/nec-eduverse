@@ -14,6 +14,7 @@ import TenantAuth from "./pages/tenant/TenantAuth";
 import TenantDashboard from "./pages/tenant/TenantDashboard";
 import TeacherDashboard from "./pages/tenant/TeacherDashboard";
 import HrDashboard from "./pages/tenant/HrDashboard";
+import AccountantDashboard from "./pages/tenant/AccountantDashboard";
 import TenantBootstrap from "./pages/tenant/TenantBootstrap";
 
 const queryClient = new QueryClient();
@@ -41,6 +42,7 @@ const App = () => (
           <Route path="/:schoolSlug/bootstrap" element={<TenantBootstrap />} />
           <Route path="/:schoolSlug/teacher/*" element={<TeacherDashboard />} />
           <Route path="/:schoolSlug/hr/*" element={<HrDashboard />} />
+          <Route path="/:schoolSlug/accountant/*" element={<AccountantDashboard />} />
           <Route path="/:schoolSlug/:role/*" element={<TenantDashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
