@@ -97,8 +97,7 @@ export default function PlatformDashboardPage() {
               <ShieldCheck className="h-4 w-4" /> Global dashboard • All schools
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
-              <Button variant="soft" onClick={() => navigate("/platform/directory")}
-                >
+              <Button variant="soft" onClick={() => navigate("/super_admin/directory")}>
                 <Search className="mr-2 h-4 w-4" /> Directory
               </Button>
               <Button variant="outline" onClick={async () => {
@@ -162,7 +161,7 @@ export default function PlatformDashboardPage() {
                     <Button variant="soft" disabled={busy} onClick={refresh}>
                       Refresh
                     </Button>
-                    <Button variant="outline" onClick={() => navigate("/platform/schools")}>
+                    <Button variant="outline" onClick={() => navigate("/super_admin/schools")}>
                       <Building2 className="mr-2 h-4 w-4" /> All Schools
                     </Button>
                   </div>

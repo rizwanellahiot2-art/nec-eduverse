@@ -19,7 +19,16 @@ import { AttendanceReportsModule } from "@/pages/tenant/modules/AttendanceReport
 
 const TenantDashboard = () => {
   const { schoolSlug, role: roleParam } = useParams();
-  const role = (isEduverseRole(roleParam) ? roleParam : null) as EduverseRole | null;
+  // Support route aliases that are nicer than DB enum values.
+  // URL: /:schoolSlug/hr  -> DB role: hr_manager
+  // URL: /:schoolSlug/marketing -> DB role: marketing_staff
+  const roleAlias = useMemo(() => {
+    if (!roleParam) return null;
+    if (roleParam === "hr") return "hr_manager";
+    if (roleParam === "marketing") return "marketing_staff";
+    return roleParam;
+  }, [roleParam]);
+  const role = (isEduverseRole(roleAlias) ? roleAlias : null) as EduverseRole | null;
   const tenant = useTenant(schoolSlug);
   const { user, loading } = useSession();
   const navigate = useNavigate();

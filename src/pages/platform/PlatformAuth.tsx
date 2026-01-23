@@ -28,7 +28,7 @@ export default function PlatformAuth() {
 
   useEffect(() => {
     if (loading) return;
-    if (user) navigate("/platform", { replace: true });
+    if (user) navigate("/super_admin", { replace: true });
   }, [loading, user, navigate]);
 
   const doPasswordLogin = async () => {
@@ -45,7 +45,7 @@ export default function PlatformAuth() {
         password,
       });
       if (error) return setMessage(error.message);
-      navigate("/platform");
+      navigate("/super_admin");
     } finally {
       setBusy(false);
     }
