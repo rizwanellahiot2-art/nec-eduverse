@@ -3,11 +3,23 @@ project_id = "mypqbxkwcevfiryltgoe"
 [functions.eduverse-bootstrap]
 verify_jwt = false
 
+[functions.eduverse-admin-create-school]
+verify_jwt = false
+
+[functions.eduverse-admin-create-user]
+verify_jwt = false
+
+[functions.eduverse-admin-unlock-bootstrap]
+verify_jwt = false
+
+[functions.eduverse-admin-impersonate]
+verify_jwt = false
+
 [functions.eduverse-invite]
-verify_jwt = true
+verify_jwt = false
 
 [functions.eduverse-staff-governance]
-verify_jwt = true
+verify_jwt = false
 
 [functions.eduverse-bulk-staff-import]
-verify_jwt = true
+verify_jwt = false

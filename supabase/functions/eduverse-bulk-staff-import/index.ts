@@ -96,10 +96,13 @@ serve(async (req) => {
     const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     if (!anon) return json({ error: "Missing SUPABASE_ANON_KEY" }, 500);
 
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (!authHeader.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
+    const token = authHeader.slice("Bearer ".length);
     const userClient = createClient(supabaseUrl, anon, {
-      global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } },
+      global: { headers: { Authorization: authHeader } },
     });
-    const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims();
+    const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token);
     const actorUserId = claimsData?.claims?.sub;
     if (claimsErr || !actorUserId) return json({ error: "Unauthorized" }, 401);
 
