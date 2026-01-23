@@ -1,1 +1,7 @@
 project_id = "mypqbxkwcevfiryltgoe"
+
+[functions.eduverse-bootstrap]
+verify_jwt = false
+
+[functions.eduverse-invite]
+verify_jwt = true
