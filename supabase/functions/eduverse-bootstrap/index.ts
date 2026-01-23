@@ -16,6 +16,7 @@ type BootstrapRequest = {
   adminEmail: string;
   adminPassword: string;
   displayName?: string;
+  force?: boolean;
 };
 
 const json = (data: unknown, status = 200) =>
@@ -50,6 +51,16 @@ serve(async (req) => {
       .single();
     if (schoolInsertErr) return json({ error: schoolInsertErr.message }, 400);
 
+    // 1b) Check bootstrap lock
+    const { data: bsState } = await admin
+      .from("school_bootstrap")
+      .select("locked")
+      .eq("school_id", schoolRow.id)
+      .maybeSingle();
+    if (bsState?.locked && !body.force) {
+      return json({ error: "Bootstrap is locked for this school." }, 409);
+    }
+
     // 2) Create admin user
     const { data: createdUser, error: createUserErr } = await admin.auth.admin.createUser({
       email: body.adminEmail.trim().toLowerCase(),
@@ -65,6 +76,19 @@ serve(async (req) => {
       .from("profiles")
       .upsert({ user_id: userId, display_name: body.displayName ?? "Super Admin" }, { onConflict: "user_id" });
     if (profileErr) return json({ error: profileErr.message }, 400);
+
+    // Directory (for UI visibility)
+    await admin
+      .from("school_user_directory")
+      .upsert(
+        {
+          school_id: schoolRow.id,
+          user_id: userId,
+          email: body.adminEmail.trim().toLowerCase(),
+          display_name: body.displayName ?? "Super Admin",
+        },
+        { onConflict: "school_id,user_id" },
+      );
 
     // 4) Membership + roles
     const { error: memErr } = await admin
@@ -87,6 +111,19 @@ serve(async (req) => {
 
     // 5) Branding default
     await admin.from("school_branding").upsert({ school_id: schoolRow.id }, { onConflict: "school_id" });
+
+    // Lock bootstrap
+    await admin
+      .from("school_bootstrap")
+      .upsert(
+        {
+          school_id: schoolRow.id,
+          bootstrapped_at: new Date().toISOString(),
+          bootstrapped_by: userId,
+          locked: true,
+        },
+        { onConflict: "school_id" },
+      );
 
     return json({
       ok: true,

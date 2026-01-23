@@ -469,6 +469,41 @@ export type Database = {
         }
         Relationships: []
       }
+      school_bootstrap: {
+        Row: {
+          bootstrapped_at: string | null
+          bootstrapped_by: string | null
+          created_at: string
+          locked: boolean
+          school_id: string
+          updated_at: string
+        }
+        Insert: {
+          bootstrapped_at?: string | null
+          bootstrapped_by?: string | null
+          created_at?: string
+          locked?: boolean
+          school_id: string
+          updated_at?: string
+        }
+        Update: {
+          bootstrapped_at?: string | null
+          bootstrapped_by?: string | null
+          created_at?: string
+          locked?: boolean
+          school_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_bootstrap_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: true
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       school_branding: {
         Row: {
           accent_hue: number
@@ -541,6 +576,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "school_memberships_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_user_directory: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email: string
+          id: string
+          school_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email: string
+          id?: string
+          school_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email?: string
+          id?: string
+          school_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_user_directory_school_id_fkey"
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
@@ -810,6 +883,10 @@ export type Database = {
       can_manage_staff: { Args: { _school_id: string }; Returns: boolean }
       can_manage_students: { Args: { _school_id: string }; Returns: boolean }
       can_work_crm: { Args: { _school_id: string }; Returns: boolean }
+      ensure_default_crm_pipeline: {
+        Args: { _school_id: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -818,6 +895,7 @@ export type Database = {
         Returns: boolean
       }
       is_school_member: { Args: { _school_id: string }; Returns: boolean }
+      is_super_admin: { Args: { _school_id: string }; Returns: boolean }
       is_teacher_assigned: {
         Args: { _class_section_id: string; _school_id: string }
         Returns: boolean
