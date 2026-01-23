@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { fetchStudentLabelMap } from "@/lib/student-display";
 
 type Conversation = { id: string; status: string };
 type Message = { id: string; content: string; sender_user_id: string; created_at: string };
@@ -11,6 +12,7 @@ export function StudentSupportModule({ myStudent, schoolId }: { myStudent: any; 
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
+  const [studentLabel, setStudentLabel] = useState<string | null>(null);
 
   const refresh = async () => {
     if (myStudent.status !== "ready") return;
@@ -42,6 +44,22 @@ export function StudentSupportModule({ myStudent, schoolId }: { myStudent: any; 
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myStudent.status]);
+
+  useEffect(() => {
+    if (myStudent.status !== "ready") {
+      setStudentLabel(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const map = await fetchStudentLabelMap(supabase, { schoolId, studentIds: [myStudent.studentId] });
+      if (cancelled) return;
+      setStudentLabel(map[myStudent.studentId] ?? null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [myStudent.status, myStudent.studentId, schoolId]);
 
   useEffect(() => {
     if (myStudent.status !== "ready") return;
@@ -106,7 +124,9 @@ export function StudentSupportModule({ myStudent, schoolId }: { myStudent: any; 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">Support ticket: {statusLabel}</p>
+        <p className="text-sm text-muted-foreground">
+          {studentLabel ? `${studentLabel} • ` : ""}Support ticket: {statusLabel}
+        </p>
         <Button variant="soft" onClick={refresh}>Refresh</Button>
       </div>
 
