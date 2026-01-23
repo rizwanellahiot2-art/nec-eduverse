@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
-import { Copy, KeyRound, School } from "lucide-react";
+import { KeyRound, School } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { toast } from "sonner";
 
 const TenantBootstrap = () => {
   const { schoolSlug } = useParams();
@@ -19,29 +18,29 @@ const TenantBootstrap = () => {
   const [bootstrapSecret, setBootstrapSecret] = useState("");
   const [schoolName, setSchoolName] = useState("Beacon International School");
   const [adminEmail, setAdminEmail] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<string | null>(null);
-  const [passwordSetLink, setPasswordSetLink] = useState<string | null>(null);
   const [force, setForce] = useState(false);
 
   const slug = useMemo(() => tenant.slug || "", [tenant.slug]);
 
   const runBootstrap = async () => {
     setResult(null);
-    setPasswordSetLink(null);
     if (!bootstrapSecret.trim()) return setResult("Bootstrap secret is required.");
     if (!slug) return setResult("School slug is required.");
     if (!adminEmail.trim()) return setResult("Admin email is required.");
+    if (adminPassword.trim().length < 8) return setResult("Admin password must be at least 8 characters.");
 
     setBusy(true);
     try {
       const { data, error } = await supabase.functions.invoke("eduverse-bootstrap", {
         body: {
           bootstrapSecret: bootstrapSecret.trim(),
-          appOrigin: window.location.origin,
           schoolSlug: slug,
           schoolName: schoolName.trim() || slug,
           adminEmail: adminEmail.trim().toLowerCase(),
+          adminPassword: adminPassword,
           displayName: "Super Admin",
           force,
         },
@@ -51,7 +50,6 @@ const TenantBootstrap = () => {
         setResult(error.message);
         return;
       }
-      setPasswordSetLink((data as any)?.passwordSetLink ?? null);
       setResult(JSON.stringify(data, null, 2));
     } finally {
       setBusy(false);
@@ -101,8 +99,13 @@ const TenantBootstrap = () => {
                   <Input value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} placeholder="admin@org.com" />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Password setup</label>
-                  <Input value="A secure password-set link will be generated" disabled />
+                  <label className="text-sm font-medium">Super Admin Password</label>
+                  <Input
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    type="password"
+                    placeholder="Minimum 8 characters"
+                  />
                 </div>
               </div>
 
@@ -115,24 +118,6 @@ const TenantBootstrap = () => {
                 </div>
                 <Switch checked={force} onCheckedChange={setForce} />
               </div>
-
-              {passwordSetLink && (
-                <div className="rounded-2xl bg-accent p-4">
-                  <p className="text-sm font-medium text-accent-foreground">Super Admin password-set link</p>
-                  <p className="mt-1 break-all text-xs text-muted-foreground">{passwordSetLink}</p>
-                  <div className="mt-3">
-                    <Button
-                      variant="soft"
-                      onClick={async () => {
-                        await navigator.clipboard.writeText(passwordSetLink);
-                        toast.success("Copied");
-                      }}
-                    >
-                      <Copy className="mr-2 h-4 w-4" /> Copy link
-                    </Button>
-                  </div>
-                </div>
-              )}
 
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Button variant="hero" size="xl" disabled={busy} onClick={runBootstrap} className="flex-1">

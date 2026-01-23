@@ -12,9 +12,7 @@ const corsHeaders = {
 type InviteRequest = {
   schoolSlug: string;
   email: string;
-  // Needed for auth admin.generateLink redirectTo (must be an allowed URL)
-  // Example: https://your-app-domain.com
-  appOrigin?: string;
+  password: string;
   role:
     | "school_owner"
     | "principal"
@@ -30,40 +28,39 @@ type InviteRequest = {
   displayName?: string;
 };
 
-const json = (data: unknown, status = 200) =>
-  new Response(JSON.stringify(data), {
+const makeTraceId = () => crypto.randomUUID();
+
+const json = (data: unknown, status = 200, traceId?: string) =>
+  new Response(JSON.stringify({ traceId, ...((data ?? {}) as any) }), {
     status,
     headers: { "Content-Type": "application/json", ...corsHeaders },
   });
-
-const randomPassword = () => {
-  const bytes = crypto.getRandomValues(new Uint8Array(18));
-  return btoa(String.fromCharCode(...bytes)).replace(/[^a-zA-Z0-9]/g, "").slice(0, 16) + "Aa1!";
-};
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    const traceId = makeTraceId();
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? "";
     const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    if (!anon) return json({ error: "Missing SUPABASE_ANON_KEY" }, 500);
+    if (!anon) return json({ ok: false, error: "Missing SUPABASE_ANON_KEY" }, 500, traceId);
 
     // user-scoped client (to identify caller)
     const authHeader = req.headers.get("Authorization") ?? "";
-    if (!authHeader.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
+    if (!authHeader.startsWith("Bearer ")) return json({ ok: false, error: "Unauthorized" }, 401, traceId);
     const token = authHeader.slice("Bearer ".length);
     const userClient = createClient(supabaseUrl, anon, {
       global: { headers: { Authorization: authHeader } },
     });
     const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token);
     const actorUserId = claimsData?.claims?.sub;
-    if (claimsErr || !actorUserId) return json({ error: "Unauthorized" }, 401);
+    if (claimsErr || !actorUserId) return json({ ok: false, error: "Unauthorized" }, 401, traceId);
 
     const body = (await req.json()) as InviteRequest;
     const schoolSlug = body.schoolSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
-    if (!schoolSlug) return json({ error: "Invalid schoolSlug" }, 400);
+    if (!schoolSlug) return json({ ok: false, error: "Invalid schoolSlug" }, 400, traceId);
 
     // admin client
     const admin = createClient(supabaseUrl, serviceRole);
@@ -74,7 +71,7 @@ serve(async (req) => {
       .select("id,slug,name")
       .eq("slug", schoolSlug)
       .maybeSingle();
-    if (schoolErr || !school) return json({ error: schoolErr?.message ?? "School not found" }, 400);
+    if (schoolErr || !school) return json({ ok: false, error: schoolErr?.message ?? "School not found" }, 400, traceId);
 
     // Platform Super Admins can invite for ANY school
     const { data: psaRows, error: psaErr } = await admin
@@ -82,7 +79,7 @@ serve(async (req) => {
       .select("user_id")
       .eq("user_id", actorUserId)
       .limit(1);
-    if (psaErr) return json({ error: psaErr.message }, 400);
+    if (psaErr) return json({ ok: false, error: psaErr.message }, 400, traceId);
     const isPlatformSuperAdmin = !!(psaRows && psaRows.length > 0);
 
     if (!isPlatformSuperAdmin) {
@@ -93,39 +90,56 @@ serve(async (req) => {
         .eq("user_id", actorUserId)
         .in("role", ["super_admin", "school_owner", "principal", "vice_principal"])
         .limit(1);
-      if (roleCheckErr) return json({ error: roleCheckErr.message }, 400);
-      if (!roleRow || roleRow.length === 0) return json({ error: "Forbidden" }, 403);
+      if (roleCheckErr) return json({ ok: false, error: roleCheckErr.message }, 400, traceId);
+      if (!roleRow || roleRow.length === 0) return json({ ok: false, error: "Forbidden" }, 403, traceId);
     }
 
     const inviteEmail = body.email.trim().toLowerCase();
-    if (!inviteEmail.includes("@")) return json({ error: "Invalid email" }, 400);
+    if (!inviteEmail.includes("@")) return json({ ok: false, error: "Invalid email" }, 400, traceId);
+
+    const password = String(body.password ?? "");
+    if (!password || password.length < 8) {
+      return json({ ok: false, error: "Password must be at least 8 characters." }, 400, traceId);
+    }
 
     // Create user (idempotent-ish): if exists, reuse
     const { data: existing, error: findErr } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
     if (findErr) console.log("listUsers err:", findErr.message);
     const existingUser = existing?.users?.find((u) => u.email?.toLowerCase() === inviteEmail);
 
-    const userId = existingUser?.id ?? (
-      (await admin.auth.admin.createUser({
+    let userId = existingUser?.id ?? null;
+    if (!userId) {
+      const { data: created, error: createErr } = await admin.auth.admin.createUser({
         email: inviteEmail,
-        password: randomPassword(),
+        password,
         email_confirm: true,
-      }))
-        .data.user?.id
-    );
+      });
+      if (createErr) return json({ ok: false, error: createErr.message }, 400, traceId);
+      userId = created.user?.id ?? null;
+    } else {
+      const { error: updErr } = await admin.auth.admin.updateUserById(userId, { password });
+      if (updErr) return json({ ok: false, error: updErr.message }, 400, traceId);
+    }
 
-    if (!userId) return json({ error: "Failed to create user" }, 500);
+    if (!userId) return json({ ok: false, error: "Failed to create user" }, 500, traceId);
+
+    if (body.displayName?.trim()) {
+      const { error: profErr } = await admin
+        .from("profiles")
+        .upsert({ user_id: userId, display_name: body.displayName.trim() }, { onConflict: "user_id" });
+      if (profErr) return json({ ok: false, error: profErr.message }, 400, traceId);
+    }
 
     // Attach membership + role
     const { error: memErr } = await admin
       .from("school_memberships")
       .upsert({ school_id: school.id, user_id: userId, status: "active", created_by: actorUserId }, { onConflict: "school_id,user_id" });
-    if (memErr) return json({ error: memErr.message }, 400);
+    if (memErr) return json({ ok: false, error: memErr.message }, 400, traceId);
 
     const { error: assignErr } = await admin
       .from("user_roles")
       .upsert({ school_id: school.id, user_id: userId, role: body.role, created_by: actorUserId }, { onConflict: "school_id,user_id,role" });
-    if (assignErr) return json({ error: assignErr.message }, 400);
+    if (assignErr) return json({ ok: false, error: assignErr.message }, 400, traceId);
 
     // Directory for UI
     await admin
@@ -140,34 +154,27 @@ serve(async (req) => {
         { onConflict: "school_id,user_id" },
       );
 
-    // Create password-set (recovery) link that admin can deliver via email/WhatsApp
-    // IMPORTANT: the URL origin for edge functions is NOT the app origin.
-    // The redirectTo must be a valid, allowlisted app URL.
-    const rawOrigin = (body.appOrigin ?? req.headers.get("origin") ?? "").trim();
-    let appOrigin: string;
-    try {
-      appOrigin = new URL(rawOrigin).origin;
-    } catch {
-      return json({ error: "Invalid appOrigin. Pass window.location.origin from the client." }, 400);
-    }
-    const redirectTo = `${appOrigin.replace(/\/$/, "")}/${school.slug}/auth`;
-    const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
-      type: "recovery",
-      email: inviteEmail,
-      options: { redirectTo },
+    await admin.from("audit_logs").insert({
+      school_id: school.id,
+      actor_user_id: actorUserId,
+      action: "user_created_direct",
+      entity_type: "user",
+      entity_id: userId,
+      metadata: { email: inviteEmail, role: body.role },
     });
-    if (linkErr) return json({ error: linkErr.message }, 400);
 
-    // Note: email delivery integration is added next; for now we return the link to copy.
-    return json({
-      ok: true,
-      userId,
-      actionLink: linkData.properties?.action_link,
-      message: "User created and attached to school. Deliver the actionLink to let them set a password.",
-    });
+    return json(
+      {
+        ok: true,
+        userId,
+        message: "User created and password set.",
+      },
+      200,
+      traceId,
+    );
   } catch (e) {
     console.error("eduverse-invite error:", e);
     const err = e as { message?: string };
-    return json({ error: err?.message ?? "Unknown error" }, 500);
+    return json({ ok: false, error: err?.message ?? "Unknown error" }, 500, crypto.randomUUID());
   }
 });
