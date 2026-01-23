@@ -94,9 +94,23 @@ export function UsersModule() {
           email: email.trim().toLowerCase(),
           role,
           displayName: displayName.trim() || undefined,
+          appOrigin: window.location.origin,
         },
       });
-      if (error) return toast.error(error.message);
+      if (error) {
+        // supabase-js often collapses non-2xx into a generic message; try to surface function JSON error.
+        const raw = (error as any)?.context?.body;
+        let detail: string | null = null;
+        if (typeof raw === "string") {
+          try {
+            const parsed = JSON.parse(raw);
+            detail = parsed?.error ? String(parsed.error) : null;
+          } catch {
+            detail = null;
+          }
+        }
+        return toast.error(detail ?? error.message);
+      }
 
       setInviteLink((data as any)?.actionLink ?? null);
 
