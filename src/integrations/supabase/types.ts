@@ -50,6 +50,7 @@ export type Database = {
       academic_classes: {
         Row: {
           created_at: string
+          created_by: string | null
           grade_level: number | null
           id: string
           name: string
@@ -58,6 +59,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           grade_level?: number | null
           id?: string
           name: string
@@ -66,6 +68,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           grade_level?: number | null
           id?: string
           name?: string
@@ -86,6 +89,7 @@ export type Database = {
         Row: {
           content: string
           created_at: string
+          created_by: string | null
           id: string
           priority: string
           resolved_at: string | null
@@ -99,6 +103,7 @@ export type Database = {
         Insert: {
           content: string
           created_at?: string
+          created_by?: string | null
           id?: string
           priority?: string
           resolved_at?: string | null
@@ -112,6 +117,7 @@ export type Database = {
         Update: {
           content?: string
           created_at?: string
+          created_by?: string | null
           id?: string
           priority?: string
           resolved_at?: string | null
@@ -130,6 +136,7 @@ export type Database = {
           attachment_urls: string[] | null
           class_section_id: string
           created_at: string
+          created_by: string | null
           description: string | null
           due_date: string | null
           id: string
@@ -146,6 +153,7 @@ export type Database = {
           attachment_urls?: string[] | null
           class_section_id: string
           created_at?: string
+          created_by?: string | null
           description?: string | null
           due_date?: string | null
           id?: string
@@ -162,6 +170,7 @@ export type Database = {
           attachment_urls?: string[] | null
           class_section_id?: string
           created_at?: string
+          created_by?: string | null
           description?: string | null
           due_date?: string | null
           id?: string
@@ -178,6 +187,7 @@ export type Database = {
       attendance_entries: {
         Row: {
           created_at: string
+          created_by: string | null
           id: string
           note: string | null
           school_id: string
@@ -187,6 +197,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           id?: string
           note?: string | null
           school_id: string
@@ -196,6 +207,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           id?: string
           note?: string | null
           school_id?: string
@@ -317,6 +329,7 @@ export type Database = {
         Row: {
           content: string
           created_at: string
+          created_by: string | null
           id: string
           is_shared_with_parents: boolean
           note_type: string
@@ -329,6 +342,7 @@ export type Database = {
         Insert: {
           content: string
           created_at?: string
+          created_by?: string | null
           id?: string
           is_shared_with_parents?: boolean
           note_type?: string
@@ -341,6 +355,7 @@ export type Database = {
         Update: {
           content?: string
           created_at?: string
+          created_by?: string | null
           id?: string
           is_shared_with_parents?: boolean
           note_type?: string
@@ -356,6 +371,7 @@ export type Database = {
         Row: {
           class_id: string
           created_at: string
+          created_by: string | null
           id: string
           name: string
           room: string | null
@@ -365,6 +381,7 @@ export type Database = {
         Insert: {
           class_id: string
           created_at?: string
+          created_by?: string | null
           id?: string
           name: string
           room?: string | null
@@ -374,6 +391,7 @@ export type Database = {
         Update: {
           class_id?: string
           created_at?: string
+          created_by?: string | null
           id?: string
           name?: string
           room?: string | null
@@ -557,6 +575,7 @@ export type Database = {
         Row: {
           assigned_to: string | null
           created_at: string
+          created_by: string | null
           email: string | null
           full_name: string
           id: string
@@ -574,6 +593,7 @@ export type Database = {
         Insert: {
           assigned_to?: string | null
           created_at?: string
+          created_by?: string | null
           email?: string | null
           full_name: string
           id?: string
@@ -591,6 +611,7 @@ export type Database = {
         Update: {
           assigned_to?: string | null
           created_at?: string
+          created_by?: string | null
           email?: string | null
           full_name?: string
           id?: string
@@ -846,6 +867,7 @@ export type Database = {
         Row: {
           amount: number
           created_at: string
+          created_by: string | null
           id: string
           invoice_id: string
           label: string
@@ -857,6 +879,7 @@ export type Database = {
         Insert: {
           amount?: number
           created_at?: string
+          created_by?: string | null
           id?: string
           invoice_id: string
           label: string
@@ -868,6 +891,7 @@ export type Database = {
         Update: {
           amount?: number
           created_at?: string
+          created_by?: string | null
           id?: string
           invoice_id?: string
           label?: string
@@ -951,6 +975,7 @@ export type Database = {
       finance_payment_methods: {
         Row: {
           created_at: string
+          created_by: string | null
           id: string
           instructions: string | null
           is_active: boolean
@@ -961,6 +986,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           id?: string
           instructions?: string | null
           is_active?: boolean
@@ -971,6 +997,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           id?: string
           instructions?: string | null
           is_active?: boolean
@@ -985,6 +1012,7 @@ export type Database = {
         Row: {
           amount: number
           created_at: string
+          created_by: string | null
           id: string
           invoice_id: string
           method_id: string | null
@@ -999,6 +1027,7 @@ export type Database = {
         Insert: {
           amount?: number
           created_at?: string
+          created_by?: string | null
           id?: string
           invoice_id: string
           method_id?: string | null
@@ -1013,6 +1042,7 @@ export type Database = {
         Update: {
           amount?: number
           created_at?: string
+          created_by?: string | null
           id?: string
           invoice_id?: string
           method_id?: string | null
@@ -1053,6 +1083,7 @@ export type Database = {
           attachment_urls: string[] | null
           class_section_id: string
           created_at: string
+          created_by: string | null
           description: string | null
           due_date: string
           id: string
@@ -1066,6 +1097,7 @@ export type Database = {
           attachment_urls?: string[] | null
           class_section_id: string
           created_at?: string
+          created_by?: string | null
           description?: string | null
           due_date: string
           id?: string
@@ -1079,6 +1111,7 @@ export type Database = {
           attachment_urls?: string[] | null
           class_section_id?: string
           created_at?: string
+          created_by?: string | null
           description?: string | null
           due_date?: string
           id?: string
@@ -1152,6 +1185,7 @@ export type Database = {
       hr_documents: {
         Row: {
           created_at: string
+          created_by: string | null
           document_name: string
           document_type: string
           file_url: string
@@ -1164,6 +1198,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           document_name: string
           document_type: string
           file_url: string
@@ -1176,6 +1211,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           document_name?: string
           document_type?: string
           file_url?: string
@@ -1199,6 +1235,7 @@ export type Database = {
       hr_leave_balances: {
         Row: {
           created_at: string
+          created_by: string | null
           id: string
           leave_type_id: string
           remaining_days: number
@@ -1211,6 +1248,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           id?: string
           leave_type_id: string
           remaining_days?: number
@@ -1223,6 +1261,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           id?: string
           leave_type_id?: string
           remaining_days?: number
@@ -1253,6 +1292,7 @@ export type Database = {
       hr_leave_requests: {
         Row: {
           created_at: string
+          created_by: string | null
           days_count: number
           end_date: string
           id: string
@@ -1269,6 +1309,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           days_count: number
           end_date: string
           id?: string
@@ -1285,6 +1326,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           days_count?: number
           end_date?: string
           id?: string
@@ -1319,6 +1361,7 @@ export type Database = {
       hr_leave_types: {
         Row: {
           created_at: string
+          created_by: string | null
           days_per_year: number
           id: string
           is_active: boolean
@@ -1328,6 +1371,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           days_per_year?: number
           id?: string
           is_active?: boolean
@@ -1337,6 +1381,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           days_per_year?: number
           id?: string
           is_active?: boolean
@@ -1357,6 +1402,7 @@ export type Database = {
       hr_pay_runs: {
         Row: {
           created_at: string
+          created_by: string | null
           deductions: number
           gross_amount: number
           id: string
@@ -1373,6 +1419,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           deductions?: number
           gross_amount?: number
           id?: string
@@ -1389,6 +1436,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           deductions?: number
           gross_amount?: number
           id?: string
@@ -1417,6 +1465,7 @@ export type Database = {
         Row: {
           areas_for_improvement: string | null
           created_at: string
+          created_by: string | null
           goals: string | null
           id: string
           notes: string | null
@@ -1434,6 +1483,7 @@ export type Database = {
         Insert: {
           areas_for_improvement?: string | null
           created_at?: string
+          created_by?: string | null
           goals?: string | null
           id?: string
           notes?: string | null
@@ -1451,6 +1501,7 @@ export type Database = {
         Update: {
           areas_for_improvement?: string | null
           created_at?: string
+          created_by?: string | null
           goals?: string | null
           id?: string
           notes?: string | null
@@ -1534,6 +1585,7 @@ export type Database = {
           check_in_time: string | null
           check_out_time: string | null
           created_at: string
+          created_by: string | null
           id: string
           notes: string | null
           recorded_by: string | null
@@ -1547,6 +1599,7 @@ export type Database = {
           check_in_time?: string | null
           check_out_time?: string | null
           created_at?: string
+          created_by?: string | null
           id?: string
           notes?: string | null
           recorded_by?: string | null
@@ -1560,6 +1613,7 @@ export type Database = {
           check_in_time?: string | null
           check_out_time?: string | null
           created_at?: string
+          created_by?: string | null
           id?: string
           notes?: string | null
           recorded_by?: string | null
@@ -1582,6 +1636,7 @@ export type Database = {
         Row: {
           content: string
           created_at: string
+          created_by: string | null
           id: string
           is_read: boolean
           parent_message_id: string | null
@@ -1595,6 +1650,7 @@ export type Database = {
         Insert: {
           content: string
           created_at?: string
+          created_by?: string | null
           id?: string
           is_read?: boolean
           parent_message_id?: string | null
@@ -1608,6 +1664,7 @@ export type Database = {
         Update: {
           content?: string
           created_at?: string
+          created_by?: string | null
           id?: string
           is_read?: boolean
           parent_message_id?: string | null
@@ -1624,6 +1681,7 @@ export type Database = {
         Row: {
           content: string
           created_at: string
+          created_by: string | null
           id: string
           is_read: boolean
           notification_type: string
@@ -1636,6 +1694,7 @@ export type Database = {
         Insert: {
           content: string
           created_at?: string
+          created_by?: string | null
           id?: string
           is_read?: boolean
           notification_type?: string
@@ -1648,6 +1707,7 @@ export type Database = {
         Update: {
           content?: string
           created_at?: string
+          created_by?: string | null
           id?: string
           is_read?: boolean
           notification_type?: string
@@ -1923,6 +1983,7 @@ export type Database = {
         Row: {
           class_section_id: string
           created_at: string
+          created_by: string | null
           end_date: string | null
           id: string
           school_id: string
@@ -1932,6 +1993,7 @@ export type Database = {
         Insert: {
           class_section_id: string
           created_at?: string
+          created_by?: string | null
           end_date?: string | null
           id?: string
           school_id: string
@@ -1941,6 +2003,7 @@ export type Database = {
         Update: {
           class_section_id?: string
           created_at?: string
+          created_by?: string | null
           end_date?: string | null
           id?: string
           school_id?: string
@@ -1974,6 +2037,7 @@ export type Database = {
       student_fee_accounts: {
         Row: {
           created_at: string
+          created_by: string | null
           end_date: string | null
           fee_plan_id: string
           id: string
@@ -1985,6 +2049,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           end_date?: string | null
           fee_plan_id: string
           id?: string
@@ -1996,6 +2061,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           end_date?: string | null
           fee_plan_id?: string
           id?: string
@@ -2025,6 +2091,7 @@ export type Database = {
       student_guardians: {
         Row: {
           created_at: string
+          created_by: string | null
           email: string | null
           full_name: string
           id: string
@@ -2039,6 +2106,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           email?: string | null
           full_name: string
           id?: string
@@ -2053,6 +2121,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           email?: string | null
           full_name?: string
           id?: string
@@ -2070,6 +2139,7 @@ export type Database = {
       student_marks: {
         Row: {
           assessment_id: string
+          created_by: string | null
           graded_at: string
           graded_by: string | null
           id: string
@@ -2080,6 +2150,7 @@ export type Database = {
         }
         Insert: {
           assessment_id: string
+          created_by?: string | null
           graded_at?: string
           graded_by?: string | null
           id?: string
@@ -2090,6 +2161,7 @@ export type Database = {
         }
         Update: {
           assessment_id?: string
+          created_by?: string | null
           graded_at?: string
           graded_by?: string | null
           id?: string
@@ -2104,6 +2176,7 @@ export type Database = {
         Row: {
           assignment_id: string
           created_at: string
+          created_by: string | null
           grade: string | null
           graded_at: string | null
           graded_by: string | null
@@ -2118,6 +2191,7 @@ export type Database = {
         Insert: {
           assignment_id: string
           created_at?: string
+          created_by?: string | null
           grade?: string | null
           graded_at?: string | null
           graded_by?: string | null
@@ -2132,6 +2206,7 @@ export type Database = {
         Update: {
           assignment_id?: string
           created_at?: string
+          created_by?: string | null
           grade?: string | null
           graded_at?: string | null
           graded_by?: string | null
@@ -2148,6 +2223,7 @@ export type Database = {
       students: {
         Row: {
           created_at: string
+          created_by: string | null
           date_of_birth: string | null
           first_name: string
           id: string
@@ -2160,6 +2236,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           date_of_birth?: string | null
           first_name: string
           id?: string
@@ -2172,6 +2249,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           date_of_birth?: string | null
           first_name?: string
           id?: string
@@ -2202,6 +2280,7 @@ export type Database = {
       support_conversations: {
         Row: {
           created_at: string
+          created_by: string | null
           id: string
           school_id: string
           status: string
@@ -2210,6 +2289,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           id?: string
           school_id: string
           status?: string
@@ -2218,6 +2298,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           id?: string
           school_id?: string
           status?: string
@@ -2231,6 +2312,7 @@ export type Database = {
           content: string
           conversation_id: string
           created_at: string
+          created_by: string | null
           id: string
           school_id: string
           sender_user_id: string
@@ -2239,6 +2321,7 @@ export type Database = {
           content: string
           conversation_id: string
           created_at?: string
+          created_by?: string | null
           id?: string
           school_id: string
           sender_user_id: string
@@ -2247,6 +2330,7 @@ export type Database = {
           content?: string
           conversation_id?: string
           created_at?: string
+          created_by?: string | null
           id?: string
           school_id?: string
           sender_user_id?: string
@@ -2257,6 +2341,7 @@ export type Database = {
         Row: {
           class_section_id: string
           created_at: string
+          created_by: string | null
           id: string
           is_primary: boolean
           school_id: string
@@ -2265,6 +2350,7 @@ export type Database = {
         Insert: {
           class_section_id: string
           created_at?: string
+          created_by?: string | null
           id?: string
           is_primary?: boolean
           school_id: string
@@ -2273,6 +2359,7 @@ export type Database = {
         Update: {
           class_section_id?: string
           created_at?: string
+          created_by?: string | null
           id?: string
           is_primary?: boolean
           school_id?: string
@@ -2299,6 +2386,7 @@ export type Database = {
         Row: {
           class_section_id: string
           created_at: string
+          created_by: string | null
           day_of_week: number
           end_time: string
           id: string
@@ -2312,6 +2400,7 @@ export type Database = {
         Insert: {
           class_section_id: string
           created_at?: string
+          created_by?: string | null
           day_of_week: number
           end_time: string
           id?: string
@@ -2325,6 +2414,7 @@ export type Database = {
         Update: {
           class_section_id?: string
           created_at?: string
+          created_by?: string | null
           day_of_week?: number
           end_time?: string
           id?: string
@@ -2339,18 +2429,21 @@ export type Database = {
       }
       timetable_periods: {
         Row: {
+          created_by: string | null
           id: string
           label: string
           school_id: string
           sort_order: number
         }
         Insert: {
+          created_by?: string | null
           id?: string
           label: string
           school_id: string
           sort_order?: number
         }
         Update: {
+          created_by?: string | null
           id?: string
           label?: string
           school_id?: string
