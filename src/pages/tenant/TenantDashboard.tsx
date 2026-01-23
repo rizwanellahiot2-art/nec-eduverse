@@ -18,6 +18,7 @@ import { PlatformSchoolsModule } from "@/pages/tenant/modules/PlatformSchoolsMod
 import { AttendanceReportsModule } from "@/pages/tenant/modules/AttendanceReportsModule";
 import { FinanceModule } from "@/pages/tenant/modules/FinanceModule";
 import { PrincipalHome } from "@/pages/tenant/role-homes/PrincipalHome";
+import { SupportModule } from "@/pages/tenant/modules/SupportModule";
 
 const TenantDashboard = () => {
   const { schoolSlug, role: roleParam } = useParams();
@@ -210,6 +211,7 @@ const TenantDashboard = () => {
             <Route path="attendance" element={<AttendanceModule />} />
             <Route path="finance" element={<FinanceModule />} />
             <Route path="reports" element={<AttendanceReportsModule />} />
+            <Route path="support" element={<SupportModule schoolId={tenant.schoolId} />} />
             <Route path="*" element={<Navigate to={`/${tenant.slug}/${role}`} replace />} />
           </Routes>
         )}
