@@ -6,6 +6,7 @@ import { Building2, KeyRound, Mail } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
+import { useSchoolPermissions } from "@/hooks/useSchoolPermissions";
 import { EDUVERSE_ROLES, roleLabel, type EduverseRole } from "@/lib/eduverse-roles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,8 @@ const TenantAuth = () => {
   const tenant = useTenant(schoolSlug);
   const navigate = useNavigate();
   const reduce = useReducedMotion();
+
+  const perms = useSchoolPermissions(tenant.status === "ready" ? tenant.schoolId : null);
 
   const [role, setRole] = useState<EduverseRole>("principal");
   const [email, setEmail] = useState("");
@@ -166,6 +169,24 @@ const TenantAuth = () => {
 
               {tenant.status === "error" && (
                 <div className="rounded-xl bg-accent p-3 text-sm text-accent-foreground">{tenant.error}</div>
+              )}
+
+              {perms.isPlatformSuperAdmin && tenant.status === "ready" && (
+                <div className="rounded-xl border border-border bg-card/40 p-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-medium">Platform Super Admin</p>
+                      <p className="text-xs text-muted-foreground">Quick access to bootstrap tools for this tenant.</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="soft"
+                      onClick={() => navigate(`/${tenant.slug}/super_admin/admin`)}
+                    >
+                      Open Bootstrap
+                    </Button>
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>
