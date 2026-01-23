@@ -20,10 +20,9 @@ export function useTenant(schoolSlug: string | undefined) {
     let cancelled = false;
     setState({ status: "loading", school: null, schoolId: null, error: null });
 
+    // IMPORTANT: unauthenticated routes must be able to resolve a tenant (no public SELECT on schools)
     supabase
-      .from("schools")
-      .select("id,slug,name")
-      .eq("slug", normalizedSlug)
+      .rpc("get_school_public_by_slug", { _slug: normalizedSlug })
       .maybeSingle()
       .then(({ data, error }) => {
         if (cancelled) return;
@@ -35,7 +34,7 @@ export function useTenant(schoolSlug: string | undefined) {
           setState({ status: "error", school: null, schoolId: null, error: "School not found." });
           return;
         }
-        setState({ status: "ready", school: data, schoolId: data.id, error: null });
+        setState({ status: "ready", school: { id: data.id, slug: data.slug, name: data.name }, schoolId: data.id, error: null });
       });
 
     return () => {

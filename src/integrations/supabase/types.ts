@@ -439,6 +439,21 @@ export type Database = {
           },
         ]
       }
+      platform_super_admins: {
+        Row: {
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -887,6 +902,15 @@ export type Database = {
         Args: { _school_id: string }
         Returns: undefined
       }
+      get_school_public_by_slug: {
+        Args: { _slug: string }
+        Returns: {
+          id: string
+          is_active: boolean
+          name: string
+          slug: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -894,6 +918,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_platform_super_admin: { Args: never; Returns: boolean }
       is_school_member: { Args: { _school_id: string }; Returns: boolean }
       is_super_admin: { Args: { _school_id: string }; Returns: boolean }
       is_teacher_assigned: {
