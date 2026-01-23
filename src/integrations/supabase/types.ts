@@ -49,6 +49,99 @@ export type Database = {
           },
         ]
       }
+      admin_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          priority: string
+          resolved_at: string | null
+          resolved_by: string | null
+          school_id: string
+          sender_user_id: string
+          status: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          priority?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          school_id: string
+          sender_user_id: string
+          status?: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          priority?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          school_id?: string
+          sender_user_id?: string
+          status?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      assignments: {
+        Row: {
+          assignment_type: string
+          attachment_urls: string[] | null
+          class_section_id: string
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          max_marks: number
+          school_id: string
+          status: string
+          teacher_user_id: string
+          title: string
+          updated_at: string
+          weightage: number
+        }
+        Insert: {
+          assignment_type?: string
+          attachment_urls?: string[] | null
+          class_section_id: string
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          max_marks?: number
+          school_id: string
+          status?: string
+          teacher_user_id: string
+          title: string
+          updated_at?: string
+          weightage?: number
+        }
+        Update: {
+          assignment_type?: string
+          attachment_urls?: string[] | null
+          class_section_id?: string
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          max_marks?: number
+          school_id?: string
+          status?: string
+          teacher_user_id?: string
+          title?: string
+          updated_at?: string
+          weightage?: number
+        }
+        Relationships: []
+      }
       attendance_entries: {
         Row: {
           created_at: string
@@ -186,6 +279,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      behavior_notes: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_shared_with_parents: boolean
+          note_type: string
+          school_id: string
+          student_id: string
+          teacher_user_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_shared_with_parents?: boolean
+          note_type?: string
+          school_id: string
+          student_id: string
+          teacher_user_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_shared_with_parents?: boolean
+          note_type?: string
+          school_id?: string
+          student_id?: string
+          teacher_user_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       class_sections: {
         Row: {
@@ -778,6 +910,90 @@ export type Database = {
           },
         ]
       }
+      homework: {
+        Row: {
+          attachment_urls: string[] | null
+          class_section_id: string
+          created_at: string
+          description: string | null
+          due_date: string
+          id: string
+          school_id: string
+          status: string
+          teacher_user_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          attachment_urls?: string[] | null
+          class_section_id: string
+          created_at?: string
+          description?: string | null
+          due_date: string
+          id?: string
+          school_id: string
+          status?: string
+          teacher_user_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          attachment_urls?: string[] | null
+          class_section_id?: string
+          created_at?: string
+          description?: string | null
+          due_date?: string
+          id?: string
+          school_id?: string
+          status?: string
+          teacher_user_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      parent_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_read: boolean
+          parent_message_id: string | null
+          read_at: string | null
+          recipient_user_id: string
+          school_id: string
+          sender_user_id: string
+          student_id: string
+          subject: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          parent_message_id?: string | null
+          read_at?: string | null
+          recipient_user_id: string
+          school_id: string
+          sender_user_id: string
+          student_id: string
+          subject?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          parent_message_id?: string | null
+          read_at?: string | null
+          recipient_user_id?: string
+          school_id?: string
+          sender_user_id?: string
+          student_id?: string
+          subject?: string | null
+        }
+        Relationships: []
+      }
       platform_super_admins: {
         Row: {
           created_at: string
@@ -1105,6 +1321,96 @@ export type Database = {
           },
         ]
       }
+      student_guardians: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          is_emergency_contact: boolean
+          is_primary: boolean
+          phone: string | null
+          relationship: string
+          school_id: string
+          student_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name: string
+          id?: string
+          is_emergency_contact?: boolean
+          is_primary?: boolean
+          phone?: string | null
+          relationship?: string
+          school_id: string
+          student_id: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          is_emergency_contact?: boolean
+          is_primary?: boolean
+          phone?: string | null
+          relationship?: string
+          school_id?: string
+          student_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      student_results: {
+        Row: {
+          assignment_id: string
+          created_at: string
+          grade: string | null
+          graded_at: string | null
+          graded_by: string | null
+          id: string
+          marks_obtained: number | null
+          remarks: string | null
+          school_id: string
+          student_id: string
+          submitted_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          assignment_id: string
+          created_at?: string
+          grade?: string | null
+          graded_at?: string | null
+          graded_by?: string | null
+          id?: string
+          marks_obtained?: number | null
+          remarks?: string | null
+          school_id: string
+          student_id: string
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assignment_id?: string
+          created_at?: string
+          grade?: string | null
+          graded_at?: string | null
+          graded_by?: string | null
+          id?: string
+          marks_obtained?: number | null
+          remarks?: string | null
+          school_id?: string
+          student_id?: string
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       students: {
         Row: {
           created_at: string
@@ -1200,6 +1506,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      timetable_entries: {
+        Row: {
+          class_section_id: string
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: string
+          room: string | null
+          school_id: string
+          start_time: string
+          subject_name: string
+          teacher_user_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          class_section_id: string
+          created_at?: string
+          day_of_week: number
+          end_time: string
+          id?: string
+          room?: string | null
+          school_id: string
+          start_time: string
+          subject_name: string
+          teacher_user_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          class_section_id?: string
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          room?: string | null
+          school_id?: string
+          start_time?: string
+          subject_name?: string
+          teacher_user_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       user_invitations: {
         Row: {

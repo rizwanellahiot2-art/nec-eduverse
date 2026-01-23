@@ -12,6 +12,7 @@ import PlatformSchoolsPage from "./pages/platform/PlatformSchoolsPage";
 import PlatformUpdatePassword from "./pages/platform/PlatformUpdatePassword";
 import TenantAuth from "./pages/tenant/TenantAuth";
 import TenantDashboard from "./pages/tenant/TenantDashboard";
+import TeacherDashboard from "./pages/tenant/TeacherDashboard";
 import TenantBootstrap from "./pages/tenant/TenantBootstrap";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
           <Route path="/platform/schools" element={<Navigate to="/super_admin/schools" replace />} />
           <Route path="/:schoolSlug/auth" element={<TenantAuth />} />
           <Route path="/:schoolSlug/bootstrap" element={<TenantBootstrap />} />
+          <Route path="/:schoolSlug/teacher/*" element={<TeacherDashboard />} />
           <Route path="/:schoolSlug/:role/*" element={<TenantDashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
