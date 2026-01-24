@@ -1,12 +1,13 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { DndContext, type DragEndEvent, useDraggable, useDroppable } from "@dnd-kit/core";
 import { useParams } from "react-router-dom";
-import { CalendarDays, Download, Pencil, Printer, Trash2, Wrench } from "lucide-react";
+import { CalendarDays, Coffee, Download, Pencil, Printer, Trash2, Wrench } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useSession } from "@/hooks/useSession";
 import { useSchoolPermissions } from "@/hooks/useSchoolPermissions";
+import { useRealtimeTable } from "@/hooks/useRealtime";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -38,6 +39,7 @@ type PeriodRow = {
   sort_order: number;
   start_time: string | null;
   end_time: string | null;
+  is_break: boolean;
 };
 
 type ClassRow = { id: string; name: string };
@@ -191,14 +193,14 @@ export function TimetableBuilderModule() {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
 
-  const refreshStatic = async () => {
+  const refreshStatic = useCallback(async () => {
     if (!schoolId) return;
     const [{ data: c }, { data: s }, { data: p }, { data: dir }] = await Promise.all([
       supabase.from("academic_classes").select("id,name").eq("school_id", schoolId).order("name"),
       supabase.from("class_sections").select("id,name,class_id").eq("school_id", schoolId).order("name"),
       supabase
         .from("timetable_periods")
-        .select("id,label,sort_order,start_time,end_time")
+        .select("id,label,sort_order,start_time,end_time,is_break")
         .eq("school_id", schoolId)
         .order("sort_order", { ascending: true }),
       supabase.from("school_user_directory").select("user_id,display_name,email").eq("school_id", schoolId),
@@ -208,18 +210,18 @@ export function TimetableBuilderModule() {
     setSections((s ?? []) as SectionRow[]);
     setPeriods((p ?? []) as PeriodRow[]);
     setDirectory((dir ?? []) as DirectoryRow[]);
-  };
+  }, [schoolId]);
 
-  const refreshAllEntries = async () => {
+  const refreshAllEntries = useCallback(async () => {
     if (!schoolId) return;
     const { data } = await supabase
       .from("timetable_entries")
       .select("id,day_of_week,period_id,subject_name,teacher_user_id,room,class_section_id,is_published")
       .eq("school_id", schoolId);
     setAllSchoolEntries((data ?? []) as AllEntryRow[]);
-  };
+  }, [schoolId]);
 
-  const refreshSection = async () => {
+  const refreshSection = useCallback(async () => {
     if (!schoolId || !sectionId) return;
     const [{ data: css }, { data: subj }, { data: tsa }, { data: tte }] = await Promise.all([
       supabase
@@ -247,23 +249,33 @@ export function TimetableBuilderModule() {
     
     // Also refresh all entries for conflict detection
     await refreshAllEntries();
-  };
+  }, [schoolId, sectionId, refreshAllEntries]);
 
-  const refreshPeriods = async () => {
+  const refreshPeriods = useCallback(async () => {
     await refreshStatic();
     await refreshSection();
-  };
+  }, [refreshStatic, refreshSection]);
 
   useEffect(() => {
     void refreshStatic();
     void refreshAllEntries();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schoolId]);
+  }, [refreshStatic, refreshAllEntries]);
 
   useEffect(() => {
     void refreshSection();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schoolId, sectionId]);
+  }, [refreshSection]);
+
+  // Realtime subscription for live updates
+  useRealtimeTable({
+    channel: `timetable-entries-${schoolId}`,
+    table: "timetable_entries",
+    filter: schoolId ? `school_id=eq.${schoolId}` : undefined,
+    enabled: !!schoolId,
+    onChange: () => {
+      void refreshAllEntries();
+      if (sectionId) void refreshSection();
+    },
+  });
 
   const classNameById = useMemo(() => new Map(classes.map((c) => [c.id, c.name])), [classes]);
   const sectionLabelById = useMemo(() => {
@@ -290,6 +302,9 @@ export function TimetableBuilderModule() {
     for (const e of entries) m.set(`${e.day_of_week}:${e.period_id}`, e);
     return m;
   }, [entries]);
+
+  // Break period IDs
+  const breakPeriodIds = useMemo(() => new Set(periods.filter((p) => p.is_break).map((p) => p.id)), [periods]);
 
   // Conflict detection
   const conflictMap = useConflictDetection(allSchoolEntries, sectionId, sectionLabelById);
@@ -538,8 +553,11 @@ export function TimetableBuilderModule() {
                       Day
                     </div>
                     {periods.map((p) => (
-                      <div key={p.id} className="rounded-2xl bg-surface px-2 py-2">
-                        <p className="text-sm font-medium">{p.label}</p>
+                      <div key={p.id} className={`rounded-2xl px-2 py-2 ${p.is_break ? "bg-accent/50" : "bg-surface"}`}>
+                        <p className="flex items-center gap-1.5 text-sm font-medium">
+                          {p.is_break && <Coffee className="h-3.5 w-3.5 text-muted-foreground" />}
+                          {p.label}
+                        </p>
                         <p className="text-xs text-muted-foreground">
                           {timeLabel(p.start_time)}{p.start_time && p.end_time ? "–" : ""}{timeLabel(p.end_time)}
                         </p>
@@ -552,6 +570,23 @@ export function TimetableBuilderModule() {
                           {d.label}
                         </div>
                         {periods.map((p) => {
+                          const isBreak = breakPeriodIds.has(p.id);
+                          
+                          // Break periods show a special cell
+                          if (isBreak) {
+                            return (
+                              <div
+                                key={`cell:${d.id}:${p.id}`}
+                                className="flex min-h-[68px] items-center justify-center rounded-2xl border border-dashed border-accent bg-accent/30 p-2"
+                              >
+                                <div className="flex flex-col items-center gap-1 text-center">
+                                  <Coffee className="h-4 w-4 text-muted-foreground" />
+                                  <p className="text-xs font-medium text-muted-foreground">{p.label}</p>
+                                </div>
+                              </div>
+                            );
+                          }
+
                           const slotKey = `${d.id}:${p.id}`;
                           const e = entryBySlot.get(slotKey) ?? null;
                           const teacherLabel = e?.teacher_user_id

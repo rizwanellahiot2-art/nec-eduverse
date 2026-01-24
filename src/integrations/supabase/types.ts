@@ -2604,6 +2604,7 @@ export type Database = {
           created_by: string | null
           end_time: string | null
           id: string
+          is_break: boolean
           label: string
           school_id: string
           sort_order: number
@@ -2614,6 +2615,7 @@ export type Database = {
           created_by?: string | null
           end_time?: string | null
           id?: string
+          is_break?: boolean
           label: string
           school_id: string
           sort_order?: number
@@ -2624,6 +2626,7 @@ export type Database = {
           created_by?: string | null
           end_time?: string | null
           id?: string
+          is_break?: boolean
           label?: string
           school_id?: string
           sort_order?: number

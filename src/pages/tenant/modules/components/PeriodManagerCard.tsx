@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Coffee, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 
@@ -26,6 +27,7 @@ export type PeriodRow = {
   sort_order: number;
   start_time: string | null;
   end_time: string | null;
+  is_break: boolean;
 };
 
 const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -46,6 +48,7 @@ const periodSchema = z
       .optional()
       .transform((v) => (v ? v : undefined))
       .refine((v) => !v || timeRegex.test(v), "Use HH:MM"),
+    is_break: z.boolean().default(false),
   })
   .superRefine((v, ctx) => {
     const hasStart = Boolean(v.start_time);
@@ -96,13 +99,13 @@ export function PeriodManagerCard({
 
   const form = useForm<PeriodFormValues>({
     resolver: zodResolver(periodSchema),
-    defaultValues: { label: "", sort_order: 1, start_time: "", end_time: "" },
+    defaultValues: { label: "", sort_order: 1, start_time: "", end_time: "", is_break: false },
   });
 
   const openCreate = () => {
     setEditing(null);
     const nextSort = (sortedPeriods.at(-1)?.sort_order ?? 0) + 1;
-    form.reset({ label: "", sort_order: nextSort, start_time: "", end_time: "" });
+    form.reset({ label: "", sort_order: nextSort, start_time: "", end_time: "", is_break: false });
     setOpen(true);
   };
 
@@ -113,6 +116,7 @@ export function PeriodManagerCard({
       sort_order: p.sort_order,
       start_time: normalizeTimeToInput(p.start_time),
       end_time: normalizeTimeToInput(p.end_time),
+      is_break: p.is_break,
     });
     setOpen(true);
   };
@@ -135,6 +139,7 @@ export function PeriodManagerCard({
         sort_order: values.sort_order,
         start_time: values.start_time ? values.start_time : null,
         end_time: values.end_time ? values.end_time : null,
+        is_break: values.is_break,
         ...(editing ? {} : { created_by: userId }),
       } as const;
 
@@ -205,9 +210,17 @@ export function PeriodManagerCard({
             </TableHeader>
             <TableBody>
               {sortedPeriods.map((p) => (
-                <TableRow key={p.id}>
+                <TableRow key={p.id} className={p.is_break ? "bg-accent/30" : ""}>
                   <TableCell className="text-muted-foreground">{p.sort_order}</TableCell>
-                  <TableCell className="font-medium">{p.label}</TableCell>
+                  <TableCell className="font-medium">
+                    <span className="flex items-center gap-2">
+                      {p.is_break && <Coffee className="h-4 w-4 text-muted-foreground" />}
+                      {p.label}
+                      {p.is_break && (
+                        <span className="rounded-full bg-accent px-2 py-0.5 text-xs text-accent-foreground">Break</span>
+                      )}
+                    </span>
+                  </TableCell>
                   <TableCell className="text-muted-foreground">
                     {p.start_time && p.end_time ? `${normalizeTimeToInput(p.start_time)}–${normalizeTimeToInput(p.end_time)}` : "—"}
                   </TableCell>
@@ -284,6 +297,18 @@ export function PeriodManagerCard({
                   <p className="text-xs text-destructive">{form.formState.errors.end_time.message}</p>
                 )}
               </div>
+            </div>
+
+            <div className="flex items-center justify-between rounded-xl border bg-accent/30 p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="is-break" className="font-medium">Break period</Label>
+                <p className="text-xs text-muted-foreground">Mark as break (recess, lunch) – spans all sections</p>
+              </div>
+              <Switch
+                id="is-break"
+                checked={form.watch("is_break")}
+                onCheckedChange={(v) => form.setValue("is_break", v)}
+              />
             </div>
 
             <DialogFooter>
