@@ -89,6 +89,11 @@ export default function PlatformAuth() {
             <CardHeader>
               <CardTitle className="font-display text-xl">Super Admin Login</CardTitle>
               <p className="text-sm text-muted-foreground">No public signup. Use your admin email.</p>
+            <div className="mt-2">
+              <Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => navigate("/auth/recover-master")}>
+                Forgot credentials? → Recover master admin
+              </Button>
+            </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">

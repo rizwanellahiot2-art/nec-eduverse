@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { ExternalLink, LogOut, Search, ShieldCheck, UserPlus } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -288,13 +289,11 @@ export default function PlatformSchoolsPage() {
   }, [audit, auditSchoolId]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background p-8">
-        <div className="rounded-3xl bg-surface p-6 shadow-elevated">
-          <p className="text-sm text-muted-foreground">Loading session…</p>
-        </div>
-      </div>
-    );
+    return null;
+  }
+  
+  if (authz === "denied") {
+    return <Navigate to="/auth" replace />;
   }
 
   return (
