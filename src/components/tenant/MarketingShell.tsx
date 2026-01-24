@@ -1,7 +1,7 @@
 import { PropsWithChildren } from "react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
-import { BarChart3, ClipboardList, Megaphone, PhoneCall, Target, Users } from "lucide-react";
+import { BarChart3, ClipboardList, Megaphone, PhoneCall, Target, Users, CalendarDays } from "lucide-react";
 
 type Props = PropsWithChildren<{
   title: string;
@@ -79,6 +79,14 @@ export function MarketingShell({ title, subtitle, schoolSlug, children }: Props)
               activeClassName="bg-accent text-accent-foreground"
             >
               <BarChart3 className="h-4 w-4" /> Reports
+            </NavLink>
+
+            <NavLink
+              to={`/${schoolSlug}/marketing/timetable`}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
+              activeClassName="bg-accent text-accent-foreground"
+            >
+              <CalendarDays className="h-4 w-4" /> Timetable Builder
             </NavLink>
           </nav>
         </aside>

@@ -12,6 +12,7 @@ import { MarketingCallsModule } from "@/pages/tenant/marketing-modules/Marketing
 import { MarketingSourcesModule } from "@/pages/tenant/marketing-modules/MarketingSourcesModule";
 import { MarketingCampaignsModule } from "@/pages/tenant/marketing-modules/MarketingCampaignsModule";
 import { MarketingReportsModule } from "@/pages/tenant/marketing-modules/MarketingReportsModule";
+import { TimetableBuilderModule } from "@/pages/tenant/modules/TimetableBuilderModule";
 
 const MarketingDashboard = () => {
   const { schoolSlug } = useParams();
@@ -89,6 +90,7 @@ const MarketingDashboard = () => {
           <Route path="sources" element={<MarketingSourcesModule />} />
           <Route path="campaigns" element={<MarketingCampaignsModule />} />
           <Route path="reports" element={<MarketingReportsModule />} />
+          <Route path="timetable" element={<TimetableBuilderModule />} />
           <Route path="*" element={<Navigate to={`/${tenant.slug}/marketing`} replace />} />
         </Routes>
       )}

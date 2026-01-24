@@ -13,6 +13,7 @@
  import { HrReviewsModule } from "@/pages/tenant/hr-modules/HrReviewsModule";
  import { HrDocumentsModule } from "@/pages/tenant/hr-modules/HrDocumentsModule";
   import { HrSupportModule } from "@/pages/tenant/hr-modules/HrSupportModule";
+  import { TimetableBuilderModule } from "@/pages/tenant/modules/TimetableBuilderModule";
  
  const HrDashboard = () => {
    const { schoolSlug } = useParams();
@@ -94,6 +95,7 @@
            <Route path="reviews" element={<HrReviewsModule />} />
            <Route path="documents" element={<HrDocumentsModule />} />
             <Route path="support" element={<HrSupportModule />} />
+            <Route path="timetable" element={<TimetableBuilderModule />} />
            <Route path="*" element={<Navigate to={`/${tenant.slug}/hr`} replace />} />
          </Routes>
        )}
