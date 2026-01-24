@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Play, CheckCircle, Clock, Trash2, Users, Coins, FileText } from "lucide-react";
+import { Plus, Play, CheckCircle, Clock, Trash2, Users, Coins, FileText, Download, History } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
-import { openPayslipPDF, PayslipData } from "@/lib/payslip-pdf";
+import { openPayslipPDF, openBulkPayslipsPDF, downloadBulkPayslipsHTML, PayslipData } from "@/lib/payslip-pdf";
+import { SalaryHistoryDialog } from "@/components/hr/SalaryHistoryDialog";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -78,6 +79,8 @@ export function AccountantPayrollModule() {
   const [payRunDialogOpen, setPayRunDialogOpen] = useState(false);
   const [salaryDialogOpen, setSalaryDialogOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [selectedEmployeeForHistory, setSelectedEmployeeForHistory] = useState<{ id: string; name: string } | null>(null);
 
   // Pay run form
   const [formPeriodStart, setFormPeriodStart] = useState("");
@@ -294,37 +297,84 @@ export function AccountantPayrollModule() {
   const getStaffName = (userId: string) => getStaffMember(userId)?.full_name || "Unknown";
   const getStaffEmail = (userId: string) => getStaffMember(userId)?.email || "";
 
-  const handleGeneratePayslips = (run: PayRun) => {
-    const activeSalaries = salaryRecords.filter((s) => s.is_active);
-    if (activeSalaries.length === 0) {
+  const handleGeneratePayslips = (run: PayRun, bulk: boolean = false) => {
+    const active = salaryRecords.filter((s) => s.is_active);
+    if (active.length === 0) {
       toast.error("No active salary records to generate payslips");
       return;
     }
 
-    // Generate payslip for first employee as example (in production, loop through all)
-    const salary = activeSalaries[0];
-    const staff = getStaffMember(salary.user_id);
-    
-    const payslipData: PayslipData = {
-      employeeName: staff?.full_name || "Unknown",
-      employeeEmail: staff?.email || "",
-      employeeId: salary.user_id,
-      periodStart: run.period_start,
-      periodEnd: run.period_end,
-      paidAt: run.paid_at,
-      baseSalary: salary.base_salary,
-      allowances: salary.allowances,
-      deductions: salary.deductions,
-      grossAmount: salary.base_salary + salary.allowances,
-      netAmount: salary.base_salary + salary.allowances - salary.deductions,
-      currency: salary.currency,
-      schoolName: tenant.status === "ready" ? tenant.school?.name || "School" : "School",
-      payRunId: run.id,
-      status: run.status,
-    };
+    const schoolName = tenant.status === "ready" ? tenant.school?.name || "School" : "School";
 
-    openPayslipPDF(payslipData);
-    toast.success("Payslip generated! Print dialog will open.");
+    const payslips: PayslipData[] = active.map((salary) => {
+      const staff = getStaffMember(salary.user_id);
+      return {
+        employeeName: staff?.full_name || "Unknown",
+        employeeEmail: staff?.email || "",
+        employeeId: salary.user_id,
+        periodStart: run.period_start,
+        periodEnd: run.period_end,
+        paidAt: run.paid_at,
+        baseSalary: salary.base_salary,
+        allowances: salary.allowances,
+        deductions: salary.deductions,
+        grossAmount: salary.base_salary + salary.allowances,
+        netAmount: salary.base_salary + salary.allowances - salary.deductions,
+        currency: salary.currency,
+        schoolName,
+        payRunId: run.id,
+        status: run.status,
+      };
+    });
+
+    if (bulk) {
+      openBulkPayslipsPDF(payslips);
+      toast.success(`${payslips.length} payslips generated! Print dialog will open.`);
+    } else {
+      // Single payslip - use first employee
+      openPayslipPDF(payslips[0]);
+      toast.success("Payslip generated! Print dialog will open.");
+    }
+  };
+
+  const handleDownloadAllPayslips = (run: PayRun) => {
+    const active = salaryRecords.filter((s) => s.is_active);
+    if (active.length === 0) {
+      toast.error("No active salary records");
+      return;
+    }
+
+    const schoolName = tenant.status === "ready" ? tenant.school?.name || "School" : "School";
+
+    const payslips: PayslipData[] = active.map((salary) => {
+      const staff = getStaffMember(salary.user_id);
+      return {
+        employeeName: staff?.full_name || "Unknown",
+        employeeEmail: staff?.email || "",
+        employeeId: salary.user_id,
+        periodStart: run.period_start,
+        periodEnd: run.period_end,
+        paidAt: run.paid_at,
+        baseSalary: salary.base_salary,
+        allowances: salary.allowances,
+        deductions: salary.deductions,
+        grossAmount: salary.base_salary + salary.allowances,
+        netAmount: salary.base_salary + salary.allowances - salary.deductions,
+        currency: salary.currency,
+        schoolName,
+        payRunId: run.id,
+        status: run.status,
+      };
+    });
+
+    downloadBulkPayslipsHTML(payslips, run.period_start, run.period_end);
+    toast.success(`${payslips.length} payslips downloaded!`);
+  };
+
+  const openSalaryHistory = (userId: string) => {
+    const staff = getStaffMember(userId);
+    setSelectedEmployeeForHistory({ id: userId, name: staff?.full_name || "Unknown" });
+    setHistoryDialogOpen(true);
   };
 
   const getStatusBadge = (status: string) => {
@@ -514,21 +564,30 @@ export function AccountantPayrollModule() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         {getStatusBadge(run.status)}
                         <Button
                           variant="outline"
-                          size="icon"
-                          onClick={() => handleGeneratePayslips(run)}
-                          title="Generate Payslips"
+                          size="sm"
+                          onClick={() => handleGeneratePayslips(run, true)}
+                          title="Print All Payslips"
                         >
-                          <FileText className="h-4 w-4" />
+                          <FileText className="h-4 w-4 mr-1" /> Print All
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDownloadAllPayslips(run)}
+                          title="Download All Payslips"
+                        >
+                          <Download className="h-4 w-4" />
                         </Button>
                         {run.status === "draft" && (
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => handleUpdatePayRunStatus(run.id, "processing")}
+                            title="Start Processing"
                           >
                             <Play className="h-4 w-4" />
                           </Button>
@@ -538,6 +597,7 @@ export function AccountantPayrollModule() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleUpdatePayRunStatus(run.id, "completed")}
+                            title="Mark Completed"
                           >
                             <CheckCircle className="h-4 w-4" />
                           </Button>
@@ -685,23 +745,33 @@ export function AccountantPayrollModule() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete salary record?</AlertDialogTitle>
-                              <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeleteSalaryRecord(record.id)}>Delete</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openSalaryHistory(record.user_id)}
+                            title="View Salary History"
+                          >
+                            <History className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete salary record?</AlertDialogTitle>
+                                <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteSalaryRecord(record.id)}>Delete</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -719,6 +789,17 @@ export function AccountantPayrollModule() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Salary History Dialog */}
+      {selectedEmployeeForHistory && (
+        <SalaryHistoryDialog
+          open={historyDialogOpen}
+          onOpenChange={setHistoryDialogOpen}
+          employeeName={selectedEmployeeForHistory.name}
+          employeeId={selectedEmployeeForHistory.id}
+          salaryRecords={salaryRecords}
+        />
+      )}
     </div>
   );
 }

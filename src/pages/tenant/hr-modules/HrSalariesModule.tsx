@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, Edit, Users, Coins, TrendingUp, Calendar, FileText } from "lucide-react";
+import { Plus, Trash2, Edit, Users, Coins, TrendingUp, Calendar, FileText, Download, History } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
-import { openPayslipPDF, PayslipData } from "@/lib/payslip-pdf";
+import { openBulkPayslipsPDF, downloadBulkPayslipsHTML, PayslipData } from "@/lib/payslip-pdf";
+import { SalaryHistoryDialog } from "@/components/hr/SalaryHistoryDialog";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -81,6 +82,8 @@ export function HrSalariesModule() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<SalaryRecord | null>(null);
   const [payRunDialogOpen, setPayRunDialogOpen] = useState(false);
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [selectedEmployeeForHistory, setSelectedEmployeeForHistory] = useState<{ id: string; name: string } | null>(null);
 
   // Salary form
   const [formUserId, setFormUserId] = useState("");
@@ -318,9 +321,81 @@ export function HrSalariesModule() {
     queryClient.invalidateQueries({ queryKey: ["hr_pay_runs", schoolId] });
   };
 
-  const getStaffName = (userId: string) => {
-    const staff = staffMembers.find((s) => s.id === userId);
-    return staff?.full_name || "Unknown";
+  const getStaffMember = (userId: string) => staffMembers.find((s) => s.id === userId);
+  const getStaffName = (userId: string) => getStaffMember(userId)?.full_name || "Unknown";
+
+  const openSalaryHistory = (userId: string) => {
+    const staff = getStaffMember(userId);
+    setSelectedEmployeeForHistory({ id: userId, name: staff?.full_name || "Unknown" });
+    setHistoryDialogOpen(true);
+  };
+
+  const handleBulkPayslips = (run: PayRun) => {
+    const active = salaryRecords.filter((s) => isRecordActive(s));
+    if (active.length === 0) {
+      toast.error("No active salary records");
+      return;
+    }
+
+    const schoolName = tenant.status === "ready" ? tenant.school?.name || "School" : "School";
+
+    const payslips: PayslipData[] = active.map((salary) => {
+      const staff = getStaffMember(salary.user_id);
+      return {
+        employeeName: staff?.full_name || "Unknown",
+        employeeEmail: staff?.email || "",
+        employeeId: salary.user_id,
+        periodStart: run.period_start,
+        periodEnd: run.period_end,
+        paidAt: run.paid_at,
+        baseSalary: salary.base_salary,
+        allowances: salary.allowances,
+        deductions: salary.deductions,
+        grossAmount: salary.base_salary + salary.allowances,
+        netAmount: salary.base_salary + salary.allowances - salary.deductions,
+        currency: salary.currency,
+        schoolName,
+        payRunId: run.id,
+        status: run.status,
+      };
+    });
+
+    openBulkPayslipsPDF(payslips);
+    toast.success(`${payslips.length} payslips generated!`);
+  };
+
+  const handleDownloadPayslips = (run: PayRun) => {
+    const active = salaryRecords.filter((s) => isRecordActive(s));
+    if (active.length === 0) {
+      toast.error("No active salary records");
+      return;
+    }
+
+    const schoolName = tenant.status === "ready" ? tenant.school?.name || "School" : "School";
+
+    const payslips: PayslipData[] = active.map((salary) => {
+      const staff = getStaffMember(salary.user_id);
+      return {
+        employeeName: staff?.full_name || "Unknown",
+        employeeEmail: staff?.email || "",
+        employeeId: salary.user_id,
+        periodStart: run.period_start,
+        periodEnd: run.period_end,
+        paidAt: run.paid_at,
+        baseSalary: salary.base_salary,
+        allowances: salary.allowances,
+        deductions: salary.deductions,
+        grossAmount: salary.base_salary + salary.allowances,
+        netAmount: salary.base_salary + salary.allowances - salary.deductions,
+        currency: salary.currency,
+        schoolName,
+        payRunId: run.id,
+        status: run.status,
+      };
+    });
+
+    downloadBulkPayslipsHTML(payslips, run.period_start, run.period_end);
+    toast.success(`${payslips.length} payslips downloaded!`);
   };
 
   const activeSalaries = salaryRecords.filter((s) => isRecordActive(s));
@@ -521,6 +596,14 @@ export function HrSalariesModule() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openSalaryHistory(record.user_id)}
+                              title="View Salary History"
+                            >
+                              <History className="h-4 w-4" />
+                            </Button>
                             <Button variant="ghost" size="icon" onClick={() => openEdit(record)}>
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -668,23 +751,41 @@ export function HrSalariesModule() {
                           </div>
                           {run.notes && <p className="mt-2 text-sm text-muted-foreground">{run.notes}</p>}
                         </div>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete pay run?</AlertDialogTitle>
-                              <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeletePayRun(run.id)}>Delete</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleBulkPayslips(run)}
+                            title="Print All Payslips"
+                          >
+                            <FileText className="h-4 w-4 mr-1" /> Print All
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDownloadPayslips(run)}
+                            title="Download All Payslips"
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete pay run?</AlertDialogTitle>
+                                <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeletePayRun(run.id)}>Delete</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -700,6 +801,17 @@ export function HrSalariesModule() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Salary History Dialog */}
+      {selectedEmployeeForHistory && (
+        <SalaryHistoryDialog
+          open={historyDialogOpen}
+          onOpenChange={setHistoryDialogOpen}
+          employeeName={selectedEmployeeForHistory.name}
+          employeeId={selectedEmployeeForHistory.id}
+          salaryRecords={salaryRecords}
+        />
+      )}
     </div>
   );
 }
