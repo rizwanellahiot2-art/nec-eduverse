@@ -1769,6 +1769,60 @@ export type Database = {
         }
         Relationships: []
       }
+      parent_notification_preferences: {
+        Row: {
+          created_at: string
+          id: string
+          notify_absent: boolean
+          notify_grades: boolean
+          notify_homework: boolean
+          notify_late: boolean
+          school_id: string
+          student_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notify_absent?: boolean
+          notify_grades?: boolean
+          notify_homework?: boolean
+          notify_late?: boolean
+          school_id: string
+          student_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notify_absent?: boolean
+          notify_grades?: boolean
+          notify_homework?: boolean
+          notify_late?: boolean
+          school_id?: string
+          student_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parent_notification_preferences_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parent_notification_preferences_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       parent_notifications: {
         Row: {
           content: string

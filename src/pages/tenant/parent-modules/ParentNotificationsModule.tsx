@@ -6,7 +6,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { ChildInfo } from "@/hooks/useMyChildren";
 import { format } from "date-fns";
-import { Bell, CheckCheck } from "lucide-react";
+import { Bell, CheckCheck, Settings } from "lucide-react";
+import { NotificationPreferencesCard } from "@/components/notifications/NotificationPreferencesCard";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface ParentNotificationsModuleProps {
   child: ChildInfo | null;
@@ -145,63 +147,85 @@ const ParentNotificationsModule = ({ child, schoolId }: ParentNotificationsModul
         )}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bell className="h-5 w-5" />
-            All Notifications
+      <Tabs defaultValue="notifications" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="notifications" className="gap-2">
+            <Bell className="h-4 w-4" />
+            Notifications
             {unreadCount > 0 && (
-              <Badge variant="secondary">{unreadCount} unread</Badge>
+              <Badge variant="secondary" className="ml-1">{unreadCount}</Badge>
             )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <p className="text-muted-foreground">Loading...</p>
-          ) : notifications.length === 0 ? (
-            <p className="text-muted-foreground">No notifications yet.</p>
-          ) : (
-            <ScrollArea className="h-96">
-              <div className="space-y-3">
-                {notifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className={`rounded-lg border p-4 transition-colors ${
-                      notification.is_read ? "bg-background" : "bg-accent/50"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-medium">{notification.title}</p>
-                          <Badge variant={typeColor(notification.notification_type)}>
-                            {notification.notification_type.replace("_", " ")}
-                          </Badge>
+          </TabsTrigger>
+          <TabsTrigger value="preferences" className="gap-2">
+            <Settings className="h-4 w-4" />
+            Preferences
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="notifications">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="h-5 w-5" />
+                All Notifications
+                {unreadCount > 0 && (
+                  <Badge variant="secondary">{unreadCount} unread</Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <p className="text-muted-foreground">Loading...</p>
+              ) : notifications.length === 0 ? (
+                <p className="text-muted-foreground">No notifications yet.</p>
+              ) : (
+                <ScrollArea className="h-96">
+                  <div className="space-y-3">
+                    {notifications.map((notification) => (
+                      <div
+                        key={notification.id}
+                        className={`rounded-lg border p-4 transition-colors ${
+                          notification.is_read ? "bg-background" : "bg-accent/50"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="font-medium">{notification.title}</p>
+                              <Badge variant={typeColor(notification.notification_type)}>
+                                {notification.notification_type.replace("_", " ")}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                              {notification.content}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-2">
+                              {format(new Date(notification.created_at), "MMMM d, yyyy h:mm a")}
+                            </p>
+                          </div>
+                          {!notification.is_read && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => markAsRead(notification.id)}
+                            >
+                              Mark read
+                            </Button>
+                          )}
                         </div>
-                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                          {notification.content}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          {format(new Date(notification.created_at), "MMMM d, yyyy h:mm a")}
-                        </p>
                       </div>
-                      {!notification.is_read && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => markAsRead(notification.id)}
-                        >
-                          Mark read
-                        </Button>
-                      )}
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </ScrollArea>
-          )}
-        </CardContent>
-      </Card>
+                </ScrollArea>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="preferences">
+          {schoolId && <NotificationPreferencesCard schoolId={schoolId} />}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
