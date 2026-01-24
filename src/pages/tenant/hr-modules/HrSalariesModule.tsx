@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, Edit, Users, Coins, TrendingUp, Calendar } from "lucide-react";
+import { Plus, Trash2, Edit, Users, Coins, TrendingUp, Calendar, FileText } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
+import { openPayslipPDF, PayslipData } from "@/lib/payslip-pdf";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +44,9 @@ type SalaryRecord = {
   id: string;
   user_id: string;
   base_salary: number;
+  allowances: number;
+  deductions: number;
+  is_active: boolean;
   effective_from: string;
   effective_to: string | null;
   currency: string;
@@ -106,6 +110,9 @@ export function HrSalariesModule() {
         id: r.id,
         user_id: r.user_id,
         base_salary: r.base_salary,
+        allowances: r.allowances || 0,
+        deductions: r.deductions || 0,
+        is_active: r.is_active ?? true,
         effective_from: r.effective_from,
         effective_to: r.effective_to,
         currency: r.currency,
@@ -169,8 +176,8 @@ export function HrSalariesModule() {
     setEditingRecord(null);
   };
 
-  // Helper to check if record is "active" (no effective_to date)
-  const isRecordActive = (r: SalaryRecord) => !r.effective_to;
+  // Helper to check if record is "active"
+  const isRecordActive = (r: SalaryRecord) => r.is_active;
 
   const openCreate = () => {
     resetForm();
@@ -181,12 +188,12 @@ export function HrSalariesModule() {
     setEditingRecord(record);
     setFormUserId(record.user_id);
     setFormBaseSalary(record.base_salary.toString());
-    setFormAllowances("0");
-    setFormDeductions("0");
+    setFormAllowances(record.allowances.toString());
+    setFormDeductions(record.deductions.toString());
     setFormCurrency(record.currency);
     setFormEffectiveFrom(record.effective_from);
     setFormNotes(record.notes || "");
-    setFormIsActive(!record.effective_to);
+    setFormIsActive(record.is_active);
     setDialogOpen(true);
   };
 
@@ -205,9 +212,12 @@ export function HrSalariesModule() {
     const salaryData = {
       user_id: formUserId,
       base_salary: baseSalary,
+      allowances: Number(formAllowances) || 0,
+      deductions: Number(formDeductions) || 0,
       currency: formCurrency,
       effective_from: formEffectiveFrom,
       effective_to: formIsActive ? null : new Date().toISOString().split("T")[0],
+      is_active: formIsActive,
       notes: formNotes.trim() || null,
     };
 
@@ -222,13 +232,13 @@ export function HrSalariesModule() {
       }
       toast.success("Salary record updated");
     } else {
-      // End existing records for this user
+      // Deactivate existing active records for this user
       await supabase
         .from("hr_salary_records")
-        .update({ effective_to: formEffectiveFrom })
+        .update({ is_active: false, effective_to: formEffectiveFrom })
         .eq("school_id", schoolId)
         .eq("user_id", formUserId)
-        .is("effective_to", null);
+        .eq("is_active", true);
 
       const { error } = await supabase.from("hr_salary_records").insert([
         {
@@ -266,15 +276,15 @@ export function HrSalariesModule() {
       return;
     }
 
-    const activeSalaries = salaryRecords.filter((s) => isRecordActive(s));
-    const grossAmount = activeSalaries.reduce((sum, s) => sum + s.base_salary, 0);
-    const deductions = 0;
+    const active = salaryRecords.filter((s) => isRecordActive(s));
+    const grossAmount = active.reduce((sum, s) => sum + s.base_salary + s.allowances, 0);
+    const deductions = active.reduce((sum, s) => sum + s.deductions, 0);
     const netAmount = grossAmount - deductions;
 
     const { error } = await supabase.from("hr_pay_runs").insert([
       {
         school_id: schoolId,
-        user_id: activeSalaries[0]?.user_id || null, // Required field
+        user_id: active[0]?.user_id || null,
         period_start: prPeriodStart,
         period_end: prPeriodEnd,
         gross_amount: grossAmount,
@@ -316,9 +326,9 @@ export function HrSalariesModule() {
   const activeSalaries = salaryRecords.filter((s) => isRecordActive(s));
   const stats = {
     totalStaff: activeSalaries.length,
-    totalPayroll: activeSalaries.reduce((sum, s) => sum + s.base_salary, 0),
-    totalAllowances: 0, // Not in schema
-    totalDeductions: 0, // Not in schema
+    totalPayroll: activeSalaries.reduce((sum, s) => sum + s.base_salary + s.allowances - s.deductions, 0),
+    totalAllowances: activeSalaries.reduce((sum, s) => sum + s.allowances, 0),
+    totalDeductions: activeSalaries.reduce((sum, s) => sum + s.deductions, 0),
   };
 
   if (loadingSalaries || loadingPayRuns) {
@@ -499,14 +509,14 @@ export function HrSalariesModule() {
                       <TableRow key={record.id}>
                         <TableCell className="font-medium">{getStaffName(record.user_id)}</TableCell>
                         <TableCell>{record.currency} {record.base_salary.toLocaleString()}</TableCell>
-                        <TableCell className="text-primary">—</TableCell>
-                        <TableCell className="text-destructive">—</TableCell>
+                        <TableCell className="text-primary">+{record.allowances.toLocaleString()}</TableCell>
+                        <TableCell className="text-destructive">-{record.deductions.toLocaleString()}</TableCell>
                         <TableCell className="font-semibold">
-                          {record.currency} {record.base_salary.toLocaleString()}
+                          {record.currency} {(record.base_salary + record.allowances - record.deductions).toLocaleString()}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={isRecordActive(record) ? "default" : "secondary"}>
-                            {isRecordActive(record) ? "Active" : "Inactive"}
+                          <Badge variant={record.is_active ? "default" : "secondary"}>
+                            {record.is_active ? "Active" : "Inactive"}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
@@ -593,12 +603,14 @@ export function HrSalariesModule() {
                         <div>
                           <p className="text-muted-foreground">Gross</p>
                           <p className="font-semibold">
-                            {activeSalaries.reduce((s, r) => s + r.base_salary, 0).toLocaleString()}
+                            {activeSalaries.reduce((s, r) => s + r.base_salary + r.allowances, 0).toLocaleString()}
                           </p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Deductions</p>
-                          <p className="font-semibold">0</p>
+                          <p className="font-semibold">
+                            {activeSalaries.reduce((s, r) => s + r.deductions, 0).toLocaleString()}
+                          </p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Net</p>
