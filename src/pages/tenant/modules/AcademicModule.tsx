@@ -407,26 +407,26 @@ export function AcademicModule() {
 
       {/* Main Tabs */}
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
-          <TabsTrigger value="overview" className="gap-2">
-            <Building2 className="h-4 w-4 hidden sm:block" />
-            Overview
+        <TabsList className="flex w-full flex-wrap gap-1 p-1 sm:gap-2">
+          <TabsTrigger value="overview" className="flex min-w-0 flex-1 items-center justify-center gap-1 px-2 py-2 text-xs sm:gap-2 sm:px-3 sm:text-sm">
+            <Building2 className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
+            <span className="truncate">Overview</span>
           </TabsTrigger>
-          <TabsTrigger value="teachers" className="gap-2">
-            <User className="h-4 w-4 hidden sm:block" />
-            Teachers
+          <TabsTrigger value="teachers" className="flex min-w-0 flex-1 items-center justify-center gap-1 px-2 py-2 text-xs sm:gap-2 sm:px-3 sm:text-sm">
+            <User className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
+            <span className="truncate">Teachers</span>
           </TabsTrigger>
-          <TabsTrigger value="students" className="gap-2">
-            <Users className="h-4 w-4 hidden sm:block" />
-            Students
+          <TabsTrigger value="students" className="flex min-w-0 flex-1 items-center justify-center gap-1 px-2 py-2 text-xs sm:gap-2 sm:px-3 sm:text-sm">
+            <Users className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
+            <span className="truncate">Students</span>
           </TabsTrigger>
-          <TabsTrigger value="subjects" className="gap-2">
-            <BookOpen className="h-4 w-4 hidden sm:block" />
-            Subjects
+          <TabsTrigger value="subjects" className="flex min-w-0 flex-1 items-center justify-center gap-1 px-2 py-2 text-xs sm:gap-2 sm:px-3 sm:text-sm">
+            <BookOpen className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
+            <span className="truncate">Subjects</span>
           </TabsTrigger>
-          <TabsTrigger value="manage" className="gap-2">
-            <Settings className="h-4 w-4 hidden sm:block" />
-            Manage
+          <TabsTrigger value="manage" className="flex min-w-0 flex-1 items-center justify-center gap-1 px-2 py-2 text-xs sm:gap-2 sm:px-3 sm:text-sm">
+            <Settings className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
+            <span className="truncate">Manage</span>
           </TabsTrigger>
         </TabsList>
 

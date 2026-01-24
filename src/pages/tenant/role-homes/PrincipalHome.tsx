@@ -209,10 +209,16 @@ export function PrincipalHome() {
 
   return (
     <Tabs defaultValue="overview" className="space-y-4 lg:space-y-6">
-      <TabsList className="grid w-full grid-cols-3">
-        <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
-        <TabsTrigger value="teachers" className="text-xs sm:text-sm">Teachers</TabsTrigger>
-        <TabsTrigger value="students" className="text-xs sm:text-sm">Students</TabsTrigger>
+      <TabsList className="flex w-full gap-1 p-1 sm:gap-2">
+        <TabsTrigger value="overview" className="flex-1 px-2 py-2 text-xs sm:px-4 sm:text-sm">
+          Overview
+        </TabsTrigger>
+        <TabsTrigger value="teachers" className="flex-1 px-2 py-2 text-xs sm:px-4 sm:text-sm">
+          Teachers
+        </TabsTrigger>
+        <TabsTrigger value="students" className="flex-1 px-2 py-2 text-xs sm:px-4 sm:text-sm">
+          Students
+        </TabsTrigger>
       </TabsList>
 
       <TabsContent value="overview" className="space-y-4 lg:space-y-6">

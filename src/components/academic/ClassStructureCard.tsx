@@ -115,7 +115,7 @@ export function ClassStructureCard({
       </CardHeader>
       <CardContent>
         <ScrollArea className="h-[400px] pr-2 sm:pr-4">
-          <div className="space-y-4">
+          <div className="flex flex-col gap-4">
             {classDetails.map((cls) => (
               <div
                 key={cls.id}
