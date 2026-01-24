@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Check, X, Clock, FileCheck } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Section {
   id: string;
@@ -272,7 +274,26 @@ export function TeacherAttendanceModule() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Student</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead className="text-center">
+                        <span className="flex items-center justify-center gap-1">
+                          <Check className="h-4 w-4 text-green-600" /> Present
+                        </span>
+                      </TableHead>
+                      <TableHead className="text-center">
+                        <span className="flex items-center justify-center gap-1">
+                          <X className="h-4 w-4 text-red-600" /> Absent
+                        </span>
+                      </TableHead>
+                      <TableHead className="text-center">
+                        <span className="flex items-center justify-center gap-1">
+                          <Clock className="h-4 w-4 text-amber-600" /> Late
+                        </span>
+                      </TableHead>
+                      <TableHead className="text-center">
+                        <span className="flex items-center justify-center gap-1">
+                          <FileCheck className="h-4 w-4 text-blue-600" /> Excused
+                        </span>
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -281,21 +302,65 @@ export function TeacherAttendanceModule() {
                         <TableCell className="font-medium">
                           {r.first_name} {r.last_name}
                         </TableCell>
-                        <TableCell>
-                          <Select
-                            value={r.status}
-                            onValueChange={(v) => updateStatus(r.student_id, v as StudentRow["status"])}
+                        <TableCell className="text-center">
+                          <button
+                            type="button"
+                            onClick={() => updateStatus(r.student_id, "present")}
+                            className={cn(
+                              "inline-flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all",
+                              r.status === "present"
+                                ? "border-green-600 bg-green-100 text-green-700"
+                                : "border-muted hover:border-green-400 hover:bg-green-50"
+                            )}
+                            aria-label="Mark present"
                           >
-                            <SelectTrigger className="w-[120px]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="present">Present</SelectItem>
-                              <SelectItem value="absent">Absent</SelectItem>
-                              <SelectItem value="late">Late</SelectItem>
-                              <SelectItem value="excused">Excused</SelectItem>
-                            </SelectContent>
-                          </Select>
+                            <Check className="h-4 w-4" />
+                          </button>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <button
+                            type="button"
+                            onClick={() => updateStatus(r.student_id, "absent")}
+                            className={cn(
+                              "inline-flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all",
+                              r.status === "absent"
+                                ? "border-red-600 bg-red-100 text-red-700"
+                                : "border-muted hover:border-red-400 hover:bg-red-50"
+                            )}
+                            aria-label="Mark absent"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <button
+                            type="button"
+                            onClick={() => updateStatus(r.student_id, "late")}
+                            className={cn(
+                              "inline-flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all",
+                              r.status === "late"
+                                ? "border-amber-600 bg-amber-100 text-amber-700"
+                                : "border-muted hover:border-amber-400 hover:bg-amber-50"
+                            )}
+                            aria-label="Mark late"
+                          >
+                            <Clock className="h-4 w-4" />
+                          </button>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <button
+                            type="button"
+                            onClick={() => updateStatus(r.student_id, "excused")}
+                            className={cn(
+                              "inline-flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all",
+                              r.status === "excused"
+                                ? "border-blue-600 bg-blue-100 text-blue-700"
+                                : "border-muted hover:border-blue-400 hover:bg-blue-50"
+                            )}
+                            aria-label="Mark excused"
+                          >
+                            <FileCheck className="h-4 w-4" />
+                          </button>
                         </TableCell>
                       </TableRow>
                     ))}
