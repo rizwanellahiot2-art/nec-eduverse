@@ -2562,24 +2562,33 @@ export type Database = {
       timetable_periods: {
         Row: {
           created_by: string | null
+          end_time: string | null
           id: string
           label: string
           school_id: string
           sort_order: number
+          start_time: string | null
+          updated_at: string
         }
         Insert: {
           created_by?: string | null
+          end_time?: string | null
           id?: string
           label: string
           school_id: string
           sort_order?: number
+          start_time?: string | null
+          updated_at?: string
         }
         Update: {
           created_by?: string | null
+          end_time?: string | null
           id?: string
           label?: string
           school_id?: string
           sort_order?: number
+          start_time?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
