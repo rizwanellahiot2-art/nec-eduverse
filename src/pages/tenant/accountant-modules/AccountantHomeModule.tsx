@@ -31,6 +31,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SalaryComparisonChart } from "@/components/accountant/SalaryComparisonChart";
+import { SalaryBudgetForecast } from "@/components/accountant/SalaryBudgetForecast";
 
 const COLORS = ["hsl(var(--primary))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
 
@@ -268,6 +269,7 @@ export function AccountantHomeModule() {
         <TabsList className="mb-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="salary">Salary Analysis</TabsTrigger>
+          <TabsTrigger value="budget">Budget Forecast</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -611,6 +613,10 @@ export function AccountantHomeModule() {
 
         <TabsContent value="salary">
           <SalaryComparisonChart />
+        </TabsContent>
+
+        <TabsContent value="budget">
+          <SalaryBudgetForecast />
         </TabsContent>
       </Tabs>
     </div>
