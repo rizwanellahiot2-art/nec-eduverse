@@ -1,5 +1,19 @@
+import { useMemo } from "react";
+import { useParams } from "react-router-dom";
+import { useTenant } from "@/hooks/useTenant";
 import { SupportInbox } from "@/pages/tenant/modules/components/SupportInbox";
 
 export function HrSupportModule() {
-  return <SupportInbox />;
+  const { schoolSlug } = useParams();
+  const tenant = useTenant(schoolSlug);
+  const schoolId = useMemo(
+    () => (tenant.status === "ready" ? tenant.schoolId : null),
+    [tenant.status, tenant.schoolId]
+  );
+
+  if (!schoolId) {
+    return <p className="text-sm text-muted-foreground">Loading...</p>;
+  }
+
+  return <SupportInbox schoolId={schoolId} />;
 }
