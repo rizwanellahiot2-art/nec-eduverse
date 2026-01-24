@@ -425,125 +425,130 @@ export function PrincipalStudentsTab({ schoolId }: PrincipalStudentsTabProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {/* Header Stats */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <div className="rounded-2xl border bg-surface-2 p-4">
-          <p className="text-sm text-muted-foreground">Total Students</p>
-          <p className="mt-1 font-display text-2xl font-semibold">{stats.total}</p>
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4">
+        <div className="rounded-xl border bg-surface-2 p-3 sm:rounded-2xl sm:p-4">
+          <p className="text-xs text-muted-foreground sm:text-sm">Total Students</p>
+          <p className="mt-0.5 font-display text-xl font-semibold sm:mt-1 sm:text-2xl">{stats.total}</p>
         </div>
-        <div className="rounded-2xl border bg-surface-2 p-4">
-          <p className="text-sm text-muted-foreground">Enrolled</p>
-          <p className="mt-1 font-display text-2xl font-semibold text-primary">{stats.enrolled}</p>
+        <div className="rounded-xl border bg-surface-2 p-3 sm:rounded-2xl sm:p-4">
+          <p className="text-xs text-muted-foreground sm:text-sm">Enrolled</p>
+          <p className="mt-0.5 font-display text-xl font-semibold text-primary sm:mt-1 sm:text-2xl">{stats.enrolled}</p>
         </div>
-        <div className="rounded-2xl border bg-surface-2 p-4">
-          <p className="text-sm text-muted-foreground">Inquiries</p>
-          <p className="mt-1 font-display text-2xl font-semibold text-accent-foreground">{stats.inquiry}</p>
+        <div className="rounded-xl border bg-surface-2 p-3 sm:rounded-2xl sm:p-4">
+          <p className="text-xs text-muted-foreground sm:text-sm">Inquiries</p>
+          <p className="mt-0.5 font-display text-xl font-semibold text-accent-foreground sm:mt-1 sm:text-2xl">{stats.inquiry}</p>
         </div>
-        <div className="rounded-2xl border bg-surface-2 p-4">
-          <p className="text-sm text-muted-foreground">Avg Attendance (7d)</p>
-          <p className="mt-1 font-display text-2xl font-semibold">{stats.avgAttendance}%</p>
+        <div className="rounded-xl border bg-surface-2 p-3 sm:rounded-2xl sm:p-4">
+          <p className="text-xs text-muted-foreground sm:text-sm">Avg Attendance</p>
+          <p className="mt-0.5 font-display text-xl font-semibold sm:mt-1 sm:text-2xl">{stats.avgAttendance}%</p>
         </div>
       </div>
 
       {/* Search, Filters & Add Button */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
+      <div className="flex flex-col gap-2 sm:gap-3">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search by name, parent name, or student code..."
+            placeholder="Search by name, parent, or code..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
+            className="pl-9 text-sm"
           />
         </div>
-        <Select value={filterSection} onValueChange={setFilterSection}>
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder="All Sections" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Sections</SelectItem>
-            {sections.map((s) => (
-              <SelectItem key={s.id} value={s.id}>
-                {getSectionLabel(s.id)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-full sm:w-[140px]">
-            <SelectValue placeholder="All Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="enrolled">Enrolled</SelectItem>
-            <SelectItem value="inquiry">Inquiry</SelectItem>
-            <SelectItem value="withdrawn">Withdrawn</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button onClick={() => setShowAddDialog(true)}>
-          <Plus className="mr-2 h-4 w-4" /> Add Student
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Select value={filterSection} onValueChange={setFilterSection}>
+            <SelectTrigger className="flex-1 sm:w-[160px] sm:flex-none">
+              <SelectValue placeholder="All Sections" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sections</SelectItem>
+              {sections.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {getSectionLabel(s.id)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="flex-1 sm:w-[120px] sm:flex-none">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="enrolled">Enrolled</SelectItem>
+              <SelectItem value="inquiry">Inquiry</SelectItem>
+              <SelectItem value="withdrawn">Withdrawn</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button onClick={() => setShowAddDialog(true)} size="sm" className="flex-1 sm:flex-none">
+            <Plus className="mr-1 h-4 w-4" /> 
+            <span className="hidden sm:inline">Add Student</span>
+            <span className="sm:hidden">Add</span>
+          </Button>
+        </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      {/* Mobile: Selected Student Quick View OR Full Grid on larger screens */}
+      <div className="flex flex-col gap-3 lg:grid lg:grid-cols-3 lg:gap-4">
         {/* Student List */}
         <Card className="lg:col-span-1">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Users className="h-5 w-5" />
+          <CardHeader className="p-3 pb-2 sm:p-4 sm:pb-3">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Users className="h-4 w-4 sm:h-5 sm:w-5" />
               Students ({filteredStudents.length})
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[500px]">
-              <div className="space-y-2">
+          <CardContent className="p-2 sm:p-4 sm:pt-0">
+            <ScrollArea className="h-[300px] sm:h-[400px] lg:h-[500px]">
+              <div className="space-y-1.5 sm:space-y-2">
                 {filteredStudents.map((student) => (
                   <button
                     key={student.id}
                     onClick={() => setSelectedStudentId(student.id)}
-                    className={`w-full rounded-xl border p-3 text-left transition-colors hover:bg-muted/50 ${
+                    className={`w-full rounded-lg border p-2 text-left transition-colors hover:bg-muted/50 sm:rounded-xl sm:p-3 ${
                       selectedStudentId === student.id
                         ? "border-primary bg-primary/5"
                         : "border-transparent"
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="grid h-10 w-10 place-items-center rounded-full bg-primary/10">
-                        <User className="h-5 w-5 text-primary" />
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <div className="grid h-8 w-8 place-items-center rounded-full bg-primary/10 sm:h-10 sm:w-10">
+                        <User className="h-4 w-4 text-primary sm:h-5 sm:w-5" />
                       </div>
-                      <div className="flex-1 overflow-hidden">
-                        <p className="truncate font-medium">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium sm:text-base">
                           {student.first_name} {student.last_name}
                         </p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {student.parent_name ? `Parent: ${student.parent_name}` : student.sectionLabel}
+                        <p className="truncate text-[10px] text-muted-foreground sm:text-xs">
+                          {student.parent_name ? `${student.parent_name}` : student.sectionLabel}
                         </p>
                       </div>
                       <Badge
                         variant={student.status === "enrolled" ? "default" : "secondary"}
-                        className="text-xs"
+                        className="hidden text-[10px] sm:inline-flex sm:text-xs"
                       >
                         {student.status}
                       </Badge>
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      <Badge variant="outline" className="text-xs">
+                    <div className="mt-1.5 flex flex-wrap gap-1 sm:mt-2">
+                      <Badge variant="outline" className="text-[10px] sm:text-xs">
                         {student.sectionLabel}
                       </Badge>
                       {student.attendanceRate !== null && (
                         <Badge
                           variant={student.attendanceRate >= 75 ? "secondary" : "destructive"}
-                          className="text-xs"
+                          className="text-[10px] sm:text-xs"
                         >
-                          {student.attendanceRate}% att
+                          {student.attendanceRate}%
                         </Badge>
                       )}
                     </div>
                   </button>
                 ))}
                 {filteredStudents.length === 0 && (
-                  <p className="py-8 text-center text-sm text-muted-foreground">
+                  <p className="py-6 text-center text-xs text-muted-foreground sm:py-8 sm:text-sm">
                     No students found
                   </p>
                 )}
@@ -554,103 +559,105 @@ export function PrincipalStudentsTab({ schoolId }: PrincipalStudentsTabProps) {
 
         {/* Student Details Panel */}
         <Card className="lg:col-span-2">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-lg">
+          <CardHeader className="p-3 pb-2 sm:p-4 sm:pb-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <CardTitle className="truncate text-base sm:text-lg">
                   {selectedStudent
                     ? `${selectedStudent.first_name} ${selectedStudent.last_name || ""}`
                     : "Select a Student"}
                 </CardTitle>
                 {selectedStudent && (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="truncate text-xs text-muted-foreground sm:text-sm">
                     {selectedStudent.student_code || "No student code"}
                   </p>
                 )}
               </div>
               {selectedStudent && (
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => openEditDialog(selectedStudent)}>
-                    <Edit className="mr-1 h-4 w-4" /> Edit
+                  <Button variant="outline" size="sm" onClick={() => openEditDialog(selectedStudent)} className="flex-1 sm:flex-none">
+                    <Edit className="mr-1 h-3 w-3 sm:h-4 sm:w-4" /> 
+                    <span className="text-xs sm:text-sm">Edit</span>
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="text-destructive hover:bg-destructive/10"
+                    className="flex-1 text-destructive hover:bg-destructive/10 sm:flex-none"
                     onClick={() => openDeleteDialog(selectedStudent)}
                   >
-                    <Trash2 className="mr-1 h-4 w-4" /> Delete
+                    <Trash2 className="mr-1 h-3 w-3 sm:h-4 sm:w-4" /> 
+                    <span className="text-xs sm:text-sm">Delete</span>
                   </Button>
                 </div>
               )}
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-3 sm:p-4">
             {!selectedStudent ? (
-              <div className="flex h-[400px] items-center justify-center">
-                <p className="text-muted-foreground">
-                  Select a student from the list to view details
+              <div className="flex h-[200px] items-center justify-center sm:h-[300px] lg:h-[400px]">
+                <p className="text-sm text-muted-foreground">
+                  Select a student to view details
                 </p>
               </div>
             ) : (
-              <Tabs defaultValue="overview" className="space-y-4">
-                <TabsList>
-                  <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="attendance">Attendance</TabsTrigger>
+              <Tabs defaultValue="overview" className="space-y-3 sm:space-y-4">
+                <TabsList className="w-full grid grid-cols-2 sm:w-auto sm:inline-flex">
+                  <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
+                  <TabsTrigger value="attendance" className="text-xs sm:text-sm">Attendance</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="overview" className="space-y-4">
+                <TabsContent value="overview" className="space-y-3 sm:space-y-4">
                   {/* Quick Stats */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-xl bg-muted/50 p-3 text-center">
-                      <GraduationCap className="mx-auto h-5 w-5 text-muted-foreground" />
-                      <p className="mt-1 text-sm font-medium">{selectedStudent.sectionLabel}</p>
-                      <p className="text-xs text-muted-foreground">Section</p>
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                    <div className="rounded-lg bg-muted/50 p-2 text-center sm:rounded-xl sm:p-3">
+                      <GraduationCap className="mx-auto h-4 w-4 text-muted-foreground sm:h-5 sm:w-5" />
+                      <p className="mt-0.5 text-xs font-medium sm:mt-1 sm:text-sm">{selectedStudent.sectionLabel}</p>
+                      <p className="text-[10px] text-muted-foreground sm:text-xs">Section</p>
                     </div>
-                    <div className="rounded-xl bg-muted/50 p-3 text-center">
-                      <Percent className="mx-auto h-5 w-5 text-muted-foreground" />
-                      <p className="mt-1 text-xl font-semibold">
+                    <div className="rounded-lg bg-muted/50 p-2 text-center sm:rounded-xl sm:p-3">
+                      <Percent className="mx-auto h-4 w-4 text-muted-foreground sm:h-5 sm:w-5" />
+                      <p className="mt-0.5 text-lg font-semibold sm:mt-1 sm:text-xl">
                         {selectedStudent.attendanceRate ?? "—"}%
                       </p>
-                      <p className="text-xs text-muted-foreground">Attendance (7d)</p>
+                      <p className="text-[10px] text-muted-foreground sm:text-xs">Attendance (7d)</p>
                     </div>
                   </div>
 
                   {/* Student Info */}
-                  <div className="rounded-xl border bg-surface p-4">
-                    <h4 className="mb-3 font-medium">Student Information</h4>
-                    <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg border bg-surface p-3 sm:rounded-xl sm:p-4">
+                    <h4 className="mb-2 text-sm font-medium sm:mb-3">Student Information</h4>
+                    <div className="grid gap-2 sm:gap-3 sm:grid-cols-2">
                       <div>
-                        <p className="text-xs text-muted-foreground">Full Name</p>
-                        <p className="font-medium">
+                        <p className="text-[10px] text-muted-foreground sm:text-xs">Full Name</p>
+                        <p className="text-sm font-medium">
                           {selectedStudent.first_name} {selectedStudent.last_name}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Parent/Guardian</p>
-                        <p className="font-medium">{selectedStudent.parent_name || "Not specified"}</p>
+                        <p className="text-[10px] text-muted-foreground sm:text-xs">Parent/Guardian</p>
+                        <p className="text-sm font-medium">{selectedStudent.parent_name || "Not specified"}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Date of Birth</p>
-                        <p className="font-medium">
+                        <p className="text-[10px] text-muted-foreground sm:text-xs">Date of Birth</p>
+                        <p className="text-sm font-medium">
                           {selectedStudent.date_of_birth
                             ? format(new Date(selectedStudent.date_of_birth), "MMM d, yyyy")
                             : "Not specified"}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Student Code</p>
-                        <p className="font-medium">{selectedStudent.student_code || "Not assigned"}</p>
+                        <p className="text-[10px] text-muted-foreground sm:text-xs">Student Code</p>
+                        <p className="text-sm font-medium">{selectedStudent.student_code || "Not assigned"}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Status</p>
-                        <Badge variant={selectedStudent.status === "enrolled" ? "default" : "secondary"}>
+                        <p className="text-[10px] text-muted-foreground sm:text-xs">Status</p>
+                        <Badge variant={selectedStudent.status === "enrolled" ? "default" : "secondary"} className="text-xs">
                           {selectedStudent.status}
                         </Badge>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Joined</p>
-                        <p className="font-medium">
+                        <p className="text-[10px] text-muted-foreground sm:text-xs">Joined</p>
+                        <p className="text-sm font-medium">
                           {format(new Date(selectedStudent.created_at), "MMM d, yyyy")}
                         </p>
                       </div>
@@ -658,7 +665,7 @@ export function PrincipalStudentsTab({ schoolId }: PrincipalStudentsTabProps) {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="attendance" className="space-y-4">
+                <TabsContent value="attendance" className="space-y-3 sm:space-y-4">
                   <AttendanceDetailView
                     stats={selectedStudent.attendanceStats}
                     attendanceRate={selectedStudent.attendanceRate}

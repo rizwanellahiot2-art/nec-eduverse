@@ -208,14 +208,14 @@ export function PrincipalHome() {
   }, [schoolId]);
 
   return (
-    <Tabs defaultValue="overview" className="space-y-6">
-      <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-none lg:inline-flex">
-        <TabsTrigger value="overview">Overview</TabsTrigger>
-        <TabsTrigger value="teachers">Teachers</TabsTrigger>
-        <TabsTrigger value="students">Students</TabsTrigger>
+    <Tabs defaultValue="overview" className="space-y-4 lg:space-y-6">
+      <TabsList className="grid w-full grid-cols-3">
+        <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
+        <TabsTrigger value="teachers" className="text-xs sm:text-sm">Teachers</TabsTrigger>
+        <TabsTrigger value="students" className="text-xs sm:text-sm">Students</TabsTrigger>
       </TabsList>
 
-      <TabsContent value="overview" className="space-y-6">
+      <TabsContent value="overview" className="space-y-4 lg:space-y-6">
         {/* Real-time Alerts Panel */}
         {alerts.length > 0 && (
           <DashboardAlertsPanel
@@ -227,101 +227,101 @@ export function PrincipalHome() {
 
       {/* Quick Actions - Top for better accessibility */}
       <Card className="shadow-elevated">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Quick Actions</CardTitle>
+        <CardHeader className="pb-2 sm:pb-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="text-base sm:text-lg">Quick Actions</CardTitle>
             <div className="flex items-center gap-2">
               <AlertSettingsDialog schoolId={schoolId} onSettingsChanged={refreshAlerts} />
               <AlertsSummaryBadge criticalCount={criticalCount} warningCount={warningCount} />
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            <Button variant="soft" onClick={() => navigate(`${basePath}/users`)} className="h-auto flex-col gap-2 py-4">
-              <UserPlus className="h-5 w-5" />
-              <span className="text-xs">Add Staff</span>
+        <CardContent className="p-3 sm:p-6">
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-6">
+            <Button variant="soft" onClick={() => navigate(`${basePath}/users`)} className="h-auto flex-col gap-1 px-2 py-3 sm:gap-2 sm:py-4">
+              <UserPlus className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="text-[10px] sm:text-xs">Add Staff</span>
             </Button>
-            <Button variant="soft" onClick={() => navigate(`${basePath}/academic`)} className="h-auto flex-col gap-2 py-4">
-              <GraduationCap className="h-5 w-5" />
-              <span className="text-xs">Manage Students</span>
+            <Button variant="soft" onClick={() => navigate(`${basePath}/academic`)} className="h-auto flex-col gap-1 px-2 py-3 sm:gap-2 sm:py-4">
+              <GraduationCap className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="text-[10px] sm:text-xs">Students</span>
             </Button>
-            <Button variant="soft" onClick={() => navigate(`${basePath}/crm`)} className="h-auto flex-col gap-2 py-4">
-              <KanbanSquare className="h-5 w-5" />
-              <span className="text-xs">Admissions CRM</span>
+            <Button variant="soft" onClick={() => navigate(`${basePath}/crm`)} className="h-auto flex-col gap-1 px-2 py-3 sm:gap-2 sm:py-4">
+              <KanbanSquare className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="text-[10px] sm:text-xs">CRM</span>
             </Button>
-            <Button variant="soft" onClick={() => navigate(`${basePath}/finance`)} className="h-auto flex-col gap-2 py-4">
-              <Coins className="h-5 w-5" />
-              <span className="text-xs">Finance</span>
+            <Button variant="soft" onClick={() => navigate(`${basePath}/finance`)} className="h-auto flex-col gap-1 px-2 py-3 sm:gap-2 sm:py-4">
+              <Coins className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="text-[10px] sm:text-xs">Finance</span>
             </Button>
-            <Button variant="soft" onClick={() => navigate(`${basePath}/timetable`)} className="h-auto flex-col gap-2 py-4">
-              <CalendarDays className="h-5 w-5" />
-              <span className="text-xs">Timetable</span>
+            <Button variant="soft" onClick={() => navigate(`${basePath}/timetable`)} className="h-auto flex-col gap-1 px-2 py-3 sm:gap-2 sm:py-4">
+              <CalendarDays className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="text-[10px] sm:text-xs">Timetable</span>
             </Button>
-            <Button variant="soft" onClick={() => navigate(`${basePath}/reports`)} className="h-auto flex-col gap-2 py-4">
-              <BarChart3 className="h-5 w-5" />
-              <span className="text-xs">Reports</span>
+            <Button variant="soft" onClick={() => navigate(`${basePath}/reports`)} className="h-auto flex-col gap-1 px-2 py-3 sm:gap-2 sm:py-4">
+              <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="text-[10px] sm:text-xs">Reports</span>
             </Button>
           </div>
         </CardContent>
       </Card>
 
       {/* KPI Grid */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="rounded-3xl bg-surface p-5 shadow-elevated">
+      <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
+        <div className="rounded-2xl bg-surface p-3 shadow-elevated sm:rounded-3xl sm:p-5">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Students</p>
-            <GraduationCap className="h-4 w-4 text-muted-foreground" />
+            <p className="text-xs text-muted-foreground sm:text-sm">Students</p>
+            <GraduationCap className="h-3 w-3 text-muted-foreground sm:h-4 sm:w-4" />
           </div>
-          <p className="mt-3 font-display text-2xl font-semibold tracking-tight">{kpis.students.toLocaleString()}</p>
-          <p className="mt-1 text-xs text-muted-foreground">Active enrollments</p>
+          <p className="mt-2 font-display text-xl font-semibold tracking-tight sm:mt-3 sm:text-2xl">{kpis.students.toLocaleString()}</p>
+          <p className="mt-0.5 text-[10px] text-muted-foreground sm:mt-1 sm:text-xs">Active enrollments</p>
         </div>
 
-        <div className="rounded-3xl bg-surface p-5 shadow-elevated">
+        <div className="rounded-2xl bg-surface p-3 shadow-elevated sm:rounded-3xl sm:p-5">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Staff</p>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <p className="text-xs text-muted-foreground sm:text-sm">Staff</p>
+            <Users className="h-3 w-3 text-muted-foreground sm:h-4 sm:w-4" />
           </div>
-          <p className="mt-3 font-display text-2xl font-semibold tracking-tight">{kpis.totalStaff.toLocaleString()}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{kpis.teachers} teachers</p>
+          <p className="mt-2 font-display text-xl font-semibold tracking-tight sm:mt-3 sm:text-2xl">{kpis.totalStaff.toLocaleString()}</p>
+          <p className="mt-0.5 text-[10px] text-muted-foreground sm:mt-1 sm:text-xs">{kpis.teachers} teachers</p>
         </div>
 
-        <div className="rounded-3xl bg-surface p-5 shadow-elevated">
+        <div className="rounded-2xl bg-surface p-3 shadow-elevated sm:rounded-3xl sm:p-5">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Attendance (7d)</p>
-            <ClipboardList className="h-4 w-4 text-muted-foreground" />
+            <p className="text-xs text-muted-foreground sm:text-sm">Attendance</p>
+            <ClipboardList className="h-3 w-3 text-muted-foreground sm:h-4 sm:w-4" />
           </div>
-          <p className="mt-3 font-display text-2xl font-semibold tracking-tight">{attendanceRate}%</p>
-          <p className="mt-1 text-xs text-muted-foreground">Present rate</p>
+          <p className="mt-2 font-display text-xl font-semibold tracking-tight sm:mt-3 sm:text-2xl">{attendanceRate}%</p>
+          <p className="mt-0.5 text-[10px] text-muted-foreground sm:mt-1 sm:text-xs">7-day rate</p>
         </div>
 
-        <div className="rounded-3xl bg-surface p-5 shadow-elevated">
+        <div className="rounded-2xl bg-surface p-3 shadow-elevated sm:rounded-3xl sm:p-5">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Open Leads</p>
-            <KanbanSquare className="h-4 w-4 text-muted-foreground" />
+            <p className="text-xs text-muted-foreground sm:text-sm">Leads</p>
+            <KanbanSquare className="h-3 w-3 text-muted-foreground sm:h-4 sm:w-4" />
           </div>
-          <p className="mt-3 font-display text-2xl font-semibold tracking-tight">{kpis.openLeads.toLocaleString()}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{kpis.leads} total leads</p>
+          <p className="mt-2 font-display text-xl font-semibold tracking-tight sm:mt-3 sm:text-2xl">{kpis.openLeads.toLocaleString()}</p>
+          <p className="mt-0.5 text-[10px] text-muted-foreground sm:mt-1 sm:text-xs">{kpis.leads} total</p>
         </div>
       </div>
 
       {/* Secondary KPIs */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="rounded-2xl border bg-surface-2 p-4">
-          <p className="text-sm text-muted-foreground">Classes</p>
-          <p className="mt-2 font-display text-xl font-semibold">{kpis.classes}</p>
+      <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
+        <div className="rounded-xl border bg-surface-2 p-3 sm:rounded-2xl sm:p-4">
+          <p className="text-xs text-muted-foreground sm:text-sm">Classes</p>
+          <p className="mt-1 font-display text-lg font-semibold sm:mt-2 sm:text-xl">{kpis.classes}</p>
         </div>
-        <div className="rounded-2xl border bg-surface-2 p-4">
-          <p className="text-sm text-muted-foreground">Sections</p>
-          <p className="mt-2 font-display text-xl font-semibold">{kpis.sections}</p>
+        <div className="rounded-xl border bg-surface-2 p-3 sm:rounded-2xl sm:p-4">
+          <p className="text-xs text-muted-foreground sm:text-sm">Sections</p>
+          <p className="mt-1 font-display text-lg font-semibold sm:mt-2 sm:text-xl">{kpis.sections}</p>
         </div>
-        <div className="rounded-2xl border bg-surface-2 p-4">
-          <p className="text-sm text-muted-foreground">Pending Invoices</p>
-          <p className="mt-2 font-display text-xl font-semibold">{kpis.pendingInvoices}</p>
+        <div className="rounded-xl border bg-surface-2 p-3 sm:rounded-2xl sm:p-4">
+          <p className="text-xs text-muted-foreground sm:text-sm">Pending Invoices</p>
+          <p className="mt-1 font-display text-lg font-semibold sm:mt-2 sm:text-xl">{kpis.pendingInvoices}</p>
         </div>
-        <div className="rounded-2xl border bg-surface-2 p-4">
-          <p className="text-sm text-muted-foreground">Net (MTD)</p>
-          <p className="mt-2 font-display text-xl font-semibold">
+        <div className="rounded-xl border bg-surface-2 p-3 sm:rounded-2xl sm:p-4">
+          <p className="text-xs text-muted-foreground sm:text-sm">Net (MTD)</p>
+          <p className="mt-1 font-display text-lg font-semibold sm:mt-2 sm:text-xl">
             {(kpis.revenueMtd - kpis.expensesMtd).toLocaleString()}
           </p>
         </div>
@@ -329,33 +329,33 @@ export function PrincipalHome() {
 
       {/* Finance Chart */}
       <Card className="shadow-elevated">
-        <CardHeader>
-          <CardTitle className="font-display text-xl">Finance Overview (MTD)</CardTitle>
-          <p className="text-sm text-muted-foreground">Collections vs expenses</p>
+        <CardHeader className="pb-2 sm:pb-4">
+          <CardTitle className="font-display text-base sm:text-xl">Finance Overview (MTD)</CardTitle>
+          <p className="text-xs text-muted-foreground sm:text-sm">Collections vs expenses</p>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <div className="rounded-2xl bg-surface-2 p-4">
-              <p className="text-sm text-muted-foreground">Revenue (MTD)</p>
-              <p className="mt-2 font-display text-xl font-semibold">{kpis.revenueMtd.toLocaleString()}</p>
+        <CardContent className="space-y-3 p-3 sm:space-y-4 sm:p-6">
+          <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-3">
+            <div className="rounded-xl bg-surface-2 p-3 sm:rounded-2xl sm:p-4">
+              <p className="text-xs text-muted-foreground sm:text-sm">Revenue</p>
+              <p className="mt-1 font-display text-lg font-semibold sm:mt-2 sm:text-xl">{kpis.revenueMtd.toLocaleString()}</p>
             </div>
-            <div className="rounded-2xl bg-surface-2 p-4">
-              <p className="text-sm text-muted-foreground">Expenses (MTD)</p>
-              <p className="mt-2 font-display text-xl font-semibold">{kpis.expensesMtd.toLocaleString()}</p>
+            <div className="rounded-xl bg-surface-2 p-3 sm:rounded-2xl sm:p-4">
+              <p className="text-xs text-muted-foreground sm:text-sm">Expenses</p>
+              <p className="mt-1 font-display text-lg font-semibold sm:mt-2 sm:text-xl">{kpis.expensesMtd.toLocaleString()}</p>
             </div>
-            <div className="rounded-2xl bg-surface-2 p-4">
-              <p className="text-sm text-muted-foreground">Net (MTD)</p>
-              <p className="mt-2 font-display text-xl font-semibold">
+            <div className="rounded-xl bg-surface-2 p-3 sm:rounded-2xl sm:p-4">
+              <p className="text-xs text-muted-foreground sm:text-sm">Net</p>
+              <p className="mt-1 font-display text-lg font-semibold sm:mt-2 sm:text-xl">
                 {(kpis.revenueMtd - kpis.expensesMtd).toLocaleString()}
               </p>
             </div>
           </div>
 
-          <div className="h-[260px] rounded-2xl border bg-surface p-2">
+          <div className="h-[200px] rounded-xl border bg-surface p-2 sm:h-[260px] sm:rounded-2xl">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trend} margin={{ left: 8, right: 8, top: 10, bottom: 0 }}>
-                <XAxis dataKey="day" tickLine={false} axisLine={false} />
-                <YAxis tickLine={false} axisLine={false} width={40} />
+              <AreaChart data={trend} margin={{ left: 0, right: 8, top: 10, bottom: 0 }}>
+                <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
+                <YAxis tickLine={false} axisLine={false} width={35} tick={{ fontSize: 10 }} />
                 <Tooltip />
                 <Area type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" fill="hsl(var(--primary) / 0.2)" />
                 <Area type="monotone" dataKey="expenses" stroke="hsl(var(--brand))" fill="hsl(var(--brand) / 0.18)" />
@@ -366,25 +366,25 @@ export function PrincipalHome() {
       </Card>
 
       {/* Management Modules Grid */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
         <Card
           className="cursor-pointer transition-shadow hover:shadow-lg"
           onClick={() => navigate(`${basePath}/users`)}
         >
-          <CardHeader className="pb-2">
-            <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10">
-                <Users className="h-5 w-5 text-primary" />
+          <CardHeader className="p-3 pb-1 sm:p-4 sm:pb-2">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 sm:h-10 sm:w-10 sm:rounded-xl">
+                <Users className="h-4 w-4 text-primary sm:h-5 sm:w-5" />
               </div>
-              <div>
-                <CardTitle className="text-base">Staff & Users</CardTitle>
-                <p className="text-xs text-muted-foreground">Manage all school personnel</p>
+              <div className="min-w-0 flex-1">
+                <CardTitle className="truncate text-sm sm:text-base">Staff & Users</CardTitle>
+                <p className="truncate text-[10px] text-muted-foreground sm:text-xs">Manage all school personnel</p>
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Invite staff, assign roles, manage memberships, and handle governance actions.
+          <CardContent className="hidden p-3 pt-0 sm:block sm:p-4 sm:pt-0">
+            <p className="text-xs text-muted-foreground sm:text-sm">
+              Invite staff, assign roles, manage memberships.
             </p>
           </CardContent>
         </Card>
@@ -393,20 +393,20 @@ export function PrincipalHome() {
           className="cursor-pointer transition-shadow hover:shadow-lg"
           onClick={() => navigate(`${basePath}/academic`)}
         >
-          <CardHeader className="pb-2">
-            <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10">
-                <GraduationCap className="h-5 w-5 text-primary" />
+          <CardHeader className="p-3 pb-1 sm:p-4 sm:pb-2">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 sm:h-10 sm:w-10 sm:rounded-xl">
+                <GraduationCap className="h-4 w-4 text-primary sm:h-5 sm:w-5" />
               </div>
-              <div>
-                <CardTitle className="text-base">Academic Core</CardTitle>
-                <p className="text-xs text-muted-foreground">Classes, students, subjects</p>
+              <div className="min-w-0 flex-1">
+                <CardTitle className="truncate text-sm sm:text-base">Academic Core</CardTitle>
+                <p className="truncate text-[10px] text-muted-foreground sm:text-xs">Classes, students, subjects</p>
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Manage classes, sections, student enrollments, subjects, and teacher assignments.
+          <CardContent className="hidden p-3 pt-0 sm:block sm:p-4 sm:pt-0">
+            <p className="text-xs text-muted-foreground sm:text-sm">
+              Manage classes, sections, enrollments.
             </p>
           </CardContent>
         </Card>
@@ -415,20 +415,20 @@ export function PrincipalHome() {
           className="cursor-pointer transition-shadow hover:shadow-lg"
           onClick={() => navigate(`${basePath}/crm`)}
         >
-          <CardHeader className="pb-2">
-            <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10">
-                <KanbanSquare className="h-5 w-5 text-primary" />
+          <CardHeader className="p-3 pb-1 sm:p-4 sm:pb-2">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 sm:h-10 sm:w-10 sm:rounded-xl">
+                <KanbanSquare className="h-4 w-4 text-primary sm:h-5 sm:w-5" />
               </div>
-              <div>
-                <CardTitle className="text-base">Admissions CRM</CardTitle>
-                <p className="text-xs text-muted-foreground">Lead pipeline management</p>
+              <div className="min-w-0 flex-1">
+                <CardTitle className="truncate text-sm sm:text-base">Admissions CRM</CardTitle>
+                <p className="truncate text-[10px] text-muted-foreground sm:text-xs">Lead pipeline management</p>
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Track leads, manage stages, score prospects, and convert to students.
+          <CardContent className="hidden p-3 pt-0 sm:block sm:p-4 sm:pt-0">
+            <p className="text-xs text-muted-foreground sm:text-sm">
+              Track leads, manage stages, convert to students.
             </p>
           </CardContent>
         </Card>
@@ -437,20 +437,20 @@ export function PrincipalHome() {
           className="cursor-pointer transition-shadow hover:shadow-lg"
           onClick={() => navigate(`${basePath}/finance`)}
         >
-          <CardHeader className="pb-2">
-            <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10">
-                <Coins className="h-5 w-5 text-primary" />
+          <CardHeader className="p-3 pb-1 sm:p-4 sm:pb-2">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 sm:h-10 sm:w-10 sm:rounded-xl">
+                <Coins className="h-4 w-4 text-primary sm:h-5 sm:w-5" />
               </div>
-              <div>
-                <CardTitle className="text-base">Finance</CardTitle>
-                <p className="text-xs text-muted-foreground">Fees, invoices, expenses</p>
+              <div className="min-w-0 flex-1">
+                <CardTitle className="truncate text-sm sm:text-base">Finance</CardTitle>
+                <p className="truncate text-[10px] text-muted-foreground sm:text-xs">Fees, invoices, expenses</p>
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Manage fee plans, generate invoices, track payments, and record expenses.
+          <CardContent className="hidden p-3 pt-0 sm:block sm:p-4 sm:pt-0">
+            <p className="text-xs text-muted-foreground sm:text-sm">
+              Manage fee plans, generate invoices.
             </p>
           </CardContent>
         </Card>
@@ -459,20 +459,20 @@ export function PrincipalHome() {
           className="cursor-pointer transition-shadow hover:shadow-lg"
           onClick={() => navigate(`${basePath}/timetable`)}
         >
-          <CardHeader className="pb-2">
-            <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10">
-                <CalendarDays className="h-5 w-5 text-primary" />
+          <CardHeader className="p-3 pb-1 sm:p-4 sm:pb-2">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 sm:h-10 sm:w-10 sm:rounded-xl">
+                <CalendarDays className="h-4 w-4 text-primary sm:h-5 sm:w-5" />
               </div>
-              <div>
-                <CardTitle className="text-base">Timetable</CardTitle>
-                <p className="text-xs text-muted-foreground">Schedule management</p>
+              <div className="min-w-0 flex-1">
+                <CardTitle className="truncate text-sm sm:text-base">Timetable</CardTitle>
+                <p className="truncate text-[10px] text-muted-foreground sm:text-xs">Schedule management</p>
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Build and manage section timetables with conflict detection.
+          <CardContent className="hidden p-3 pt-0 sm:block sm:p-4 sm:pt-0">
+            <p className="text-xs text-muted-foreground sm:text-sm">
+              Build section timetables with conflict detection.
             </p>
           </CardContent>
         </Card>
@@ -481,20 +481,20 @@ export function PrincipalHome() {
           className="cursor-pointer transition-shadow hover:shadow-lg"
           onClick={() => navigate(`${basePath}/attendance`)}
         >
-          <CardHeader className="pb-2">
-            <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10">
-                <ClipboardList className="h-5 w-5 text-primary" />
+          <CardHeader className="p-3 pb-1 sm:p-4 sm:pb-2">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 sm:h-10 sm:w-10 sm:rounded-xl">
+                <ClipboardList className="h-4 w-4 text-primary sm:h-5 sm:w-5" />
               </div>
-              <div>
-                <CardTitle className="text-base">Attendance</CardTitle>
-                <p className="text-xs text-muted-foreground">Track student presence</p>
+              <div className="min-w-0 flex-1">
+                <CardTitle className="truncate text-sm sm:text-base">Attendance</CardTitle>
+                <p className="truncate text-[10px] text-muted-foreground sm:text-xs">Track student presence</p>
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Record daily attendance, view reports, and monitor trends.
+          <CardContent className="hidden p-3 pt-0 sm:block sm:p-4 sm:pt-0">
+            <p className="text-xs text-muted-foreground sm:text-sm">
+              Record attendance, view reports.
             </p>
           </CardContent>
         </Card>
@@ -503,20 +503,20 @@ export function PrincipalHome() {
           className="cursor-pointer transition-shadow hover:shadow-lg"
           onClick={() => navigate(`${basePath}/reports`)}
         >
-          <CardHeader className="pb-2">
-            <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10">
-                <BarChart3 className="h-5 w-5 text-primary" />
+          <CardHeader className="p-3 pb-1 sm:p-4 sm:pb-2">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 sm:h-10 sm:w-10 sm:rounded-xl">
+                <BarChart3 className="h-4 w-4 text-primary sm:h-5 sm:w-5" />
               </div>
-              <div>
-                <CardTitle className="text-base">Reports</CardTitle>
-                <p className="text-xs text-muted-foreground">Analytics & insights</p>
+              <div className="min-w-0 flex-1">
+                <CardTitle className="truncate text-sm sm:text-base">Reports</CardTitle>
+                <p className="truncate text-[10px] text-muted-foreground sm:text-xs">Analytics & insights</p>
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              View attendance reports, export data, and analyze school metrics.
+          <CardContent className="hidden p-3 pt-0 sm:block sm:p-4 sm:pt-0">
+            <p className="text-xs text-muted-foreground sm:text-sm">
+              View reports, export data, analyze metrics.
             </p>
           </CardContent>
         </Card>
@@ -525,20 +525,20 @@ export function PrincipalHome() {
           className="cursor-pointer transition-shadow hover:shadow-lg"
           onClick={() => navigate(`${basePath}/support`)}
         >
-          <CardHeader className="pb-2">
-            <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10">
-                <Headphones className="h-5 w-5 text-primary" />
+          <CardHeader className="p-3 pb-1 sm:p-4 sm:pb-2">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 sm:h-10 sm:w-10 sm:rounded-xl">
+                <Headphones className="h-4 w-4 text-primary sm:h-5 sm:w-5" />
               </div>
-              <div>
-                <CardTitle className="text-base">Support Inbox</CardTitle>
-                <p className="text-xs text-muted-foreground">Student & parent queries</p>
+              <div className="min-w-0 flex-1">
+                <CardTitle className="truncate text-sm sm:text-base">Support Inbox</CardTitle>
+                <p className="truncate text-[10px] text-muted-foreground sm:text-xs">Student & parent queries</p>
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Respond to support tickets and manage communication threads.
+          <CardContent className="hidden p-3 pt-0 sm:block sm:p-4 sm:pt-0">
+            <p className="text-xs text-muted-foreground sm:text-sm">
+              Respond to support tickets.
             </p>
           </CardContent>
         </Card>
@@ -547,20 +547,20 @@ export function PrincipalHome() {
           className="cursor-pointer transition-shadow hover:shadow-lg"
           onClick={() => navigate(`${basePath}/directory`)}
         >
-          <CardHeader className="pb-2">
-            <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10">
-                <BookOpen className="h-5 w-5 text-primary" />
+          <CardHeader className="p-3 pb-1 sm:p-4 sm:pb-2">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 sm:h-10 sm:w-10 sm:rounded-xl">
+                <BookOpen className="h-4 w-4 text-primary sm:h-5 sm:w-5" />
               </div>
-              <div>
-                <CardTitle className="text-base">Directory</CardTitle>
-                <p className="text-xs text-muted-foreground">Search all records</p>
+              <div className="min-w-0 flex-1">
+                <CardTitle className="truncate text-sm sm:text-base">Directory</CardTitle>
+                <p className="truncate text-[10px] text-muted-foreground sm:text-xs">Search all records</p>
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Search students, staff, and leads across the entire school directory.
+          <CardContent className="hidden p-3 pt-0 sm:block sm:p-4 sm:pt-0">
+            <p className="text-xs text-muted-foreground sm:text-sm">
+              Search students, staff, and leads.
             </p>
           </CardContent>
         </Card>
@@ -569,7 +569,8 @@ export function PrincipalHome() {
       {/* Refresh Button */}
       <Button variant="outline" onClick={refresh} disabled={busy} className="w-full">
         <RefreshCw className={`mr-2 h-4 w-4 ${busy ? "animate-spin" : ""}`} />
-        Refresh Dashboard
+        <span className="hidden sm:inline">Refresh Dashboard</span>
+        <span className="sm:hidden">Refresh</span>
       </Button>
       </TabsContent>
 
