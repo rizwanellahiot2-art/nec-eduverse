@@ -272,6 +272,13 @@ export type Database = {
             foreignKeyName: "assignment_submissions_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
+            referencedRelation: "student_fee_ledger"
+            referencedColumns: ["student_id"]
+          },
+          {
+            foreignKeyName: "assignment_submissions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
             referencedRelation: "students"
             referencedColumns: ["id"]
           },
@@ -385,6 +392,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "attendance_sessions"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_entries_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_fee_ledger"
+            referencedColumns: ["student_id"]
           },
           {
             foreignKeyName: "attendance_entries_student_id_fkey"
@@ -1150,6 +1164,13 @@ export type Database = {
             foreignKeyName: "finance_invoices_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
+            referencedRelation: "student_fee_ledger"
+            referencedColumns: ["student_id"]
+          },
+          {
+            foreignKeyName: "finance_invoices_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
             referencedRelation: "students"
             referencedColumns: ["id"]
           },
@@ -1251,6 +1272,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "finance_payment_methods"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_payments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_fee_ledger"
+            referencedColumns: ["student_id"]
           },
           {
             foreignKeyName: "finance_payments_student_id_fkey"
@@ -2036,6 +2064,13 @@ export type Database = {
             foreignKeyName: "parent_notification_preferences_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
+            referencedRelation: "student_fee_ledger"
+            referencedColumns: ["student_id"]
+          },
+          {
+            foreignKeyName: "parent_notification_preferences_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
             referencedRelation: "students"
             referencedColumns: ["id"]
           },
@@ -2478,6 +2513,13 @@ export type Database = {
             foreignKeyName: "student_enrollments_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
+            referencedRelation: "student_fee_ledger"
+            referencedColumns: ["student_id"]
+          },
+          {
+            foreignKeyName: "student_enrollments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
             referencedRelation: "students"
             referencedColumns: ["id"]
           },
@@ -2527,6 +2569,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "fee_plans"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_fee_accounts_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_fee_ledger"
+            referencedColumns: ["student_id"]
           },
           {
             foreignKeyName: "student_fee_accounts_student_id_fkey"
@@ -3079,7 +3128,31 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      student_fee_ledger: {
+        Row: {
+          first_name: string | null
+          invoice_count: number | null
+          last_name: string | null
+          outstanding_balance: number | null
+          overdue_amount: number | null
+          overdue_count: number | null
+          payment_count: number | null
+          school_id: string | null
+          student_code: string | null
+          student_id: string | null
+          total_invoiced: number | null
+          total_paid: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "students_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       calculate_grade: {

@@ -66,6 +66,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { SalaryComparisonChart } from "@/components/accountant/SalaryComparisonChart";
 import { SalaryBudgetForecast } from "@/components/accountant/SalaryBudgetForecast";
+import { StudentFeeTracker } from "@/components/accountant/StudentFeeTracker";
+import { FinancialReportGenerator } from "@/components/accountant/FinancialReportGenerator";
 
 const COLORS = ["hsl(var(--primary))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
 
@@ -538,6 +540,12 @@ export function AccountantHomeModule() {
           </TabsTrigger>
           <TabsTrigger value="budget" className="gap-2">
             <Target className="h-4 w-4" /> Budget Forecast
+          </TabsTrigger>
+          <TabsTrigger value="fees" className="gap-2">
+            <GraduationCap className="h-4 w-4" /> Student Fees
+          </TabsTrigger>
+          <TabsTrigger value="reports" className="gap-2">
+            <Download className="h-4 w-4" /> Reports
           </TabsTrigger>
         </TabsList>
 
@@ -1108,6 +1116,14 @@ export function AccountantHomeModule() {
 
         <TabsContent value="budget">
           <SalaryBudgetForecast />
+        </TabsContent>
+
+        <TabsContent value="fees">
+          {schoolId && <StudentFeeTracker schoolId={schoolId} />}
+        </TabsContent>
+
+        <TabsContent value="reports">
+          {schoolId && <FinancialReportGenerator schoolId={schoolId} schoolName={schoolSlug} />}
         </TabsContent>
       </Tabs>
     </div>
