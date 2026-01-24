@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { GraduationCap, Plus, UserCog } from "lucide-react";
+import { StudentTransferDialog } from "@/components/academic/StudentTransferDialog";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
@@ -317,24 +318,35 @@ export function AcademicModule() {
           <p className="text-sm text-muted-foreground">Create and enroll students into sections</p>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
-            <Input value={studentFirst} onChange={(e) => setStudentFirst(e.target.value)} placeholder="First name" />
-            <Input value={studentLast} onChange={(e) => setStudentLast(e.target.value)} placeholder="Last name" />
-            <Select value={selectedSectionId} onValueChange={setSelectedSectionId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Enroll to section" />
-              </SelectTrigger>
-              <SelectContent>
-                {sections.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {classes.find((c) => c.id === s.class_id)?.name ?? "Class"} • {s.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button variant="hero" onClick={createStudentAndEnroll}>
-              <Plus className="mr-2 h-4 w-4" /> Add student
-            </Button>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-4">
+              <Input value={studentFirst} onChange={(e) => setStudentFirst(e.target.value)} placeholder="First name" />
+              <Input value={studentLast} onChange={(e) => setStudentLast(e.target.value)} placeholder="Last name" />
+              <Select value={selectedSectionId} onValueChange={setSelectedSectionId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Enroll to section" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sections.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {classes.find((c) => c.id === s.class_id)?.name ?? "Class"} • {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button variant="hero" onClick={createStudentAndEnroll}>
+                <Plus className="mr-2 h-4 w-4" /> Add student
+              </Button>
+            </div>
+            {schoolId && (
+              <StudentTransferDialog
+                schoolId={schoolId}
+                students={students}
+                classes={classes}
+                sections={sections}
+                onTransferComplete={refresh}
+              />
+            )}
           </div>
 
           <ScrollArea className="h-[300px] rounded-2xl border bg-surface">
