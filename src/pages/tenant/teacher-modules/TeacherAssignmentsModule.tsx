@@ -240,7 +240,7 @@ export function TeacherAssignmentsModule() {
       }));
 
     const { error } = await supabase.from("student_results").upsert(payload, {
-      onConflict: "student_id,assignment_id",
+      onConflict: "school_id,student_id,assignment_id",
     });
 
     if (error) {

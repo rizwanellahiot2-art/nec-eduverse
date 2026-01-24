@@ -83,7 +83,7 @@ export function MarketingCampaignsModule() {
         school_id: schoolId,
         lead_id: leadId,
         campaign_id: campaignId,
-      });
+      }, { onConflict: "lead_id,campaign_id" });
       await refresh();
     } finally {
       setBusy(false);
