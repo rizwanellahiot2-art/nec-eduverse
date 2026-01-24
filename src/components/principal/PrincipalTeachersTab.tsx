@@ -302,96 +302,94 @@ export function PrincipalTeachersTab({ schoolId }: PrincipalTeachersTabProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {/* Header Stats */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <div className="rounded-2xl border bg-surface-2 p-4">
-          <p className="text-sm text-muted-foreground">Total Teachers</p>
-          <p className="mt-1 font-display text-2xl font-semibold">{teachers.length}</p>
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4">
+        <div className="rounded-xl border bg-surface-2 p-3 sm:rounded-2xl sm:p-4">
+          <p className="text-xs text-muted-foreground sm:text-sm">Total Teachers</p>
+          <p className="mt-0.5 font-display text-xl font-semibold sm:mt-1 sm:text-2xl">{teachers.length}</p>
         </div>
-        <div className="rounded-2xl border bg-surface-2 p-4">
-          <p className="text-sm text-muted-foreground">Class Teachers</p>
-          <p className="mt-1 font-display text-2xl font-semibold">
+        <div className="rounded-xl border bg-surface-2 p-3 sm:rounded-2xl sm:p-4">
+          <p className="text-xs text-muted-foreground sm:text-sm">Class Teachers</p>
+          <p className="mt-0.5 font-display text-xl font-semibold sm:mt-1 sm:text-2xl">
             {teacherAssignments.length}
           </p>
         </div>
-        <div className="rounded-2xl border bg-surface-2 p-4">
-          <p className="text-sm text-muted-foreground">Subject Assignments</p>
-          <p className="mt-1 font-display text-2xl font-semibold">
+        <div className="rounded-xl border bg-surface-2 p-3 sm:rounded-2xl sm:p-4">
+          <p className="text-xs text-muted-foreground sm:text-sm">Subject Assign.</p>
+          <p className="mt-0.5 font-display text-xl font-semibold sm:mt-1 sm:text-2xl">
             {teacherSubjectAssignments.length}
           </p>
         </div>
-        <div className="rounded-2xl border bg-surface-2 p-4">
-          <p className="text-sm text-muted-foreground">Timetable Entries</p>
-          <p className="mt-1 font-display text-2xl font-semibold">
+        <div className="rounded-xl border bg-surface-2 p-3 sm:rounded-2xl sm:p-4">
+          <p className="text-xs text-muted-foreground sm:text-sm">Timetable Entries</p>
+          <p className="mt-0.5 font-display text-xl font-semibold sm:mt-1 sm:text-2xl">
             {timetableEntries.length}
           </p>
         </div>
       </div>
 
-      {/* Search & Filters */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search teachers by name or email..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Search teachers by name or email..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9 text-sm"
+        />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="flex flex-col gap-3 lg:grid lg:grid-cols-3 lg:gap-4">
         {/* Teacher List */}
         <Card className="lg:col-span-1">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <User className="h-5 w-5" />
+          <CardHeader className="p-3 pb-2 sm:p-4 sm:pb-3">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <User className="h-4 w-4 sm:h-5 sm:w-5" />
               Teachers ({filteredTeachers.length})
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[500px]">
-              <div className="space-y-2">
+          <CardContent className="p-2 sm:p-4 sm:pt-0">
+            <ScrollArea className="h-[300px] sm:h-[400px] lg:h-[500px]">
+              <div className="space-y-1.5 sm:space-y-2">
                 {filteredTeachers.map((teacher) => (
                   <button
                     key={teacher.user_id}
                     onClick={() => setSelectedTeacherId(teacher.user_id)}
-                    className={`w-full rounded-xl border p-3 text-left transition-colors hover:bg-muted/50 ${
+                    className={`w-full rounded-lg border p-2 text-left transition-colors hover:bg-muted/50 sm:rounded-xl sm:p-3 ${
                       selectedTeacherId === teacher.user_id
                         ? "border-primary bg-primary/5"
                         : "border-transparent"
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="grid h-10 w-10 place-items-center rounded-full bg-primary/10">
-                        <User className="h-5 w-5 text-primary" />
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <div className="grid h-8 w-8 place-items-center rounded-full bg-primary/10 sm:h-10 sm:w-10">
+                        <User className="h-4 w-4 text-primary sm:h-5 sm:w-5" />
                       </div>
-                      <div className="flex-1 overflow-hidden">
-                        <p className="truncate font-medium">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium sm:text-base">
                           {teacher.display_name || teacher.email.split("@")[0]}
                         </p>
-                        <p className="truncate text-xs text-muted-foreground">
+                        <p className="truncate text-[10px] text-muted-foreground sm:text-xs">
                           {teacher.email}
                         </p>
                       </div>
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      <Badge variant="secondary" className="text-xs">
-                        {teacher.totalSections} sections
+                    <div className="mt-1.5 flex flex-wrap gap-1 sm:mt-2">
+                      <Badge variant="secondary" className="text-[10px] sm:text-xs">
+                        {teacher.totalSections} sec
                       </Badge>
-                      <Badge variant="secondary" className="text-xs">
-                        {teacher.totalSubjects} subjects
+                      <Badge variant="secondary" className="text-[10px] sm:text-xs">
+                        {teacher.totalSubjects} subj
                       </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {teacher.totalPeriods} periods
+                      <Badge variant="outline" className="text-[10px] sm:text-xs">
+                        {teacher.totalPeriods} per
                       </Badge>
                     </div>
                   </button>
                 ))}
                 {filteredTeachers.length === 0 && (
-                  <p className="py-8 text-center text-sm text-muted-foreground">
+                  <p className="py-6 text-center text-xs text-muted-foreground sm:py-8 sm:text-sm">
                     No teachers found
                   </p>
                 )}
@@ -402,76 +400,76 @@ export function PrincipalTeachersTab({ schoolId }: PrincipalTeachersTabProps) {
 
         {/* Teacher Details Panel */}
         <Card className="lg:col-span-2">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">
+          <CardHeader className="p-3 pb-2 sm:p-4 sm:pb-3">
+            <CardTitle className="truncate text-base sm:text-lg">
               {selectedTeacher
                 ? selectedTeacher.display_name || selectedTeacher.email.split("@")[0]
                 : "Select a Teacher"}
             </CardTitle>
             {selectedTeacher && (
-              <p className="text-sm text-muted-foreground">{selectedTeacher.email}</p>
+              <p className="truncate text-xs text-muted-foreground sm:text-sm">{selectedTeacher.email}</p>
             )}
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-3 sm:p-4">
             {!selectedTeacher ? (
-              <div className="flex h-[400px] items-center justify-center">
-                <p className="text-muted-foreground">
-                  Select a teacher from the list to view details
+              <div className="flex h-[200px] items-center justify-center sm:h-[300px] lg:h-[400px]">
+                <p className="text-sm text-muted-foreground">
+                  Select a teacher to view details
                 </p>
               </div>
             ) : (
-              <Tabs defaultValue="overview" className="space-y-4">
-                <TabsList>
-                  <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="timetable">Timetable</TabsTrigger>
+              <Tabs defaultValue="overview" className="space-y-3 sm:space-y-4">
+                <TabsList className="w-full grid grid-cols-2 sm:w-auto sm:inline-flex">
+                  <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
+                  <TabsTrigger value="timetable" className="text-xs sm:text-sm">Timetable</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="overview" className="space-y-4">
+                <TabsContent value="overview" className="space-y-3 sm:space-y-4">
                   {/* Quick Stats */}
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="rounded-xl bg-muted/50 p-3 text-center">
-                      <GraduationCap className="mx-auto h-5 w-5 text-muted-foreground" />
-                      <p className="mt-1 text-xl font-semibold">{selectedTeacher.totalSections}</p>
-                      <p className="text-xs text-muted-foreground">Sections</p>
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                    <div className="rounded-lg bg-muted/50 p-2 text-center sm:rounded-xl sm:p-3">
+                      <GraduationCap className="mx-auto h-4 w-4 text-muted-foreground sm:h-5 sm:w-5" />
+                      <p className="mt-0.5 text-lg font-semibold sm:mt-1 sm:text-xl">{selectedTeacher.totalSections}</p>
+                      <p className="text-[10px] text-muted-foreground sm:text-xs">Sections</p>
                     </div>
-                    <div className="rounded-xl bg-muted/50 p-3 text-center">
-                      <BookOpen className="mx-auto h-5 w-5 text-muted-foreground" />
-                      <p className="mt-1 text-xl font-semibold">{selectedTeacher.totalSubjects}</p>
-                      <p className="text-xs text-muted-foreground">Subjects</p>
+                    <div className="rounded-lg bg-muted/50 p-2 text-center sm:rounded-xl sm:p-3">
+                      <BookOpen className="mx-auto h-4 w-4 text-muted-foreground sm:h-5 sm:w-5" />
+                      <p className="mt-0.5 text-lg font-semibold sm:mt-1 sm:text-xl">{selectedTeacher.totalSubjects}</p>
+                      <p className="text-[10px] text-muted-foreground sm:text-xs">Subjects</p>
                     </div>
-                    <div className="rounded-xl bg-muted/50 p-3 text-center">
-                      <CalendarDays className="mx-auto h-5 w-5 text-muted-foreground" />
-                      <p className="mt-1 text-xl font-semibold">{selectedTeacher.totalPeriods}</p>
-                      <p className="text-xs text-muted-foreground">Periods/Week</p>
+                    <div className="rounded-lg bg-muted/50 p-2 text-center sm:rounded-xl sm:p-3">
+                      <CalendarDays className="mx-auto h-4 w-4 text-muted-foreground sm:h-5 sm:w-5" />
+                      <p className="mt-0.5 text-lg font-semibold sm:mt-1 sm:text-xl">{selectedTeacher.totalPeriods}</p>
+                      <p className="text-[10px] text-muted-foreground sm:text-xs">Periods</p>
                     </div>
                   </div>
 
                   {/* Section Assignments */}
                   <div>
-                    <h4 className="mb-2 font-medium">Class & Section Assignments</h4>
+                    <h4 className="mb-2 text-sm font-medium">Class & Section Assignments</h4>
                     {selectedTeacher.sectionDetails.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">No sections assigned yet.</p>
+                      <p className="text-xs text-muted-foreground sm:text-sm">No sections assigned yet.</p>
                     ) : (
-                      <ScrollArea className="h-[280px]">
-                        <div className="space-y-2">
+                      <ScrollArea className="h-[180px] sm:h-[280px]">
+                        <div className="space-y-1.5 sm:space-y-2">
                           {selectedTeacher.sectionDetails.map((section) => (
                             <div
                               key={section.sectionId}
-                              className="rounded-lg border bg-surface p-3"
+                              className="rounded-lg border bg-surface p-2 sm:p-3"
                             >
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <GraduationCap className="h-4 w-4 text-muted-foreground" />
-                                  <span className="font-medium">{section.label}</span>
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex min-w-0 items-center gap-2">
+                                  <GraduationCap className="h-3 w-3 shrink-0 text-muted-foreground sm:h-4 sm:w-4" />
+                                  <span className="truncate text-xs font-medium sm:text-sm">{section.label}</span>
                                 </div>
                                 {section.isClassTeacher && (
-                                  <Badge className="text-xs">Class Teacher</Badge>
+                                  <Badge className="shrink-0 text-[10px] sm:text-xs">Class Teacher</Badge>
                                 )}
                               </div>
                               {section.subjects.length > 0 && (
-                                <div className="mt-2 flex flex-wrap gap-1">
+                                <div className="mt-1.5 flex flex-wrap gap-1 sm:mt-2">
                                   {section.subjects.map((subj, i) => (
-                                    <Badge key={i} variant="secondary" className="text-xs">
+                                    <Badge key={i} variant="secondary" className="text-[10px] sm:text-xs">
                                       {subj}
                                     </Badge>
                                   ))}
@@ -485,30 +483,31 @@ export function PrincipalTeachersTab({ schoolId }: PrincipalTeachersTabProps) {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="timetable" className="space-y-4">
+                <TabsContent value="timetable" className="space-y-3 sm:space-y-4">
                   {/* View Controls */}
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="icon" onClick={() => navigateDate("prev")}>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+                    <div className="flex items-center justify-center gap-2">
+                      <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigateDate("prev")}>
                         <ChevronLeft className="h-4 w-4" />
                       </Button>
-                      <span className="min-w-[180px] text-center font-medium">
+                      <span className="min-w-[140px] text-center text-xs font-medium sm:min-w-[180px] sm:text-sm">
                         {dateRangeLabel}
                       </span>
-                      <Button variant="outline" size="icon" onClick={() => navigateDate("next")}>
+                      <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigateDate("next")}>
                         <ChevronRight className="h-4 w-4" />
                       </Button>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setCurrentDate(new Date())}
+                        className="text-xs"
                       >
                         Today
                       </Button>
                       <Select value={viewMode} onValueChange={(v) => setViewMode(v as any)}>
-                        <SelectTrigger className="w-[120px]">
+                        <SelectTrigger className="w-[100px] h-8 text-xs sm:w-[120px]">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -521,7 +520,7 @@ export function PrincipalTeachersTab({ schoolId }: PrincipalTeachersTabProps) {
                   </div>
 
                   {/* Timetable Display */}
-                  <ScrollArea className="h-[320px]">
+                  <ScrollArea className="h-[220px] sm:h-[320px]">
                     {viewMode === "monthly" ? (
                       <MonthlyCalendarView
                         days={monthDays}
@@ -550,75 +549,75 @@ export function PrincipalTeachersTab({ schoolId }: PrincipalTeachersTabProps) {
         </Card>
       </div>
 
-      {/* Full Teacher Accordion List */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">All Teachers Detail View</CardTitle>
+      {/* Full Teacher Accordion List - Hidden on mobile for cleaner UX */}
+      <Card className="hidden sm:block">
+        <CardHeader className="p-3 pb-2 sm:p-4 sm:pb-3">
+          <CardTitle className="text-base sm:text-lg">All Teachers Detail View</CardTitle>
         </CardHeader>
-        <CardContent>
-          <ScrollArea className="h-[400px] pr-4">
-            <Accordion type="multiple" className="space-y-2">
+        <CardContent className="p-2 sm:p-4">
+          <ScrollArea className="h-[300px] pr-2 sm:h-[400px] sm:pr-4">
+            <Accordion type="multiple" className="space-y-1.5 sm:space-y-2">
               {filteredTeachers.map((teacher) => (
                 <AccordionItem
                   key={teacher.user_id}
                   value={teacher.user_id}
-                  className="rounded-xl border bg-surface px-4"
+                  className="rounded-lg border bg-surface px-3 sm:rounded-xl sm:px-4"
                 >
-                  <AccordionTrigger className="py-3 hover:no-underline">
-                    <div className="flex flex-1 items-center justify-between pr-4">
-                      <div className="flex items-center gap-3">
-                        <div className="grid h-9 w-9 place-items-center rounded-full bg-primary/10">
-                          <User className="h-4 w-4 text-primary" />
+                  <AccordionTrigger className="py-2 hover:no-underline sm:py-3">
+                    <div className="flex flex-1 items-center justify-between gap-2 pr-2 sm:pr-4">
+                      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+                        <div className="grid h-7 w-7 place-items-center rounded-full bg-primary/10 sm:h-9 sm:w-9">
+                          <User className="h-3 w-3 text-primary sm:h-4 sm:w-4" />
                         </div>
-                        <div className="text-left">
-                          <p className="font-medium">
+                        <div className="min-w-0 text-left">
+                          <p className="truncate text-xs font-medium sm:text-sm">
                             {teacher.display_name || teacher.email.split("@")[0]}
                           </p>
-                          <p className="text-xs text-muted-foreground">{teacher.email}</p>
+                          <p className="hidden truncate text-[10px] text-muted-foreground sm:block sm:text-xs">{teacher.email}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">
-                          <GraduationCap className="mr-1 h-3 w-3" />
-                          {teacher.totalSections} sections
+                      <div className="hidden items-center gap-1 sm:flex sm:gap-2">
+                        <Badge variant="outline" className="text-[10px] sm:text-xs">
+                          <GraduationCap className="mr-0.5 h-2.5 w-2.5 sm:mr-1 sm:h-3 sm:w-3" />
+                          {teacher.totalSections}
                         </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          <BookOpen className="mr-1 h-3 w-3" />
-                          {teacher.totalSubjects} subjects
+                        <Badge variant="outline" className="text-[10px] sm:text-xs">
+                          <BookOpen className="mr-0.5 h-2.5 w-2.5 sm:mr-1 sm:h-3 sm:w-3" />
+                          {teacher.totalSubjects}
                         </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          <CalendarDays className="mr-1 h-3 w-3" />
-                          {teacher.totalPeriods} periods
+                        <Badge variant="outline" className="text-[10px] sm:text-xs">
+                          <CalendarDays className="mr-0.5 h-2.5 w-2.5 sm:mr-1 sm:h-3 sm:w-3" />
+                          {teacher.totalPeriods}
                         </Badge>
                       </div>
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className="pb-4">
-                    <div className="space-y-4">
+                  <AccordionContent className="pb-3 sm:pb-4">
+                    <div className="space-y-3 sm:space-y-4">
                       {/* Section Assignments */}
                       <div>
-                        <h5 className="mb-2 text-sm font-medium text-muted-foreground">
+                        <h5 className="mb-1.5 text-xs font-medium text-muted-foreground sm:mb-2 sm:text-sm">
                           Section Assignments
                         </h5>
                         {teacher.sectionDetails.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">No sections assigned.</p>
+                          <p className="text-xs text-muted-foreground sm:text-sm">No sections assigned.</p>
                         ) : (
-                          <div className="grid gap-2 sm:grid-cols-2">
+                          <div className="grid gap-1.5 sm:gap-2 sm:grid-cols-2">
                             {teacher.sectionDetails.map((section) => (
                               <div
                                 key={section.sectionId}
-                                className="rounded-lg bg-muted/50 p-3"
+                                className="rounded-md bg-muted/50 p-2 sm:rounded-lg sm:p-3"
                               >
-                                <div className="flex items-center justify-between">
-                                  <span className="font-medium text-sm">{section.label}</span>
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="truncate text-xs font-medium sm:text-sm">{section.label}</span>
                                   {section.isClassTeacher && (
-                                    <Badge className="text-xs">Class Teacher</Badge>
+                                    <Badge className="shrink-0 text-[10px] sm:text-xs">CT</Badge>
                                   )}
                                 </div>
                                 {section.subjects.length > 0 && (
-                                  <div className="mt-2 flex flex-wrap gap-1">
+                                  <div className="mt-1 flex flex-wrap gap-0.5 sm:mt-2 sm:gap-1">
                                     {section.subjects.map((subj, i) => (
-                                      <Badge key={i} variant="secondary" className="text-xs">
+                                      <Badge key={i} variant="secondary" className="text-[10px] sm:text-xs">
                                         {subj}
                                       </Badge>
                                     ))}
@@ -632,7 +631,7 @@ export function PrincipalTeachersTab({ schoolId }: PrincipalTeachersTabProps) {
 
                       {/* Mini Weekly Timetable */}
                       <div>
-                        <h5 className="mb-2 text-sm font-medium text-muted-foreground">
+                        <h5 className="mb-1.5 text-xs font-medium text-muted-foreground sm:mb-2 sm:text-sm">
                           Weekly Schedule ({teacher.totalPeriods} periods)
                         </h5>
                         <MiniWeeklyTimetable

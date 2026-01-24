@@ -1,11 +1,13 @@
 import { PropsWithChildren, useEffect, useState } from "react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
-import { BarChart3, CalendarDays, Coins, GraduationCap, Headphones, KanbanSquare, LayoutGrid, Settings, ShieldCheck, Sparkles, Users } from "lucide-react";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { BarChart3, CalendarDays, Coins, GraduationCap, Headphones, KanbanSquare, LayoutGrid, Menu, Settings, ShieldCheck, Sparkles, Users, X } from "lucide-react";
 import type { EduverseRole } from "@/lib/eduverse-roles";
 import { supabase } from "@/integrations/supabase/client";
 import { GlobalCommandPalette } from "@/components/global/GlobalCommandPalette";
 import { NotificationsBell } from "@/components/global/NotificationsBell";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type Props = PropsWithChildren<{
   title: string;
@@ -16,6 +18,8 @@ type Props = PropsWithChildren<{
 
 export function TenantShell({ title, subtitle, role, schoolSlug, children }: Props) {
   const [schoolId, setSchoolId] = useState<string | null>(null);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   // Apply per-school branding to global CSS vars (white-labeling hook point)
   useEffect(() => {
@@ -43,151 +47,145 @@ export function TenantShell({ title, subtitle, role, schoolSlug, children }: Pro
     };
   }, [schoolSlug]);
 
+  const navItems = [
+    { to: `/${schoolSlug}/${role}`, icon: LayoutGrid, label: "Dashboard", show: true },
+    { to: `/${schoolSlug}/${role}/admin`, icon: ShieldCheck, label: "Admin", show: role === "super_admin" },
+    { to: `/${schoolSlug}/${role}/schools`, icon: ShieldCheck, label: "Schools", show: role === "super_admin" },
+    { to: `/${schoolSlug}/${role}/users`, icon: Users, label: "Staff", show: true },
+    { to: `/${schoolSlug}/${role}/crm`, icon: KanbanSquare, label: "CRM", show: true },
+    { to: `/${schoolSlug}/${role}/academic`, icon: GraduationCap, label: "Academic", show: true },
+    { to: `/${schoolSlug}/${role}/timetable`, icon: CalendarDays, label: "Timetable", show: true },
+    { to: `/${schoolSlug}/${role}/attendance`, icon: GraduationCap, label: "Attendance", show: true },
+    { to: `/${schoolSlug}/${role}/finance`, icon: Coins, label: "Finance", show: ["principal", "vice_principal", "accountant", "super_admin", "school_owner"].includes(role) },
+    { to: `/${schoolSlug}/${role}/reports`, icon: BarChart3, label: "Reports", show: true },
+    { to: `/${schoolSlug}/${role}/support`, icon: Headphones, label: "Support", show: ["principal", "vice_principal", "super_admin", "school_owner", "hr_manager"].includes(role) },
+    { to: `/${schoolSlug}/${role}?settings=1`, icon: Settings, label: "Settings", show: true },
+  ].filter(item => item.show);
+
+  // Bottom navigation items for mobile (limited to 5 key items)
+  const bottomNavItems = [
+    { to: `/${schoolSlug}/${role}`, icon: LayoutGrid, label: "Home" },
+    { to: `/${schoolSlug}/${role}/academic`, icon: GraduationCap, label: "Academic" },
+    { to: `/${schoolSlug}/${role}/users`, icon: Users, label: "Staff" },
+    { to: `/${schoolSlug}/${role}/crm`, icon: KanbanSquare, label: "CRM" },
+  ];
+
+  const NavContent = () => (
+    <>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="font-display text-lg font-semibold tracking-tight">EDUVERSE</p>
+          <p className="text-xs text-muted-foreground">/{schoolSlug} • {role}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <NotificationsBell schoolId={schoolId} />
+          <Button
+            variant="soft"
+            size="icon"
+            aria-label="Search"
+            onClick={() => window.dispatchEvent(new Event("eduverse:open-search"))}
+          >
+            <Sparkles />
+          </Button>
+        </div>
+      </div>
+
+      <nav className="mt-6 space-y-1">
+        {navItems.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.to === `/${schoolSlug}/${role}`}
+            className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
+            activeClassName="bg-accent text-accent-foreground"
+            onClick={() => setMobileNavOpen(false)}
+          >
+            <item.icon className="h-4 w-4" /> {item.label}
+          </NavLink>
+        ))}
+      </nav>
+
+      <div className="mt-6 rounded-2xl bg-accent p-4">
+        <p className="text-sm font-medium text-accent-foreground">Foundation status</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Modules will light up as we add CRM, academics, finance, HR, comms, and BI.
+        </p>
+      </div>
+    </>
+  );
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20 lg:pb-0">
       <GlobalCommandPalette basePath={`/${schoolSlug}/${role}`} />
-      <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-6 px-6 py-6 lg:grid-cols-[280px_1fr]">
-        <aside className="sticky top-6 self-start max-h-[calc(100vh-3rem)] overflow-y-auto rounded-3xl bg-surface p-4 shadow-elevated">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-display text-lg font-semibold tracking-tight">EDUVERSE</p>
-              <p className="text-xs text-muted-foreground">/{schoolSlug} • {role}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <NotificationsBell schoolId={schoolId} />
-              <Button
-                variant="soft"
-                size="icon"
-                aria-label="Search"
-                onClick={() => window.dispatchEvent(new Event("eduverse:open-search"))}
-              >
-                <Sparkles />
+      
+      {/* Mobile Header */}
+      <header className="sticky top-0 z-40 flex items-center justify-between border-b bg-background/95 px-4 py-3 backdrop-blur lg:hidden">
+        <div className="flex items-center gap-3">
+          <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Menu className="h-5 w-5" />
               </Button>
-            </div>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[280px] p-4">
+              <NavContent />
+            </SheetContent>
+          </Sheet>
+          <div>
+            <p className="font-display text-base font-semibold tracking-tight">{title}</p>
+            {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
           </div>
-
-          <nav className="mt-6 space-y-1">
-            <NavLink
-              to={`/${schoolSlug}/${role}`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
-            >
-              <LayoutGrid className="h-4 w-4" /> Dashboard
-            </NavLink>
-
-            {role === "super_admin" && (
-              <NavLink
-                to={`/${schoolSlug}/${role}/admin`}
-                className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-                activeClassName="bg-accent text-accent-foreground"
-              >
-                <ShieldCheck className="h-4 w-4" /> Admin Console
-              </NavLink>
-            )}
-
-            {role === "super_admin" && (
-              <NavLink
-                to={`/${schoolSlug}/${role}/schools`}
-                className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-                activeClassName="bg-accent text-accent-foreground"
-              >
-                <ShieldCheck className="h-4 w-4" /> All Schools
-              </NavLink>
-            )}
-
-            <NavLink
-              to={`/${schoolSlug}/${role}/users`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
-            >
-              <Users className="h-4 w-4" /> Staff & Users
-            </NavLink>
-
-            <NavLink
-              to={`/${schoolSlug}/${role}/crm`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
-            >
-              <KanbanSquare className="h-4 w-4" /> Admissions CRM
-            </NavLink>
-
-            <NavLink
-              to={`/${schoolSlug}/${role}/academic`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
-            >
-              <GraduationCap className="h-4 w-4" /> Academic Core
-            </NavLink>
-
-            <NavLink
-              to={`/${schoolSlug}/${role}/timetable`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
-            >
-              <CalendarDays className="h-4 w-4" /> Timetable Builder
-            </NavLink>
-
-            <NavLink
-              to={`/${schoolSlug}/${role}/attendance`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
-            >
-              <GraduationCap className="h-4 w-4" /> Attendance
-            </NavLink>
-
-            {(["principal", "vice_principal", "accountant", "super_admin", "school_owner"] as EduverseRole[]).includes(role) && (
-              <NavLink
-                to={`/${schoolSlug}/${role}/finance`}
-                className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-                activeClassName="bg-accent text-accent-foreground"
-              >
-                <Coins className="h-4 w-4" /> Finance
-              </NavLink>
-            )}
-
-            <NavLink
-              to={`/${schoolSlug}/${role}/reports`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
-            >
-              <BarChart3 className="h-4 w-4" /> Reports
-            </NavLink>
-
-            {(["principal", "vice_principal", "super_admin", "school_owner", "hr_manager"] as EduverseRole[]).includes(role) && (
-              <NavLink
-                to={`/${schoolSlug}/${role}/support`}
-                className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-                activeClassName="bg-accent text-accent-foreground"
-              >
-                <Headphones className="h-4 w-4" /> Support
-              </NavLink>
-            )}
-
-            <NavLink
-              to={`/${schoolSlug}/${role}?settings=1`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
-            >
-              <Settings className="h-4 w-4" /> Settings
-            </NavLink>
-          </nav>
-
-          <div className="mt-6 rounded-2xl bg-accent p-4">
-            <p className="text-sm font-medium text-accent-foreground">Foundation status</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Modules will light up as we add CRM, academics, finance, HR, comms, and BI.
-            </p>
-          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <NotificationsBell schoolId={schoolId} />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => window.dispatchEvent(new Event("eduverse:open-search"))}
+          >
+            <Sparkles className="h-5 w-5" />
+          </Button>
+        </div>
+      </header>
+      
+      <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-4 px-4 py-4 lg:grid-cols-[280px_1fr] lg:gap-6 lg:px-6 lg:py-6">
+        {/* Desktop Sidebar */}
+        <aside className="sticky top-6 hidden self-start max-h-[calc(100vh-3rem)] overflow-y-auto rounded-3xl bg-surface p-4 shadow-elevated lg:block">
+          <NavContent />
         </aside>
 
-        <section className="rounded-3xl bg-surface p-6 shadow-elevated">
-          <header className="mb-6">
+        {/* Main Content */}
+        <section className="rounded-2xl bg-surface p-4 shadow-elevated lg:rounded-3xl lg:p-6">
+          <header className="mb-4 hidden lg:mb-6 lg:block">
             <p className="font-display text-2xl font-semibold tracking-tight">{title}</p>
             {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}
           </header>
           {children}
         </section>
       </div>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t bg-background/95 px-2 py-2 backdrop-blur lg:hidden">
+        {bottomNavItems.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.to === `/${schoolSlug}/${role}`}
+            className="flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-2 text-muted-foreground transition-colors"
+            activeClassName="text-primary bg-primary/10"
+          >
+            <item.icon className="h-5 w-5" />
+            <span className="text-[10px] font-medium">{item.label}</span>
+          </NavLink>
+        ))}
+        <button
+          onClick={() => setMobileNavOpen(true)}
+          className="flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-2 text-muted-foreground transition-colors"
+        >
+          <Menu className="h-5 w-5" />
+          <span className="text-[10px] font-medium">More</span>
+        </button>
+      </nav>
     </div>
   );
 }
