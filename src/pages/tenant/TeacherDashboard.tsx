@@ -19,6 +19,9 @@ import { TeacherReportsModule } from "@/pages/tenant/teacher-modules/TeacherRepo
 import { TeacherTimetableModule } from "@/pages/tenant/teacher-modules/TeacherTimetableModule";
 import { TeacherMessagesModule } from "@/pages/tenant/teacher-modules/TeacherMessagesModule";
 import { TeacherAdminInboxModule } from "@/pages/tenant/teacher-modules/TeacherAdminInboxModule";
+import { TeacherGradebookModule } from "@/pages/tenant/teacher-modules/TeacherGradebookModule";
+import { TeacherProgressModule } from "@/pages/tenant/teacher-modules/TeacherProgressModule";
+import { TeacherLessonPlannerModule } from "@/pages/tenant/teacher-modules/TeacherLessonPlannerModule";
 
 const TeacherDashboard = () => {
   const { schoolSlug } = useParams();
@@ -158,6 +161,9 @@ const TeacherDashboard = () => {
             <Route path="homework" element={<TeacherHomeworkModule />} />
             <Route path="assignments" element={<TeacherAssignmentsModule />} />
             <Route path="behavior" element={<TeacherBehaviorModule />} />
+            <Route path="gradebook" element={<TeacherGradebookModule />} />
+            <Route path="progress" element={<TeacherProgressModule />} />
+            <Route path="lesson-plans" element={<TeacherLessonPlannerModule />} />
             <Route path="reports" element={<TeacherReportsModule />} />
             <Route path="timetable" element={<TeacherTimetableModule />} />
             <Route path="messages" element={<TeacherMessagesModule />} />

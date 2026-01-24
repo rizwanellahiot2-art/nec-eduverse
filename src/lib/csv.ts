@@ -90,3 +90,17 @@ export function toCsv(rows: Array<Record<string, string | number | null | undefi
   const lines = rows.map((r) => keys.map((k) => escapeCsv(String(r[k] ?? ""))).join(","));
   return [header, ...lines].join("\n");
 }
+
+export function exportToCSV(rows: Array<Record<string, string | number | null | undefined>>, filename: string): void {
+  const csvContent = toCsv(rows);
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `${filename}.csv`);
+  link.style.visibility = "hidden";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}

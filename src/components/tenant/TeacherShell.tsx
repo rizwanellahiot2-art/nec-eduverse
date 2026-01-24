@@ -13,6 +13,9 @@ import {
   Send,
   Sparkles,
   Users,
+  TableIcon,
+  TrendingUp,
+  BookCheck,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GlobalCommandPalette } from "@/components/global/GlobalCommandPalette";
@@ -125,6 +128,30 @@ export function TeacherShell({ title, subtitle, schoolSlug, children }: Props) {
               activeClassName="bg-accent text-accent-foreground"
             >
               <NotebookPen className="h-4 w-4" /> Behavior Notes
+            </NavLink>
+
+            <NavLink
+              to={`${basePath}/gradebook`}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
+              activeClassName="bg-accent text-accent-foreground"
+            >
+              <Table2 className="h-4 w-4" /> Gradebook
+            </NavLink>
+
+            <NavLink
+              to={`${basePath}/progress`}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
+              activeClassName="bg-accent text-accent-foreground"
+            >
+              <TrendingUp className="h-4 w-4" /> Student Progress
+            </NavLink>
+
+            <NavLink
+              to={`${basePath}/lesson-plans`}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
+              activeClassName="bg-accent text-accent-foreground"
+            >
+              <BookOpenCheck className="h-4 w-4" /> Lesson Planner
             </NavLink>
 
             <NavLink
