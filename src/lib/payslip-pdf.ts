@@ -57,7 +57,7 @@ export function generatePayslipHTML(data: PayslipData): string {
       overflow: hidden;
     }
     .header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #007fff 0%, #0066cc 100%);
       color: white;
       padding: 30px;
       text-align: center;
@@ -138,7 +138,7 @@ export function generatePayslipHTML(data: PayslipData): string {
       color: #ef4444;
     }
     .totals {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #007fff 0%, #0066cc 100%);
       color: white;
       padding: 25px;
       border-radius: 10px;
@@ -398,7 +398,7 @@ export function generateBulkPayslipsHTML(payslips: PayslipData[]): string {
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f5f5f5; padding: 20px; color: #1a1a2e; }
     .payslip { max-width: 800px; margin: 0 auto 40px; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); overflow: hidden; }
-    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 25px; text-align: center; }
+    .header { background: linear-gradient(135deg, #007fff 0%, #0066cc 100%); color: white; padding: 25px; text-align: center; }
     .header h1 { font-size: 24px; margin-bottom: 4px; }
     .header p { opacity: 0.9; font-size: 13px; }
     .period-badge { display: inline-block; background: rgba(255,255,255,0.2); padding: 6px 16px; border-radius: 16px; margin-top: 12px; font-weight: 500; font-size: 13px; }
@@ -415,7 +415,7 @@ export function generateBulkPayslipsHTML(payslips: PayslipData[]): string {
     .line-item .amount { font-weight: 600; font-size: 14px; }
     .line-item .amount.positive { color: #22c55e; }
     .line-item .amount.negative { color: #ef4444; }
-    .totals { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; margin-top: 16px; }
+    .totals { background: linear-gradient(135deg, #007fff 0%, #0066cc 100%); color: white; padding: 20px; border-radius: 8px; margin-top: 16px; }
     .totals .row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; }
     .totals .row.net { font-size: 20px; font-weight: 700; padding-top: 12px; margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.3); }
     .footer { text-align: center; padding: 16px; color: #999; font-size: 11px; border-top: 1px solid #eee; }
