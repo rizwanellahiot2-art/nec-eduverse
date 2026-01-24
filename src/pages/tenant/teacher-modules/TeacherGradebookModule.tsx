@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Save, Download } from "lucide-react";
+import { Save, Download, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useSession } from "@/hooks/useSession";
@@ -13,6 +13,16 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { exportToCSV } from "@/lib/csv";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 interface Section {
   id: string;
@@ -20,11 +30,17 @@ interface Section {
   class_name: string;
 }
 
+interface Subject {
+  id: string;
+  name: string;
+}
+
 interface Assessment {
   id: string;
   title: string;
   max_marks: number;
   assessment_date: string;
+  subject_id: string | null;
 }
 
 interface Student {
@@ -47,6 +63,7 @@ export function TeacherGradebookModule() {
   const schoolId = tenant.status === "ready" ? tenant.schoolId : null;
 
   const [sections, setSections] = useState<Section[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [marks, setMarks] = useState<Map<string, Mark>>(new Map());
@@ -55,10 +72,21 @@ export function TeacherGradebookModule() {
   const [saving, setSaving] = useState(false);
 
   const [selectedSection, setSelectedSection] = useState<string>("");
+  
+  // New assessment form state
+  const [showNewAssessment, setShowNewAssessment] = useState(false);
+  const [newAssessment, setNewAssessment] = useState({
+    title: "",
+    max_marks: 100,
+    assessment_date: new Date().toISOString().slice(0, 10),
+    subject_id: "",
+  });
+  const [creatingAssessment, setCreatingAssessment] = useState(false);
 
   useEffect(() => {
     if (schoolId && user?.id) {
       loadSections();
+      loadSubjects();
     }
   }, [schoolId, user?.id]);
 
@@ -67,6 +95,15 @@ export function TeacherGradebookModule() {
       loadGradebook();
     }
   }, [selectedSection, schoolId]);
+
+  const loadSubjects = async () => {
+    const { data } = await supabase
+      .from("subjects")
+      .select("id, name")
+      .eq("school_id", schoolId!)
+      .order("name");
+    setSubjects((data as Subject[]) || []);
+  };
 
   const loadSections = async () => {
     const { data: assignments } = await supabase
@@ -108,7 +145,7 @@ export function TeacherGradebookModule() {
     // Load assessments for section
     const { data: assessData } = await supabase
       .from("academic_assessments")
-      .select("id, title, max_marks, assessment_date")
+      .select("id, title, max_marks, assessment_date, subject_id")
       .eq("school_id", schoolId!)
       .eq("class_section_id", selectedSection)
       .order("assessment_date", { ascending: true });
@@ -155,6 +192,69 @@ export function TeacherGradebookModule() {
 
     setEditedMarks(new Map());
     setLoading(false);
+  };
+
+  const createAssessment = async () => {
+    if (!schoolId || !selectedSection) return;
+    if (!newAssessment.title.trim()) {
+      toast.error("Title is required");
+      return;
+    }
+
+    setCreatingAssessment(true);
+    const { error } = await supabase.from("academic_assessments").insert({
+      school_id: schoolId,
+      class_section_id: selectedSection,
+      title: newAssessment.title.trim(),
+      max_marks: newAssessment.max_marks,
+      assessment_date: newAssessment.assessment_date,
+      subject_id: newAssessment.subject_id || null,
+    });
+
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Assessment created");
+      setShowNewAssessment(false);
+      setNewAssessment({
+        title: "",
+        max_marks: 100,
+        assessment_date: new Date().toISOString().slice(0, 10),
+        subject_id: "",
+      });
+      loadGradebook();
+    }
+    setCreatingAssessment(false);
+  };
+
+  const deleteAssessment = async (assessmentId: string) => {
+    if (!schoolId) return;
+    
+    // Check if marks exist
+    const { data: existingMarks } = await supabase
+      .from("student_marks")
+      .select("id")
+      .eq("school_id", schoolId)
+      .eq("assessment_id", assessmentId)
+      .limit(1);
+
+    if ((existingMarks || []).length > 0) {
+      toast.error("Cannot delete: marks exist for this assessment");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("academic_assessments")
+      .delete()
+      .eq("school_id", schoolId)
+      .eq("id", assessmentId);
+
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Assessment deleted");
+      loadGradebook();
+    }
   };
 
   const getMark = (studentId: string, assessmentId: string): number | null => {
@@ -283,6 +383,77 @@ export function TeacherGradebookModule() {
         </Select>
 
         <div className="flex gap-2">
+          <Dialog open={showNewAssessment} onOpenChange={setShowNewAssessment}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Plus className="h-4 w-4 mr-1" /> New Assessment
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create Assessment</DialogTitle>
+                <DialogDescription>
+                  Add a new assessment for this section. Students will be graded on this.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="title">Title</Label>
+                  <Input
+                    id="title"
+                    value={newAssessment.title}
+                    onChange={(e) => setNewAssessment((p) => ({ ...p, title: e.target.value }))}
+                    placeholder="e.g., Midterm Exam, Quiz 1"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="max_marks">Max Marks</Label>
+                    <Input
+                      id="max_marks"
+                      type="number"
+                      min={1}
+                      max={1000}
+                      value={newAssessment.max_marks}
+                      onChange={(e) => setNewAssessment((p) => ({ ...p, max_marks: Number(e.target.value) || 100 }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="date">Date</Label>
+                    <Input
+                      id="date"
+                      type="date"
+                      value={newAssessment.assessment_date}
+                      onChange={(e) => setNewAssessment((p) => ({ ...p, assessment_date: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="subject">Subject (optional)</Label>
+                  <Select 
+                    value={newAssessment.subject_id} 
+                    onValueChange={(v) => setNewAssessment((p) => ({ ...p, subject_id: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select subject" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">No subject</SelectItem>
+                      {subjects.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowNewAssessment(false)}>Cancel</Button>
+                <Button onClick={createAssessment} disabled={creatingAssessment}>
+                  {creatingAssessment ? "Creating..." : "Create"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           <Button variant="outline" onClick={exportGradebook} disabled={students.length === 0}>
             <Download className="h-4 w-4 mr-1" /> Export
           </Button>
@@ -314,8 +485,19 @@ export function TeacherGradebookModule() {
                   <TableRow>
                     <TableHead className="sticky left-0 bg-background min-w-[150px]">Student</TableHead>
                     {assessments.map((a) => (
-                      <TableHead key={a.id} className="text-center min-w-[100px]">
-                        <div className="text-xs">{a.title}</div>
+                      <TableHead key={a.id} className="text-center min-w-[120px]">
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="text-xs">{a.title}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 text-muted-foreground hover:text-destructive"
+                            onClick={() => deleteAssessment(a.id)}
+                            title="Delete assessment"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
                         <div className="text-xs text-muted-foreground">/{a.max_marks}</div>
                       </TableHead>
                     ))}
