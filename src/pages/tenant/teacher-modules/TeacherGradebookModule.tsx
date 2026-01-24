@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Save, Download, Plus, Trash2 } from "lucide-react";
+import { Save, Download, Plus, Trash2, BarChart3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useSession } from "@/hooks/useSession";
@@ -23,6 +23,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+
+// Grade bands for distribution
+const GRADE_BANDS = [
+  { label: "A (90-100%)", min: 90, max: 100, color: "hsl(var(--chart-1))" },
+  { label: "B (80-89%)", min: 80, max: 89.99, color: "hsl(var(--chart-2))" },
+  { label: "C (70-79%)", min: 70, max: 79.99, color: "hsl(var(--chart-3))" },
+  { label: "D (60-69%)", min: 60, max: 69.99, color: "hsl(var(--chart-4))" },
+  { label: "F (<60%)", min: 0, max: 59.99, color: "hsl(var(--chart-5))" },
+];
 
 interface Section {
   id: string;
@@ -94,6 +104,9 @@ export function TeacherGradebookModule() {
     subject_id: "",
   });
   const [creatingAssessment, setCreatingAssessment] = useState(false);
+  
+  // Grade distribution chart state
+  const [chartAssessment, setChartAssessment] = useState<Assessment | null>(null);
 
   const applyTemplate = (template: typeof ASSESSMENT_TEMPLATES[0]) => {
     setNewAssessment((p) => ({
@@ -101,6 +114,39 @@ export function TeacherGradebookModule() {
       title: template.title,
       max_marks: template.max_marks,
     }));
+  };
+
+  // Calculate grade distribution for a specific assessment
+  const getGradeDistribution = (assessment: Assessment) => {
+    const distribution = GRADE_BANDS.map((band) => ({
+      ...band,
+      count: 0,
+    }));
+
+    let totalMarks = 0;
+    let graded = 0;
+
+    students.forEach((student) => {
+      const mark = getMark(student.id, assessment.id);
+      if (mark !== null) {
+        const percentage = (mark / assessment.max_marks) * 100;
+        totalMarks += percentage;
+        graded++;
+        
+        const band = distribution.find((b) => percentage >= b.min && percentage <= b.max);
+        if (band) band.count++;
+      }
+    });
+
+    return {
+      distribution,
+      stats: {
+        total: students.length,
+        graded,
+        average: graded > 0 ? totalMarks / graded : 0,
+        passRate: graded > 0 ? (distribution.filter((d) => d.min >= 60).reduce((sum, d) => sum + d.count, 0) / graded) * 100 : 0,
+      },
+    };
   };
 
   useEffect(() => {
@@ -522,9 +568,18 @@ export function TeacherGradebookModule() {
                   <TableRow>
                     <TableHead className="sticky left-0 bg-background min-w-[150px]">Student</TableHead>
                     {assessments.map((a) => (
-                      <TableHead key={a.id} className="text-center min-w-[120px]">
-                        <div className="flex items-center justify-center gap-1">
+                      <TableHead key={a.id} className="text-center min-w-[140px]">
+                        <div className="flex items-center justify-center gap-0.5">
                           <span className="text-xs">{a.title}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 text-muted-foreground hover:text-primary"
+                            onClick={() => setChartAssessment(a)}
+                            title="View grade distribution"
+                          >
+                            <BarChart3 className="h-3 w-3" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -593,6 +648,88 @@ export function TeacherGradebookModule() {
           )}
         </CardContent>
       </Card>
+
+      {/* Grade Distribution Chart Dialog */}
+      <Dialog open={!!chartAssessment} onOpenChange={(open) => !open && setChartAssessment(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Grade Distribution</DialogTitle>
+            <DialogDescription>
+              {chartAssessment?.title} — Max: {chartAssessment?.max_marks} marks
+            </DialogDescription>
+          </DialogHeader>
+          {chartAssessment && (() => {
+            const { distribution, stats } = getGradeDistribution(chartAssessment);
+            return (
+              <div className="space-y-4">
+                {/* Stats Summary */}
+                <div className="grid grid-cols-4 gap-2 text-center">
+                  <div className="rounded-lg bg-muted p-2">
+                    <div className="text-lg font-semibold">{stats.graded}/{stats.total}</div>
+                    <div className="text-xs text-muted-foreground">Graded</div>
+                  </div>
+                  <div className="rounded-lg bg-muted p-2">
+                    <div className="text-lg font-semibold">{stats.average.toFixed(1)}%</div>
+                    <div className="text-xs text-muted-foreground">Average</div>
+                  </div>
+                  <div className="rounded-lg bg-muted p-2">
+                    <div className="text-lg font-semibold">{stats.passRate.toFixed(0)}%</div>
+                    <div className="text-xs text-muted-foreground">Pass Rate</div>
+                  </div>
+                  <div className="rounded-lg bg-muted p-2">
+                    <div className="text-lg font-semibold">
+                      {distribution.reduce((max, d) => d.count > max.count ? d : max, distribution[0]).label.split(" ")[0]}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Most Common</div>
+                  </div>
+                </div>
+
+                {/* Bar Chart */}
+                <div className="h-[200px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={distribution} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                      <XAxis type="number" allowDecimals={false} />
+                      <YAxis 
+                        type="category" 
+                        dataKey="label" 
+                        width={80} 
+                        tick={{ fontSize: 11 }}
+                      />
+                      <Tooltip 
+                        formatter={(value: number) => [`${value} students`, "Count"]}
+                        contentStyle={{ 
+                          backgroundColor: "hsl(var(--popover))", 
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px"
+                        }}
+                      />
+                      <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+                        {distribution.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Legend */}
+                <div className="flex flex-wrap justify-center gap-3 text-xs">
+                  {distribution.map((band) => (
+                    <div key={band.label} className="flex items-center gap-1">
+                      <div 
+                        className="h-3 w-3 rounded-sm" 
+                        style={{ backgroundColor: band.color }} 
+                      />
+                      <span>{band.label}: {band.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
