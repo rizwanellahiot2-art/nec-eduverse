@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Plus, Users, CheckCircle, Clock, FileCheck, MessageSquare } from "lucide-react";
+import { Plus, Users, CheckCircle, Clock, FileCheck, MessageSquare, Paperclip } from "lucide-react";
+import { AttachmentsList } from "@/components/assignments/AttachmentsList";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useSession } from "@/hooks/useSession";
@@ -39,6 +40,7 @@ interface Submission {
   first_name: string;
   last_name: string | null;
   submission_text: string | null;
+  attachment_urls: string[] | null;
   submitted_at: string;
   status: string;
   marks_obtained: number | null;
@@ -317,6 +319,7 @@ export function TeacherAssignmentsModule() {
         first_name: s.first_name,
         last_name: s.last_name,
         submission_text: sub?.submission_text || null,
+        attachment_urls: sub?.attachment_urls || null,
         submitted_at: sub?.submitted_at || "",
         status: sub?.status || "not_submitted",
         marks_obtained: sub?.marks_obtained ?? null,
@@ -628,6 +631,10 @@ export function TeacherAssignmentsModule() {
               </div>
             )}
             
+            {selectedSubmission?.attachment_urls && selectedSubmission.attachment_urls.length > 0 && (
+              <AttachmentsList attachmentUrls={selectedSubmission.attachment_urls} />
+            )}
+            
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Marks (out of {selectedAssignment?.max_marks})</Label>
@@ -775,7 +782,12 @@ function SubmissionRow({
     <div className="flex items-center justify-between rounded-lg border p-3">
       <div className="flex items-center gap-3">
         <div>
-          <p className="font-medium">{sub.first_name} {sub.last_name}</p>
+          <div className="flex items-center gap-2">
+            <p className="font-medium">{sub.first_name} {sub.last_name}</p>
+            {sub.attachment_urls && sub.attachment_urls.length > 0 && (
+              <Paperclip className="h-4 w-4 text-muted-foreground" />
+            )}
+          </div>
           {sub.submitted_at && (
             <p className="text-xs text-muted-foreground">
               Submitted: {new Date(sub.submitted_at).toLocaleString()}
