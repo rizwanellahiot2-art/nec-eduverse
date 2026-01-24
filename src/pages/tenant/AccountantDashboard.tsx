@@ -11,6 +11,7 @@
  import { AccountantExpensesModule } from "@/pages/tenant/accountant-modules/AccountantExpensesModule";
  import { AccountantPayrollModule } from "@/pages/tenant/accountant-modules/AccountantPayrollModule";
  import { AccountantReportsModule } from "@/pages/tenant/accountant-modules/AccountantReportsModule";
+  import { TimetableBuilderModule } from "@/pages/tenant/modules/TimetableBuilderModule";
  
  const AccountantDashboard = () => {
    const { schoolSlug } = useParams();
@@ -90,6 +91,7 @@
            <Route path="expenses" element={<AccountantExpensesModule />} />
            <Route path="payroll" element={<AccountantPayrollModule />} />
            <Route path="reports" element={<AccountantReportsModule />} />
+            <Route path="timetable" element={<TimetableBuilderModule />} />
            <Route path="*" element={<Navigate to={`/${tenant.slug}/accountant`} replace />} />
          </Routes>
        )}

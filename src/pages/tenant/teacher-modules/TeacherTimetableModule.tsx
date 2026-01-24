@@ -1,25 +1,28 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PeriodTimetableGrid, type PeriodTimetableEntry } from "@/components/timetable/PeriodTimetableGrid";
+
+type Period = { id: string; label: string; sort_order: number; start_time: string | null; end_time: string | null };
 
 interface TimetableEntry {
   id: string;
   subject_name: string;
   day_of_week: number;
-  start_time: string;
-  end_time: string;
+  period_id: string;
   room: string | null;
-  section_name: string;
+  teacher_user_id: string | null;
+  section_label: string | null;
 }
-
-const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 export function TeacherTimetableModule() {
   const { schoolSlug } = useParams();
   const tenant = useTenant(schoolSlug);
   const [entries, setEntries] = useState<TimetableEntry[]>([]);
+  const [periods, setPeriods] = useState<Period[]>([]);
+  const [directory, setDirectory] = useState<Array<{ user_id: string; display_name: string | null; email: string }>>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,14 +33,26 @@ export function TeacherTimetableModule() {
 
       const { data: user } = await supabase.auth.getUser();
 
+      const [{ data: p }, { data: dir }] = await Promise.all([
+        supabase
+          .from("timetable_periods")
+          .select("id,label,sort_order,start_time,end_time")
+          .eq("school_id", tenant.schoolId)
+          .order("sort_order", { ascending: true }),
+        supabase.from("school_user_directory").select("user_id,display_name,email").eq("school_id", tenant.schoolId),
+      ]);
+
+      setPeriods((p ?? []) as any);
+      setDirectory((dir ?? []) as any);
+
       // Get teacher's timetable entries
       const { data: timetableData } = await supabase
         .from("timetable_entries")
-        .select("*, class_sections(name, academic_classes(name))")
+        .select("id,subject_name,day_of_week,period_id,room,teacher_user_id,class_section_id, class_sections(name, academic_classes(name))")
         .eq("school_id", tenant.schoolId)
         .eq("teacher_user_id", user.user?.id)
         .order("day_of_week")
-        .order("start_time");
+        .order("period_id");
 
       if (!timetableData?.length) {
         // Also check for sections they're assigned to
@@ -50,42 +65,48 @@ export function TeacherTimetableModule() {
           const sectionIds = assignments.map((a) => a.class_section_id);
           const { data: sectionTimetable } = await supabase
             .from("timetable_entries")
-            .select("*, class_sections(name, academic_classes(name))")
+            .select("id,subject_name,day_of_week,period_id,room,teacher_user_id,class_section_id, class_sections(name, academic_classes(name))")
             .eq("school_id", tenant.schoolId)
             .in("class_section_id", sectionIds)
             .order("day_of_week")
-            .order("start_time");
+            .order("period_id");
 
           if (sectionTimetable?.length) {
-            const enriched = sectionTimetable.map((e: any) => ({
-              id: e.id,
-              subject_name: e.subject_name,
-              day_of_week: e.day_of_week,
-              start_time: e.start_time,
-              end_time: e.end_time,
-              room: e.room,
-              section_name: e.class_sections
-                ? `${e.class_sections.academic_classes?.name || ""} - ${e.class_sections.name}`
-                : "",
-            }));
-            setEntries(enriched);
+            const enriched = sectionTimetable.map((e: any) => {
+              const sectionLabel = e.class_sections
+                ? `${e.class_sections.academic_classes?.name || ""} • ${e.class_sections.name}`.trim()
+                : null;
+              return {
+                id: e.id,
+                subject_name: e.subject_name,
+                day_of_week: e.day_of_week,
+                period_id: e.period_id,
+                room: e.room,
+                teacher_user_id: e.teacher_user_id,
+                section_label: sectionLabel,
+              } satisfies TimetableEntry;
+            });
+            setEntries(enriched as any);
           }
         }
         setLoading(false);
         return;
       }
 
-      const enriched = timetableData.map((e: any) => ({
-        id: e.id,
-        subject_name: e.subject_name,
-        day_of_week: e.day_of_week,
-        start_time: e.start_time,
-        end_time: e.end_time,
-        room: e.room,
-        section_name: e.class_sections
-          ? `${e.class_sections.academic_classes?.name || ""} - ${e.class_sections.name}`
-          : "",
-      }));
+      const enriched = timetableData.map((e: any) => {
+        const sectionLabel = e.class_sections
+          ? `${e.class_sections.academic_classes?.name || ""} • ${e.class_sections.name}`.trim()
+          : null;
+        return {
+          id: e.id,
+          subject_name: e.subject_name,
+          day_of_week: e.day_of_week,
+          period_id: e.period_id,
+          room: e.room,
+          teacher_user_id: e.teacher_user_id,
+          section_label: sectionLabel,
+        } satisfies TimetableEntry;
+      });
 
       setEntries(enriched);
       setLoading(false);
@@ -94,10 +115,25 @@ export function TeacherTimetableModule() {
     fetchTimetable();
   }, [tenant.status, tenant.schoolId]);
 
-  const groupedByDay = DAYS.map((day, index) => ({
-    day,
-    entries: entries.filter((e) => e.day_of_week === index),
-  })).filter((g) => g.entries.length > 0);
+  const teacherLabelByUserId = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const d of directory) m.set(d.user_id, d.display_name ?? d.email);
+    return m;
+  }, [directory]);
+
+  const gridEntries = useMemo(() => {
+    return entries.map((e) =>
+      ({
+        id: e.id,
+        day_of_week: e.day_of_week,
+        period_id: e.period_id,
+        subject_name: e.subject_name,
+        room: e.room,
+        teacher_name: e.teacher_user_id ? teacherLabelByUserId.get(e.teacher_user_id) ?? null : null,
+        section_label: e.section_label,
+      }) satisfies PeriodTimetableEntry
+    );
+  }, [entries, teacherLabelByUserId]);
 
   if (loading) {
     return <p className="text-sm text-muted-foreground">Loading...</p>;
@@ -115,34 +151,7 @@ export function TeacherTimetableModule() {
               No timetable entries found. Timetable can be configured by school administrators.
             </p>
           ) : (
-            <div className="space-y-6">
-              {groupedByDay.map((group) => (
-                <div key={group.day}>
-                  <h3 className="mb-3 font-semibold text-lg">{group.day}</h3>
-                  <div className="grid gap-2">
-                    {group.entries.map((entry) => (
-                      <div
-                        key={entry.id}
-                        className="flex items-center justify-between rounded-lg border bg-accent/30 p-3"
-                      >
-                        <div>
-                          <p className="font-medium">{entry.subject_name}</p>
-                          <p className="text-sm text-muted-foreground">{entry.section_name}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-medium">
-                            {entry.start_time.slice(0, 5)} - {entry.end_time.slice(0, 5)}
-                          </p>
-                          {entry.room && (
-                            <p className="text-sm text-muted-foreground">Room: {entry.room}</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <PeriodTimetableGrid periods={periods} entries={gridEntries} />
           )}
         </CardContent>
       </Card>

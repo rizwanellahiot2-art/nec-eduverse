@@ -1,7 +1,7 @@
- import { PropsWithChildren, useEffect, useState } from "react";
+  import { PropsWithChildren, useEffect, useState } from "react";
  import { NavLink } from "@/components/NavLink";
  import { Button } from "@/components/ui/button";
-  import { Briefcase, Calendar, Coins, FileText, LayoutGrid, Star, Users as UsersIcon, ClipboardList, Headphones, LogOut, Sparkles } from "lucide-react";
+   import { Briefcase, Calendar, CalendarDays, Coins, FileText, LayoutGrid, Star, Users as UsersIcon, ClipboardList, Headphones, LogOut, Sparkles } from "lucide-react";
  import { supabase } from "@/integrations/supabase/client";
  import { GlobalCommandPalette } from "@/components/global/GlobalCommandPalette";
  import { NotificationsBell } from "@/components/global/NotificationsBell";
@@ -138,6 +138,14 @@
                 activeClassName="bg-accent text-accent-foreground"
               >
                 <Headphones className="h-4 w-4" /> Support Inbox
+              </NavLink>
+
+              <NavLink
+                to={`/${schoolSlug}/hr/timetable`}
+                className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
+                activeClassName="bg-accent text-accent-foreground"
+              >
+                <CalendarDays className="h-4 w-4" /> Timetable Builder
               </NavLink>
            </nav>
  
