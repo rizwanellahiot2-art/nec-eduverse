@@ -2,12 +2,14 @@ import { PropsWithChildren, useEffect, useState } from "react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { BarChart3, CalendarDays, Coins, GraduationCap, Headphones, KanbanSquare, LayoutGrid, Menu, Settings, ShieldCheck, Sparkles, Users, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { BarChart3, CalendarDays, Coins, GraduationCap, Headphones, KanbanSquare, LayoutGrid, Menu, MessageSquare, Settings, ShieldCheck, Sparkles, Users, X } from "lucide-react";
 import type { EduverseRole } from "@/lib/eduverse-roles";
 import { supabase } from "@/integrations/supabase/client";
 import { GlobalCommandPalette } from "@/components/global/GlobalCommandPalette";
 import { NotificationsBell } from "@/components/global/NotificationsBell";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 
 type Props = PropsWithChildren<{
   title: string;
@@ -47,27 +49,30 @@ export function TenantShell({ title, subtitle, role, schoolSlug, children }: Pro
     };
   }, [schoolSlug]);
 
+  const { unreadCount } = useUnreadMessages(schoolId);
+
   const navItems = [
-    { to: `/${schoolSlug}/${role}`, icon: LayoutGrid, label: "Dashboard", show: true },
-    { to: `/${schoolSlug}/${role}/admin`, icon: ShieldCheck, label: "Admin", show: role === "super_admin" },
-    { to: `/${schoolSlug}/${role}/schools`, icon: ShieldCheck, label: "Schools", show: role === "super_admin" },
-    { to: `/${schoolSlug}/${role}/users`, icon: Users, label: "Staff", show: true },
-    { to: `/${schoolSlug}/${role}/crm`, icon: KanbanSquare, label: "CRM", show: true },
-    { to: `/${schoolSlug}/${role}/academic`, icon: GraduationCap, label: "Academic", show: true },
-    { to: `/${schoolSlug}/${role}/timetable`, icon: CalendarDays, label: "Timetable", show: true },
-    { to: `/${schoolSlug}/${role}/attendance`, icon: GraduationCap, label: "Attendance", show: true },
-    { to: `/${schoolSlug}/${role}/finance`, icon: Coins, label: "Finance", show: ["principal", "vice_principal", "accountant", "super_admin", "school_owner"].includes(role) },
-    { to: `/${schoolSlug}/${role}/reports`, icon: BarChart3, label: "Reports", show: true },
-    { to: `/${schoolSlug}/${role}/support`, icon: Headphones, label: "Support", show: ["principal", "vice_principal", "super_admin", "school_owner", "hr_manager"].includes(role) },
-    { to: `/${schoolSlug}/${role}?settings=1`, icon: Settings, label: "Settings", show: true },
+    { to: `/${schoolSlug}/${role}`, icon: LayoutGrid, label: "Dashboard", show: true, badge: 0 },
+    { to: `/${schoolSlug}/${role}/messages`, icon: MessageSquare, label: "Messages", show: true, badge: unreadCount },
+    { to: `/${schoolSlug}/${role}/admin`, icon: ShieldCheck, label: "Admin", show: role === "super_admin", badge: 0 },
+    { to: `/${schoolSlug}/${role}/schools`, icon: ShieldCheck, label: "Schools", show: role === "super_admin", badge: 0 },
+    { to: `/${schoolSlug}/${role}/users`, icon: Users, label: "Staff", show: true, badge: 0 },
+    { to: `/${schoolSlug}/${role}/crm`, icon: KanbanSquare, label: "CRM", show: true, badge: 0 },
+    { to: `/${schoolSlug}/${role}/academic`, icon: GraduationCap, label: "Academic", show: true, badge: 0 },
+    { to: `/${schoolSlug}/${role}/timetable`, icon: CalendarDays, label: "Timetable", show: true, badge: 0 },
+    { to: `/${schoolSlug}/${role}/attendance`, icon: GraduationCap, label: "Attendance", show: true, badge: 0 },
+    { to: `/${schoolSlug}/${role}/finance`, icon: Coins, label: "Finance", show: ["principal", "vice_principal", "accountant", "super_admin", "school_owner"].includes(role), badge: 0 },
+    { to: `/${schoolSlug}/${role}/reports`, icon: BarChart3, label: "Reports", show: true, badge: 0 },
+    { to: `/${schoolSlug}/${role}/support`, icon: Headphones, label: "Support", show: ["principal", "vice_principal", "super_admin", "school_owner", "hr_manager"].includes(role), badge: 0 },
+    { to: `/${schoolSlug}/${role}?settings=1`, icon: Settings, label: "Settings", show: true, badge: 0 },
   ].filter(item => item.show);
 
   // Bottom navigation items for mobile (limited to 5 key items)
   const bottomNavItems = [
     { to: `/${schoolSlug}/${role}`, icon: LayoutGrid, label: "Home" },
+    { to: `/${schoolSlug}/${role}/messages`, icon: MessageSquare, label: "Messages", badge: unreadCount },
     { to: `/${schoolSlug}/${role}/academic`, icon: GraduationCap, label: "Academic" },
     { to: `/${schoolSlug}/${role}/users`, icon: Users, label: "Staff" },
-    { to: `/${schoolSlug}/${role}/crm`, icon: KanbanSquare, label: "CRM" },
   ];
 
   const NavContent = () => (
@@ -96,11 +101,18 @@ export function TenantShell({ title, subtitle, role, schoolSlug, children }: Pro
             key={item.to}
             to={item.to}
             end={item.to === `/${schoolSlug}/${role}`}
-            className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+            className="flex items-center justify-between rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
             activeClassName="bg-primary text-primary-foreground shadow-sm"
             onClick={() => setMobileNavOpen(false)}
           >
-            <item.icon className="h-4 w-4" /> {item.label}
+            <span className="flex items-center gap-2">
+              <item.icon className="h-4 w-4" /> {item.label}
+            </span>
+            {item.badge > 0 && (
+              <Badge variant="destructive" className="h-5 px-1.5 text-[10px]">
+                {item.badge > 99 ? "99+" : item.badge}
+              </Badge>
+            )}
           </NavLink>
         ))}
       </nav>
@@ -171,11 +183,16 @@ export function TenantShell({ title, subtitle, role, schoolSlug, children }: Pro
             key={item.to}
             to={item.to}
             end={item.to === `/${schoolSlug}/${role}`}
-            className="flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-2 text-muted-foreground transition-colors"
+            className="flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-2 text-muted-foreground transition-colors relative"
             activeClassName="text-primary-foreground bg-primary shadow-sm"
           >
             <item.icon className="h-5 w-5" />
             <span className="text-[10px] font-medium">{item.label}</span>
+            {"badge" in item && item.badge !== undefined && item.badge > 0 && (
+              <span className="absolute -top-0.5 right-1/4 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[8px] font-bold text-destructive-foreground">
+                {item.badge > 9 ? "9+" : item.badge}
+              </span>
+            )}
           </NavLink>
         ))}
         <button
