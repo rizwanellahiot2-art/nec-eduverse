@@ -18,6 +18,7 @@ import { PlatformSchoolsModule } from "@/pages/tenant/modules/PlatformSchoolsMod
 import { AttendanceReportsModule } from "@/pages/tenant/modules/AttendanceReportsModule";
 import { FinanceModule } from "@/pages/tenant/modules/FinanceModule";
 import { PrincipalHome } from "@/pages/tenant/role-homes/PrincipalHome";
+import { VicePrincipalHome } from "@/pages/tenant/role-homes/VicePrincipalHome";
 import { SupportModule } from "@/pages/tenant/modules/SupportModule";
 import { DirectoryModule } from "@/pages/tenant/modules/DirectoryModule";
 import { TimetableBuilderModule } from "@/pages/tenant/modules/TimetableBuilderModule";
@@ -204,7 +205,11 @@ const TenantDashboard = () => {
 
         {authzState === "ok" && (
           <Routes>
-            <Route index element={role === "principal" ? <PrincipalHome /> : <DashboardHome />} />
+            <Route index element={
+              role === "principal" ? <PrincipalHome /> : 
+              role === "vice_principal" ? <VicePrincipalHome /> : 
+              <DashboardHome />
+            } />
             <Route path="admin" element={<AdminConsole />} />
             <Route path="schools" element={<PlatformSchoolsModule />} />
             <Route path="users" element={<UsersModule />} />

@@ -11,8 +11,9 @@ import {
   RefreshCw,
   Users,
   UserPlus,
-  FileText,
   ClipboardList,
+  TrendingUp,
+  AlertTriangle,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +28,9 @@ import {
   XAxis,
   YAxis,
   Tooltip,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
 
 type Kpis = {
@@ -37,14 +41,19 @@ type Kpis = {
   openLeads: number;
   attendanceEntries7d: number;
   attendancePresent7d: number;
+  attendanceLate7d: number;
+  attendanceAbsent7d: number;
   revenueMtd: number;
   expensesMtd: number;
   pendingInvoices: number;
   classes: number;
   sections: number;
+  assignmentsPending: number;
 };
 
-export function PrincipalHome() {
+const COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "hsl(var(--brand))", "hsl(var(--muted))"];
+
+export function VicePrincipalHome() {
   const { schoolSlug, role } = useParams();
   const tenant = useTenant(schoolSlug);
   const navigate = useNavigate();
@@ -61,11 +70,14 @@ export function PrincipalHome() {
     openLeads: 0,
     attendanceEntries7d: 0,
     attendancePresent7d: 0,
+    attendanceLate7d: 0,
+    attendanceAbsent7d: 0,
     revenueMtd: 0,
     expensesMtd: 0,
     pendingInvoices: 0,
     classes: 0,
     sections: 0,
+    assignmentsPending: 0,
   });
   const [trend, setTrend] = useState<{ day: string; revenue: number; expenses: number }[]>([]);
   const [busy, setBusy] = useState(false);
@@ -74,6 +86,15 @@ export function PrincipalHome() {
     if (kpis.attendanceEntries7d === 0) return 0;
     return Math.round((kpis.attendancePresent7d / kpis.attendanceEntries7d) * 100);
   }, [kpis.attendanceEntries7d, kpis.attendancePresent7d]);
+
+  const attendancePieData = useMemo(() => {
+    return [
+      { name: "Present", value: kpis.attendancePresent7d },
+      { name: "Absent", value: kpis.attendanceAbsent7d },
+      { name: "Late", value: kpis.attendanceLate7d },
+      { name: "Other", value: Math.max(0, kpis.attendanceEntries7d - kpis.attendancePresent7d - kpis.attendanceAbsent7d - kpis.attendanceLate7d) },
+    ].filter(d => d.value > 0);
+  }, [kpis]);
 
   const monthStart = useMemo(() => {
     const d = new Date();
@@ -96,11 +117,14 @@ export function PrincipalHome() {
         openLeadsCount,
         entries7,
         present7,
+        late7,
+        absent7,
         payments,
         expenses,
         pendingInvoicesCount,
         classesCount,
         sectionsCount,
+        pendingAssignments,
       ] = await Promise.all([
         supabase.from("students").select("id", { count: "exact", head: true }).eq("school_id", schoolId),
         supabase.from("user_roles").select("id", { count: "exact", head: true }).eq("school_id", schoolId).eq("role", "teacher"),
@@ -119,6 +143,18 @@ export function PrincipalHome() {
           .eq("status", "present")
           .gte("created_at", d7.toISOString()),
         supabase
+          .from("attendance_entries")
+          .select("id", { count: "exact", head: true })
+          .eq("school_id", schoolId)
+          .eq("status", "late")
+          .gte("created_at", d7.toISOString()),
+        supabase
+          .from("attendance_entries")
+          .select("id", { count: "exact", head: true })
+          .eq("school_id", schoolId)
+          .eq("status", "absent")
+          .gte("created_at", d7.toISOString()),
+        supabase
           .from("finance_payments")
           .select("amount,paid_at")
           .eq("school_id", schoolId)
@@ -135,6 +171,7 @@ export function PrincipalHome() {
         supabase.from("finance_invoices").select("id", { count: "exact", head: true }).eq("school_id", schoolId).eq("status", "pending"),
         supabase.from("academic_classes").select("id", { count: "exact", head: true }).eq("school_id", schoolId),
         supabase.from("class_sections").select("id", { count: "exact", head: true }).eq("school_id", schoolId),
+        supabase.from("assignment_submissions").select("id", { count: "exact", head: true }).eq("school_id", schoolId).is("marks", null),
       ]);
 
       const revenueMtd = (payments.data ?? []).reduce((sum, r: any) => sum + Number(r.amount ?? 0), 0);
@@ -148,11 +185,14 @@ export function PrincipalHome() {
         openLeads: openLeadsCount.count ?? 0,
         attendanceEntries7d: entries7.count ?? 0,
         attendancePresent7d: present7.count ?? 0,
+        attendanceLate7d: late7.count ?? 0,
+        attendanceAbsent7d: absent7.count ?? 0,
         revenueMtd,
         expensesMtd,
         pendingInvoices: pendingInvoicesCount.count ?? 0,
         classes: classesCount.count ?? 0,
         sections: sectionsCount.count ?? 0,
+        assignmentsPending: pendingAssignments.count ?? 0,
       });
 
       // Build day buckets for chart (MTD)
@@ -200,19 +240,15 @@ export function PrincipalHome() {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <Button variant="soft" onClick={() => navigate(`${basePath}/users`)} className="h-auto flex-col gap-2 py-4">
               <UserPlus className="h-5 w-5" />
-              <span className="text-xs">Add Staff</span>
+              <span className="text-xs">Manage Staff</span>
             </Button>
             <Button variant="soft" onClick={() => navigate(`${basePath}/academic`)} className="h-auto flex-col gap-2 py-4">
               <GraduationCap className="h-5 w-5" />
-              <span className="text-xs">Manage Students</span>
+              <span className="text-xs">Academics</span>
             </Button>
-            <Button variant="soft" onClick={() => navigate(`${basePath}/crm`)} className="h-auto flex-col gap-2 py-4">
-              <KanbanSquare className="h-5 w-5" />
-              <span className="text-xs">Admissions CRM</span>
-            </Button>
-            <Button variant="soft" onClick={() => navigate(`${basePath}/finance`)} className="h-auto flex-col gap-2 py-4">
-              <Coins className="h-5 w-5" />
-              <span className="text-xs">Finance</span>
+            <Button variant="soft" onClick={() => navigate(`${basePath}/attendance`)} className="h-auto flex-col gap-2 py-4">
+              <ClipboardList className="h-5 w-5" />
+              <span className="text-xs">Attendance</span>
             </Button>
             <Button variant="soft" onClick={() => navigate(`${basePath}/timetable`)} className="h-auto flex-col gap-2 py-4">
               <CalendarDays className="h-5 w-5" />
@@ -221,6 +257,10 @@ export function PrincipalHome() {
             <Button variant="soft" onClick={() => navigate(`${basePath}/reports`)} className="h-auto flex-col gap-2 py-4">
               <BarChart3 className="h-5 w-5" />
               <span className="text-xs">Reports</span>
+            </Button>
+            <Button variant="soft" onClick={() => navigate(`${basePath}/support`)} className="h-auto flex-col gap-2 py-4">
+              <Headphones className="h-5 w-5" />
+              <span className="text-xs">Support</span>
             </Button>
           </div>
         </CardContent>
@@ -239,52 +279,107 @@ export function PrincipalHome() {
 
         <div className="rounded-3xl bg-surface p-5 shadow-elevated">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Staff</p>
+            <p className="text-sm text-muted-foreground">Teachers</p>
             <Users className="h-4 w-4 text-muted-foreground" />
           </div>
-          <p className="mt-3 font-display text-2xl font-semibold tracking-tight">{kpis.totalStaff.toLocaleString()}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{kpis.teachers} teachers</p>
+          <p className="mt-3 font-display text-2xl font-semibold tracking-tight">{kpis.teachers.toLocaleString()}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{kpis.totalStaff} total staff</p>
         </div>
 
         <div className="rounded-3xl bg-surface p-5 shadow-elevated">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">Attendance (7d)</p>
-            <ClipboardList className="h-4 w-4 text-muted-foreground" />
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </div>
           <p className="mt-3 font-display text-2xl font-semibold tracking-tight">{attendanceRate}%</p>
-          <p className="mt-1 text-xs text-muted-foreground">Present rate</p>
+          <p className="mt-1 text-xs text-muted-foreground">{kpis.attendanceAbsent7d} absent</p>
         </div>
 
         <div className="rounded-3xl bg-surface p-5 shadow-elevated">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Open Leads</p>
-            <KanbanSquare className="h-4 w-4 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">Pending Grades</p>
+            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </div>
-          <p className="mt-3 font-display text-2xl font-semibold tracking-tight">{kpis.openLeads.toLocaleString()}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{kpis.leads} total leads</p>
+          <p className="mt-3 font-display text-2xl font-semibold tracking-tight">{kpis.assignmentsPending.toLocaleString()}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Submissions awaiting</p>
         </div>
       </div>
 
-      {/* Secondary KPIs */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="rounded-2xl border bg-surface-2 p-4">
-          <p className="text-sm text-muted-foreground">Classes</p>
-          <p className="mt-2 font-display text-xl font-semibold">{kpis.classes}</p>
-        </div>
-        <div className="rounded-2xl border bg-surface-2 p-4">
-          <p className="text-sm text-muted-foreground">Sections</p>
-          <p className="mt-2 font-display text-xl font-semibold">{kpis.sections}</p>
-        </div>
-        <div className="rounded-2xl border bg-surface-2 p-4">
-          <p className="text-sm text-muted-foreground">Pending Invoices</p>
-          <p className="mt-2 font-display text-xl font-semibold">{kpis.pendingInvoices}</p>
-        </div>
-        <div className="rounded-2xl border bg-surface-2 p-4">
-          <p className="text-sm text-muted-foreground">Net (MTD)</p>
-          <p className="mt-2 font-display text-xl font-semibold">
-            {(kpis.revenueMtd - kpis.expensesMtd).toLocaleString()}
-          </p>
-        </div>
+      {/* Attendance Breakdown & Academic Stats */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card className="shadow-elevated">
+          <CardHeader>
+            <CardTitle className="text-lg">Attendance Breakdown (7 days)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-center">
+              {attendancePieData.length > 0 ? (
+                <ResponsiveContainer width={200} height={200}>
+                  <PieChart>
+                    <Pie
+                      data={attendancePieData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {attendancePieData.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <p className="text-sm text-muted-foreground">No attendance data</p>
+              )}
+            </div>
+            <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
+              <div>
+                <p className="font-medium text-primary">{kpis.attendancePresent7d}</p>
+                <p className="text-xs text-muted-foreground">Present</p>
+              </div>
+              <div>
+                <p className="font-medium text-destructive">{kpis.attendanceAbsent7d}</p>
+                <p className="text-xs text-muted-foreground">Absent</p>
+              </div>
+              <div>
+                <p className="font-medium">{kpis.attendanceLate7d}</p>
+                <p className="text-xs text-muted-foreground">Late</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-elevated">
+          <CardHeader>
+            <CardTitle className="text-lg">Academic Overview</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-2xl bg-surface-2 p-4 text-center">
+                <p className="font-display text-2xl font-semibold">{kpis.classes}</p>
+                <p className="text-xs text-muted-foreground">Classes</p>
+              </div>
+              <div className="rounded-2xl bg-surface-2 p-4 text-center">
+                <p className="font-display text-2xl font-semibold">{kpis.sections}</p>
+                <p className="text-xs text-muted-foreground">Sections</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-2xl bg-surface-2 p-4 text-center">
+                <p className="font-display text-2xl font-semibold">{kpis.openLeads}</p>
+                <p className="text-xs text-muted-foreground">Open Leads</p>
+              </div>
+              <div className="rounded-2xl bg-surface-2 p-4 text-center">
+                <p className="font-display text-2xl font-semibold">{kpis.pendingInvoices}</p>
+                <p className="text-xs text-muted-foreground">Pending Invoices</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Finance Chart */}
@@ -338,13 +433,13 @@ export function PrincipalHome() {
               </div>
               <div>
                 <CardTitle className="text-base">Staff & Users</CardTitle>
-                <p className="text-xs text-muted-foreground">Manage all school personnel</p>
+                <p className="text-xs text-muted-foreground">Manage personnel</p>
               </div>
             </div>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Invite staff, assign roles, manage memberships, and handle governance actions.
+              Manage staff, assign roles, and handle governance actions.
             </p>
           </CardContent>
         </Card>
@@ -360,13 +455,13 @@ export function PrincipalHome() {
               </div>
               <div>
                 <CardTitle className="text-base">Academic Core</CardTitle>
-                <p className="text-xs text-muted-foreground">Classes, students, subjects</p>
+                <p className="text-xs text-muted-foreground">Classes & students</p>
               </div>
             </div>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Manage classes, sections, student enrollments, subjects, and teacher assignments.
+              Manage classes, sections, enrollments, and teacher assignments.
             </p>
           </CardContent>
         </Card>
@@ -382,13 +477,13 @@ export function PrincipalHome() {
               </div>
               <div>
                 <CardTitle className="text-base">Admissions CRM</CardTitle>
-                <p className="text-xs text-muted-foreground">Lead pipeline management</p>
+                <p className="text-xs text-muted-foreground">Lead management</p>
               </div>
             </div>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Track leads, manage stages, score prospects, and convert to students.
+              Track leads, manage stages, and convert prospects to students.
             </p>
           </CardContent>
         </Card>
@@ -404,13 +499,13 @@ export function PrincipalHome() {
               </div>
               <div>
                 <CardTitle className="text-base">Finance</CardTitle>
-                <p className="text-xs text-muted-foreground">Fees, invoices, expenses</p>
+                <p className="text-xs text-muted-foreground">Fees & expenses</p>
               </div>
             </div>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Manage fee plans, generate invoices, track payments, and record expenses.
+              Manage fees, invoices, payments, and track expenses.
             </p>
           </CardContent>
         </Card>
@@ -426,7 +521,7 @@ export function PrincipalHome() {
               </div>
               <div>
                 <CardTitle className="text-base">Timetable</CardTitle>
-                <p className="text-xs text-muted-foreground">Schedule management</p>
+                <p className="text-xs text-muted-foreground">Schedules</p>
               </div>
             </div>
           </CardHeader>
@@ -448,13 +543,13 @@ export function PrincipalHome() {
               </div>
               <div>
                 <CardTitle className="text-base">Attendance</CardTitle>
-                <p className="text-xs text-muted-foreground">Track student presence</p>
+                <p className="text-xs text-muted-foreground">Track presence</p>
               </div>
             </div>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Record daily attendance, view reports, and monitor trends.
+              Record attendance, view reports, and monitor trends.
             </p>
           </CardContent>
         </Card>
@@ -470,13 +565,13 @@ export function PrincipalHome() {
               </div>
               <div>
                 <CardTitle className="text-base">Reports</CardTitle>
-                <p className="text-xs text-muted-foreground">Analytics & insights</p>
+                <p className="text-xs text-muted-foreground">Analytics</p>
               </div>
             </div>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              View attendance reports, export data, and analyze school metrics.
+              View attendance reports, export data, and analyze metrics.
             </p>
           </CardContent>
         </Card>
@@ -492,13 +587,13 @@ export function PrincipalHome() {
               </div>
               <div>
                 <CardTitle className="text-base">Support Inbox</CardTitle>
-                <p className="text-xs text-muted-foreground">Student & parent queries</p>
+                <p className="text-xs text-muted-foreground">Queries</p>
               </div>
             </div>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Respond to support tickets and manage communication threads.
+              Respond to support tickets and communication threads.
             </p>
           </CardContent>
         </Card>
@@ -514,13 +609,13 @@ export function PrincipalHome() {
               </div>
               <div>
                 <CardTitle className="text-base">Directory</CardTitle>
-                <p className="text-xs text-muted-foreground">Search all records</p>
+                <p className="text-xs text-muted-foreground">Search all</p>
               </div>
             </div>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Search students, staff, and leads across the entire school directory.
+              Search students, staff, and leads across the directory.
             </p>
           </CardContent>
         </Card>
