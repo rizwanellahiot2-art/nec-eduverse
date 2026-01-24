@@ -1763,6 +1763,82 @@ export type Database = {
           },
         ]
       }
+      lesson_plans: {
+        Row: {
+          class_section_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          objectives: string | null
+          period_label: string | null
+          plan_date: string
+          resources: string | null
+          school_id: string
+          status: string
+          subject_id: string | null
+          teacher_user_id: string
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          class_section_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          objectives?: string | null
+          period_label?: string | null
+          plan_date: string
+          resources?: string | null
+          school_id: string
+          status?: string
+          subject_id?: string | null
+          teacher_user_id: string
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          class_section_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          objectives?: string | null
+          period_label?: string | null
+          plan_date?: string
+          resources?: string | null
+          school_id?: string
+          status?: string
+          subject_id?: string | null
+          teacher_user_id?: string
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_plans_class_section_id_fkey"
+            columns: ["class_section_id"]
+            isOneToOne: false
+            referencedRelation: "class_sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_plans_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_plans_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       parent_messages: {
         Row: {
           content: string
@@ -2855,6 +2931,22 @@ export type Database = {
       ensure_default_crm_pipeline: {
         Args: { _school_id: string }
         Returns: undefined
+      }
+      get_at_risk_students: {
+        Args: { _class_section_id?: string; _school_id: string }
+        Returns: {
+          attendance_rate: number
+          avg_grade_percentage: number
+          class_section_id: string
+          first_name: string
+          is_at_risk: boolean
+          last_name: string
+          recent_grade_avg: number
+          risk_reason: string
+          school_id: string
+          student_id: string
+          total_sessions: number
+        }[]
       }
       get_school_public_by_slug: {
         Args: { _slug: string }
