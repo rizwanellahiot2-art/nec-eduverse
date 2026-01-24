@@ -7,18 +7,16 @@ import {
   Check,
   CheckCheck,
   Paperclip,
-  Smile,
-  Image as ImageIcon,
   FileText,
   Download,
   X,
   Loader2,
   Plus,
   ArrowLeft,
-  Users,
-  User,
   Trash2,
   MessageCircle,
+  Reply,
+  CornerDownRight,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -51,11 +49,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useTypingIndicator } from "@/hooks/useTypingIndicator";
+import {
+  ReplyPreview,
+  ReplyIndicator,
+  TypingIndicator,
+} from "@/components/messages/MessageThreadComponents";
 
 interface Conversation {
   id: string;
@@ -76,6 +78,7 @@ interface ChatMessage {
   is_read: boolean;
   attachment_urls?: string[];
   subject?: string;
+  reply_to_id?: string;
 }
 
 interface UserEntry {
@@ -92,6 +95,7 @@ interface Props {
 export function MessagesModule({ schoolId }: Props) {
   const isMobile = useIsMobile();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserName, setCurrentUserName] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
@@ -108,6 +112,15 @@ export function MessagesModule({ schoolId }: Props) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+
+  // Typing indicator hook
+  const { isPartnerTyping, handleTyping, stopTyping } = useTypingIndicator({
+    schoolId,
+    conversationPartnerId: selectedConversation?.recipientId || "",
+    currentUserId: currentUserId || "",
+    currentUserName,
+  });
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -125,6 +138,14 @@ export function MessagesModule({ schoolId }: Props) {
       return;
     }
     setCurrentUserId(user.user.id);
+
+    // Fetch current user's display name for typing indicator
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("user_id", user.user.id)
+      .maybeSingle();
+    setCurrentUserName(profile?.display_name || user.user.email || "User");
 
     // Fetch all messages where user is sender
     const { data: sentMessages } = await supabase
@@ -295,6 +316,7 @@ export function MessagesModule({ schoolId }: Props) {
         is_read: recipient?.is_read || false,
         attachment_urls: (m as any).attachment_urls || [],
         subject: m.subject,
+        reply_to_id: (m as any).reply_to_id || undefined,
       });
     });
 
@@ -310,6 +332,7 @@ export function MessagesModule({ schoolId }: Props) {
         is_read: r.is_read,
         attachment_urls: msg.attachment_urls || [],
         subject: msg.subject,
+        reply_to_id: msg.reply_to_id || undefined,
       });
     });
 
@@ -362,11 +385,12 @@ export function MessagesModule({ schoolId }: Props) {
         .insert({
           school_id: schoolId,
           sender_user_id: currentUserId,
-          subject: "Direct Message",
+          subject: replyingTo ? "Reply" : "Direct Message",
           content: messageText.trim() || "[Attachment]",
           priority: "normal",
           status: "sent",
           attachment_urls: attachmentUrls.length > 0 ? attachmentUrls : null,
+          reply_to_id: replyingTo?.id || null,
         })
         .select("id")
         .single();
@@ -382,13 +406,15 @@ export function MessagesModule({ schoolId }: Props) {
       await supabase.from("app_notifications").insert({
         school_id: schoolId,
         user_id: selectedConversation.recipientId,
-        title: "New Message",
+        title: replyingTo ? "New Reply" : "New Message",
         body: messageText.trim().substring(0, 100) || "Sent you an attachment",
         type: "admin_message",
       });
 
       setMessageText("");
       setAttachments([]);
+      setReplyingTo(null);
+      stopTyping();
       await loadConversationMessages(selectedConversation.recipientId);
       fetchConversations();
     } catch (error: any) {
@@ -769,6 +795,10 @@ export function MessagesModule({ schoolId }: Props) {
                       format(parseISO(msg.created_at), "yyyy-MM-dd") !==
                         format(parseISO(messages[idx - 1].created_at), "yyyy-MM-dd");
 
+                    const parentMessage = msg.reply_to_id
+                      ? messages.find((m) => m.id === msg.reply_to_id)
+                      : undefined;
+
                     return (
                       <div key={msg.id}>
                         {showDate && (
@@ -782,7 +812,17 @@ export function MessagesModule({ schoolId }: Props) {
                             </span>
                           </div>
                         )}
-                        <div className={cn("flex", msg.is_mine ? "justify-end" : "justify-start")}>
+                        <div className={cn("group flex items-start gap-1", msg.is_mine ? "justify-end" : "justify-start")}>
+                          {/* Reply button for other's messages */}
+                          {!msg.is_mine && (
+                            <button
+                              onClick={() => setReplyingTo(msg)}
+                              className="mt-2 opacity-0 transition-opacity group-hover:opacity-100"
+                              title="Reply"
+                            >
+                              <Reply className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                            </button>
+                          )}
                           <div
                             className={cn(
                               "max-w-[75%] rounded-2xl px-4 py-2.5",
@@ -791,6 +831,23 @@ export function MessagesModule({ schoolId }: Props) {
                                 : "bg-muted rounded-bl-md"
                             )}
                           >
+                            {/* Reply indicator */}
+                            {parentMessage && (
+                              <div
+                                className={cn(
+                                  "mb-2 flex items-center gap-1.5 rounded-lg border-l-2 px-2 py-1 text-xs",
+                                  msg.is_mine
+                                    ? "border-primary-foreground/50 bg-primary-foreground/10 text-primary-foreground/80"
+                                    : "border-muted-foreground/30 bg-background/50 text-muted-foreground"
+                                )}
+                              >
+                                <CornerDownRight className="h-3 w-3 shrink-0" />
+                                <span className="truncate">
+                                  {parentMessage.content.substring(0, 40)}
+                                  {parentMessage.content.length > 40 ? "..." : ""}
+                                </span>
+                              </div>
+                            )}
                             <p className="whitespace-pre-wrap break-words text-sm">{msg.content}</p>
                             
                             {/* Attachments */}
@@ -839,6 +896,16 @@ export function MessagesModule({ schoolId }: Props) {
                               )}
                             </div>
                           </div>
+                          {/* Reply button for own messages */}
+                          {msg.is_mine && (
+                            <button
+                              onClick={() => setReplyingTo(msg)}
+                              className="mt-2 opacity-0 transition-opacity group-hover:opacity-100"
+                              title="Reply"
+                            >
+                              <Reply className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
@@ -847,6 +914,23 @@ export function MessagesModule({ schoolId }: Props) {
                 </div>
               )}
             </ScrollArea>
+
+            {/* Typing Indicator */}
+            <TypingIndicator
+              isTyping={isPartnerTyping}
+              userName={selectedConversation.recipientName}
+            />
+
+            {/* Reply Preview */}
+            {replyingTo && (
+              <div className="border-t bg-muted/30 px-4 py-2">
+                <ReplyPreview
+                  parentMessage={replyingTo}
+                  onClear={() => setReplyingTo(null)}
+                  isMine={replyingTo.is_mine}
+                />
+              </div>
+            )}
 
             {/* Attachments Preview */}
             {attachments.length > 0 && (
@@ -888,9 +972,12 @@ export function MessagesModule({ schoolId }: Props) {
                   <Paperclip className="h-5 w-5" />
                 </Button>
                 <Textarea
-                  placeholder="Type a message..."
+                  placeholder={replyingTo ? "Type a reply..." : "Type a message..."}
                   value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
+                  onChange={(e) => {
+                    setMessageText(e.target.value);
+                    handleTyping();
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();

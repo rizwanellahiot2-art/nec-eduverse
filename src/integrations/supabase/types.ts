@@ -151,6 +151,7 @@ export type Database = {
           created_by: string | null
           id: string
           priority: string
+          reply_to_id: string | null
           resolved_at: string | null
           resolved_by: string | null
           school_id: string
@@ -166,6 +167,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           priority?: string
+          reply_to_id?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
           school_id: string
@@ -181,6 +183,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           priority?: string
+          reply_to_id?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
           school_id?: string
@@ -189,7 +192,15 @@ export type Database = {
           subject?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "admin_messages_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "admin_messages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       app_notifications: {
         Row: {
