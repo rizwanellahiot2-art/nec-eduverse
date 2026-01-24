@@ -102,9 +102,9 @@ export function ClassStructureCard({
   return (
     <Card>
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
-            <Building2 className="h-5 w-5" />
+            <Building2 className="h-5 w-5 shrink-0" />
             Class Structure
           </CardTitle>
           <div className="flex gap-2">
@@ -114,30 +114,30 @@ export function ClassStructureCard({
         </div>
       </CardHeader>
       <CardContent>
-        <ScrollArea className="h-[400px] pr-4">
+        <ScrollArea className="h-[400px] pr-2 sm:pr-4">
           <div className="space-y-4">
             {classDetails.map((cls) => (
               <div
                 key={cls.id}
-                className="rounded-xl border bg-surface p-4"
+                className="rounded-xl border bg-surface p-3 sm:p-4"
               >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10">
                       <GraduationCap className="h-5 w-5 text-primary" />
                     </div>
-                    <div>
-                      <p className="font-semibold">{cls.name}</p>
+                    <div className="min-w-0">
+                      <p className="font-semibold truncate">{cls.name}</p>
                       <p className="text-xs text-muted-foreground">
                         {cls.grade_level ? `Grade ${cls.grade_level}` : "Grade level not set"}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs">
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge variant="outline" className="text-xs whitespace-nowrap">
                       {cls.sections.length} sections
                     </Badge>
-                    <Badge variant="secondary" className="text-xs">
+                    <Badge variant="secondary" className="text-xs whitespace-nowrap">
                       <Users className="mr-1 h-3 w-3" />
                       {cls.totalStudents} students
                     </Badge>
@@ -145,28 +145,28 @@ export function ClassStructureCard({
                 </div>
 
                 {cls.sections.length === 0 ? (
-                  <p className="text-sm text-muted-foreground pl-[52px]">
+                  <p className="text-sm text-muted-foreground pl-0 sm:pl-[52px]">
                     No sections created for this class.
                   </p>
                 ) : (
-                  <div className="grid gap-2 pl-[52px]">
+                  <div className="grid gap-2 pl-0 sm:pl-[52px]">
                     {cls.sections.map((section) => (
                       <div
                         key={section.id}
-                        className="rounded-lg bg-muted/50 p-3"
+                        className="rounded-lg bg-muted/50 p-2 sm:p-3"
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm">
+                        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="font-medium text-sm truncate">
                               Section {section.name}
                             </span>
                             {section.room && (
-                              <span className="text-xs text-muted-foreground">
+                              <span className="text-xs text-muted-foreground whitespace-nowrap">
                                 (Room: {section.room})
                               </span>
                             )}
                           </div>
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-xs w-fit shrink-0">
                             <Users className="mr-1 h-3 w-3" />
                             {section.studentCount}
                           </Badge>

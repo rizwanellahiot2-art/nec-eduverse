@@ -673,54 +673,58 @@ function WeeklyTimetableView({
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-[80px]">Period</TableHead>
-          {days.map((d) => (
-            <TableHead key={d} className="text-center">{DAY_NAMES[d]}</TableHead>
-          ))}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {nonBreakPeriods.map((period) => (
-          <TableRow key={period.id}>
-            <TableCell className="font-medium">
-              <div>
-                <p className="text-sm">{period.label}</p>
-                {period.start_time && (
-                  <p className="text-xs text-muted-foreground">
-                    {period.start_time?.slice(0, 5)}
-                  </p>
-                )}
-              </div>
-            </TableCell>
-            {days.map((d) => {
-              const entry = getEntry(d, period.id);
-              return (
-                <TableCell key={d} className="text-center">
-                  {entry ? (
-                    <div className="rounded-md bg-primary/10 p-1.5">
-                      <p className="text-xs font-medium">{entry.subject_name}</p>
-                      {entry.class_section_id && (
-                        <p className="text-xs text-muted-foreground">
-                          {getSectionLabel(entry.class_section_id)}
-                        </p>
-                      )}
-                      {entry.room && (
-                        <p className="text-xs text-muted-foreground">{entry.room}</p>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">-</span>
-                  )}
+    <div className="overflow-x-auto">
+      <div className="min-w-[600px]">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[80px] whitespace-nowrap">Period</TableHead>
+              {days.map((d) => (
+                <TableHead key={d} className="text-center whitespace-nowrap">{DAY_NAMES[d]}</TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {nonBreakPeriods.map((period) => (
+              <TableRow key={period.id}>
+                <TableCell className="font-medium">
+                  <div>
+                    <p className="text-sm whitespace-nowrap">{period.label}</p>
+                    {period.start_time && (
+                      <p className="text-xs text-muted-foreground whitespace-nowrap">
+                        {period.start_time?.slice(0, 5)}
+                      </p>
+                    )}
+                  </div>
                 </TableCell>
-              );
-            })}
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+                {days.map((d) => {
+                  const entry = getEntry(d, period.id);
+                  return (
+                    <TableCell key={d} className="text-center">
+                      {entry ? (
+                        <div className="rounded-md bg-primary/10 p-1.5">
+                          <p className="text-xs font-medium whitespace-nowrap">{entry.subject_name}</p>
+                          {entry.class_section_id && (
+                            <p className="text-xs text-muted-foreground whitespace-nowrap">
+                              {getSectionLabel(entry.class_section_id)}
+                            </p>
+                          )}
+                          {entry.room && (
+                            <p className="text-xs text-muted-foreground whitespace-nowrap">{entry.room}</p>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
   );
 }
 
@@ -806,42 +810,46 @@ function MonthlyCalendarView({
   };
 
   return (
-    <div className="grid grid-cols-7 gap-1">
-      {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-        <div key={d} className="p-2 text-center text-xs font-medium text-muted-foreground">
-          {d}
-        </div>
-      ))}
-      {/* Padding for first week */}
-      {days[0] && Array.from({ length: (days[0].getDay() + 6) % 7 }).map((_, i) => (
-        <div key={`pad-${i}`} className="p-2" />
-      ))}
-      {days.map((day) => {
-        const dayEntries = getEntriesForDay(day);
-        const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+    <div className="overflow-x-auto">
+      <div className="min-w-[450px]">
+        <div className="grid grid-cols-7 gap-1">
+          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
+            <div key={d} className="p-2 text-center text-xs font-medium text-muted-foreground">
+              {d}
+            </div>
+          ))}
+          {/* Padding for first week */}
+          {days[0] && Array.from({ length: (days[0].getDay() + 6) % 7 }).map((_, i) => (
+            <div key={`pad-${i}`} className="p-2" />
+          ))}
+          {days.map((day) => {
+            const dayEntries = getEntriesForDay(day);
+            const isWeekend = day.getDay() === 0 || day.getDay() === 6;
 
-        return (
-          <div
-            key={day.toISOString()}
-            className={`min-h-[60px] rounded-lg border p-1 ${
-              isToday(day)
-                ? "border-primary bg-primary/5"
-                : isWeekend
-                ? "bg-muted/30"
-                : "bg-surface"
-            }`}
-          >
-            <p className={`text-xs font-medium ${isToday(day) ? "text-primary" : ""}`}>
-              {format(day, "d")}
-            </p>
-            {dayEntries.length > 0 && (
-              <p className="mt-1 text-xs text-muted-foreground">
-                {dayEntries.length} periods
-              </p>
-            )}
-          </div>
-        );
-      })}
+            return (
+              <div
+                key={day.toISOString()}
+                className={`min-h-[60px] rounded-lg border p-1 ${
+                  isToday(day)
+                    ? "border-primary bg-primary/5"
+                    : isWeekend
+                    ? "bg-muted/30"
+                    : "bg-surface"
+                }`}
+              >
+                <p className={`text-xs font-medium ${isToday(day) ? "text-primary" : ""}`}>
+                  {format(day, "d")}
+                </p>
+                {dayEntries.length > 0 && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {dayEntries.length} periods
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
