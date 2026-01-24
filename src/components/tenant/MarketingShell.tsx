@@ -13,7 +13,7 @@ export function MarketingShell({ title, subtitle, schoolSlug, children }: Props)
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-6 px-6 py-6 lg:grid-cols-[280px_1fr]">
-        <aside className="rounded-3xl bg-surface p-4 shadow-elevated">
+        <aside className="sticky top-6 self-start max-h-[calc(100vh-3rem)] overflow-y-auto rounded-3xl bg-surface p-4 shadow-elevated">
           <div className="flex items-center justify-between">
             <div>
               <p className="font-display text-lg font-semibold tracking-tight">EDUVERSE</p>
