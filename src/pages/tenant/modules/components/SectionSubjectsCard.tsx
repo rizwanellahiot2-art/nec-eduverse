@@ -4,6 +4,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
@@ -113,7 +114,7 @@ export function SectionSubjectsCard({
           </Button>
         </div>
 
-        <div className="overflow-auto rounded-2xl border bg-surface">
+        <ScrollArea className="h-[250px] rounded-2xl border bg-surface">
           <Table>
             <TableHeader>
               <TableRow>
@@ -152,7 +153,7 @@ export function SectionSubjectsCard({
               )}
             </TableBody>
           </Table>
-        </div>
+        </ScrollArea>
       </CardContent>
     </Card>
   );

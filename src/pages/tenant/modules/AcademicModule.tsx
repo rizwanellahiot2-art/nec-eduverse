@@ -7,6 +7,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
@@ -198,7 +199,7 @@ export function AcademicModule() {
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
-            <div className="mt-4 overflow-auto rounded-2xl border bg-surface">
+            <ScrollArea className="h-[250px] mt-4 rounded-2xl border bg-surface">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -222,7 +223,7 @@ export function AcademicModule() {
                   )}
                 </TableBody>
               </Table>
-            </div>
+            </ScrollArea>
           </div>
 
           <div className="rounded-2xl bg-surface-2 p-4">
@@ -251,7 +252,7 @@ export function AcademicModule() {
               </div>
             </div>
 
-            <div className="mt-4 overflow-auto rounded-2xl border bg-surface">
+            <ScrollArea className="h-[250px] mt-4 rounded-2xl border bg-surface">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -275,7 +276,7 @@ export function AcademicModule() {
                   )}
                 </TableBody>
               </Table>
-            </div>
+            </ScrollArea>
           </div>
         </CardContent>
       </Card>
@@ -306,7 +307,7 @@ export function AcademicModule() {
             </Button>
           </div>
 
-          <div className="overflow-auto rounded-2xl border bg-surface">
+          <ScrollArea className="h-[300px] rounded-2xl border bg-surface">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -342,7 +343,7 @@ export function AcademicModule() {
                 )}
               </TableBody>
             </Table>
-          </div>
+          </ScrollArea>
 
           <div className="rounded-2xl bg-surface-2 p-4">
             <p className="font-medium">Link student to portal user</p>
