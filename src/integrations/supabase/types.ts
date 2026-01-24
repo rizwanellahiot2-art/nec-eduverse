@@ -21,10 +21,13 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          is_published: boolean
           max_marks: number
+          published_at: string | null
           school_id: string
           subject_id: string | null
           teacher_user_id: string | null
+          term_label: string | null
           title: string
         }
         Insert: {
@@ -33,10 +36,13 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          is_published?: boolean
           max_marks?: number
+          published_at?: string | null
           school_id: string
           subject_id?: string | null
           teacher_user_id?: string | null
+          term_label?: string | null
           title: string
         }
         Update: {
@@ -45,10 +51,13 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          is_published?: boolean
           max_marks?: number
+          published_at?: string | null
           school_id?: string
           subject_id?: string | null
           teacher_user_id?: string | null
+          term_label?: string | null
           title?: string
         }
         Relationships: [
