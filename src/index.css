@@ -22,7 +22,7 @@ All colors MUST be HSL.
     --popover-foreground: var(--foreground);
 
     /* Default brand (overridden per school at runtime) */
-    --brand: 210 100% 55%;
+    --brand: 217 91% 50%;
     --brand-foreground: 210 40% 98%;
 
     --primary: var(--brand);
@@ -34,8 +34,8 @@ All colors MUST be HSL.
     --muted: 220 28% 95%;
     --muted-foreground: 223 12% 44%;
 
-    --accent: 210 100% 96%;
-    --accent-foreground: 210 100% 45%;
+    --accent: 217 91% 96%;
+    --accent-foreground: 217 91% 42%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
@@ -77,12 +77,12 @@ All colors MUST be HSL.
 
     --sidebar-background: 220 30% 97%;
     --sidebar-foreground: 226 38% 12%;
-    --sidebar-primary: 210 100% 55%;
+    --sidebar-primary: 217 91% 50%;
     --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 210 100% 96%;
-    --sidebar-accent-foreground: 210 100% 45%;
+    --sidebar-accent: 217 91% 96%;
+    --sidebar-accent-foreground: 217 91% 42%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 210 100% 55%;
+    --sidebar-ring: 217 91% 50%;
   }
 
   .dark {
@@ -108,7 +108,7 @@ All colors MUST be HSL.
     --muted-foreground: 220 12% 70%;
 
     --accent: 217 50% 20%;
-    --accent-foreground: 217 91% 72%;
+    --accent-foreground: 217 91% 68%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
@@ -141,12 +141,12 @@ All colors MUST be HSL.
     );
     --sidebar-background: 224 30% 9%;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 210 100% 55%;
+    --sidebar-primary: 217 91% 50%;
     --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 210 50% 20%;
-    --sidebar-accent-foreground: 210 100% 72%;
+    --sidebar-accent: 217 50% 20%;
+    --sidebar-accent-foreground: 217 91% 68%;
     --sidebar-border: 224 20% 18%;
-    --sidebar-ring: 210 100% 55%;
+    --sidebar-ring: 217 91% 50%;
   }
 }
 
