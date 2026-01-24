@@ -20,8 +20,10 @@ import { useTenant } from "@/hooks/useTenant";
 import { useDashboardAlerts } from "@/hooks/useDashboardAlerts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DashboardAlertsPanel, AlertsSummaryBadge } from "@/components/dashboard/DashboardAlertsPanel";
 import { AlertSettingsDialog } from "@/components/dashboard/AlertSettingsDialog";
+import { PrincipalTeachersTab } from "@/components/principal/PrincipalTeachersTab";
 
 import {
   ResponsiveContainer,
@@ -206,15 +208,21 @@ export function PrincipalHome() {
   }, [schoolId]);
 
   return (
-    <div className="space-y-6">
-      {/* Real-time Alerts Panel */}
-      {alerts.length > 0 && (
-        <DashboardAlertsPanel
-          alerts={alerts}
-          onDismiss={dismissAlert}
-          onNavigate={handleAlertNavigate}
-        />
-      )}
+    <Tabs defaultValue="overview" className="space-y-6">
+      <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:grid-cols-none lg:inline-flex">
+        <TabsTrigger value="overview">Overview</TabsTrigger>
+        <TabsTrigger value="teachers">Teachers</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="overview" className="space-y-6">
+        {/* Real-time Alerts Panel */}
+        {alerts.length > 0 && (
+          <DashboardAlertsPanel
+            alerts={alerts}
+            onDismiss={dismissAlert}
+            onNavigate={handleAlertNavigate}
+          />
+        )}
 
       {/* Quick Actions - Top for better accessibility */}
       <Card className="shadow-elevated">
@@ -562,6 +570,12 @@ export function PrincipalHome() {
         <RefreshCw className={`mr-2 h-4 w-4 ${busy ? "animate-spin" : ""}`} />
         Refresh Dashboard
       </Button>
-    </div>
+      </TabsContent>
+
+      {/* Teachers Tab */}
+      <TabsContent value="teachers">
+        {schoolId && <PrincipalTeachersTab schoolId={schoolId} />}
+      </TabsContent>
+    </Tabs>
   );
 }
