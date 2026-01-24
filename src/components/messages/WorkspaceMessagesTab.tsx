@@ -22,7 +22,7 @@ import {
   FileText,
   Image,
   Download,
-  ExternalLink,
+  MessageCircle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +37,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { SendMessageDialog } from "@/components/principal/SendMessageDialog";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -83,6 +84,7 @@ export function WorkspaceMessagesTab({ schoolId, canCompose = true }: Props) {
 
   // Delete
   const [deleting, setDeleting] = useState(false);
+  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
 
   const fetchMessages = useCallback(async () => {
     setLoading(true);
@@ -116,7 +118,7 @@ export function WorkspaceMessagesTab({ schoolId, canCompose = true }: Props) {
       if (msg?.sender_user_id) userIds.add(msg.sender_user_id);
     });
 
-    // Fetch profiles
+    // Fetch profiles from profiles table using user_id
     if (userIds.size > 0) {
       const { data: profiles } = await supabase
         .from("profiles")
@@ -125,8 +127,27 @@ export function WorkspaceMessagesTab({ schoolId, canCompose = true }: Props) {
 
       const map: Record<string, string> = {};
       profiles?.forEach((p) => {
-        map[p.user_id] = p.display_name || "Unknown User";
+        if (p.user_id && p.display_name) {
+          map[p.user_id] = p.display_name;
+        }
       });
+
+      // If still missing, try school_user_directory
+      const missingIds = Array.from(userIds).filter((id) => !map[id]);
+      if (missingIds.length > 0) {
+        const { data: directoryEntries } = await supabase
+          .from("school_user_directory")
+          .select("user_id, display_name, email")
+          .eq("school_id", schoolId)
+          .in("user_id", missingIds);
+
+        directoryEntries?.forEach((d) => {
+          if (d.user_id) {
+            map[d.user_id] = d.display_name || d.email || "User";
+          }
+        });
+      }
+
       setProfileMap(map);
     }
 
@@ -210,10 +231,11 @@ export function WorkspaceMessagesTab({ schoolId, canCompose = true }: Props) {
       // Search
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
+        const senderName = profileMap[m.sender_user_id] || "";
         const matchesSearch =
           m.subject?.toLowerCase().includes(q) ||
           m.content.toLowerCase().includes(q) ||
-          profileMap[m.sender_user_id]?.toLowerCase().includes(q);
+          senderName.toLowerCase().includes(q);
         if (!matchesSearch) return false;
       }
 
@@ -222,7 +244,7 @@ export function WorkspaceMessagesTab({ schoolId, canCompose = true }: Props) {
 
       // Read status (only for received messages)
       if (readFilter !== "all") {
-        if (m.is_sent) return true; // Don't filter sent messages by read status
+        if (m.is_sent) return true;
         if (readFilter === "read" && !m.is_read) return false;
         if (readFilter === "unread" && m.is_read) return false;
       }
@@ -250,6 +272,15 @@ export function WorkspaceMessagesTab({ schoolId, canCompose = true }: Props) {
     urgent: "bg-destructive/10 text-destructive",
   };
 
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   const handleSelectMessage = async (message: Message) => {
     setSelectedMessage(message);
     setReplyContent("");
@@ -264,14 +295,39 @@ export function WorkspaceMessagesTab({ schoolId, canCompose = true }: Props) {
 
       if (data) {
         const userIds = data.map((r) => r.recipient_user_id);
+        
+        // Fetch from profiles
         const { data: profiles } = await supabase
           .from("profiles")
           .select("user_id, display_name")
           .in("user_id", userIds);
 
+        const nameMap: Record<string, string> = {};
+        profiles?.forEach((p) => {
+          if (p.user_id && p.display_name) {
+            nameMap[p.user_id] = p.display_name;
+          }
+        });
+
+        // Fallback to directory for missing names
+        const missingIds = userIds.filter((id) => !nameMap[id]);
+        if (missingIds.length > 0) {
+          const { data: dirEntries } = await supabase
+            .from("school_user_directory")
+            .select("user_id, display_name, email")
+            .eq("school_id", schoolId)
+            .in("user_id", missingIds);
+
+          dirEntries?.forEach((d) => {
+            if (d.user_id) {
+              nameMap[d.user_id] = d.display_name || d.email || "User";
+            }
+          });
+        }
+
         const recipients = data.map((r) => ({
           user_id: r.recipient_user_id,
-          name: profiles?.find((p) => p.user_id === r.recipient_user_id)?.display_name || "Unknown",
+          name: nameMap[r.recipient_user_id] || "User",
           is_read: r.is_read,
           read_at: r.read_at,
         }));
@@ -286,7 +342,6 @@ export function WorkspaceMessagesTab({ schoolId, canCompose = true }: Props) {
 
     setReplying(true);
     try {
-      // Create reply message
       const { data: messageData, error: messageError } = await supabase
         .from("admin_messages")
         .insert({
@@ -302,13 +357,11 @@ export function WorkspaceMessagesTab({ schoolId, canCompose = true }: Props) {
 
       if (messageError) throw messageError;
 
-      // Add original sender as recipient
       await supabase.from("admin_message_recipients").insert({
         message_id: messageData.id,
         recipient_user_id: selectedMessage.sender_user_id,
       });
 
-      // Notify original sender
       await supabase.from("app_notifications").insert({
         school_id: schoolId,
         user_id: selectedMessage.sender_user_id,
@@ -327,31 +380,30 @@ export function WorkspaceMessagesTab({ schoolId, canCompose = true }: Props) {
     }
   };
 
-  const handleDelete = async () => {
-    if (!selectedMessage || !currentUserId) return;
-
-    setDeleting(true);
+  const handleDeleteMessage = async (message: Message, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setDeletingMessageId(message.id);
     try {
-      if (selectedMessage.is_sent) {
-        // Delete the message and all recipients
-        await supabase.from("admin_message_recipients").delete().eq("message_id", selectedMessage.id);
-        await supabase.from("admin_messages").delete().eq("id", selectedMessage.id);
+      if (message.is_sent) {
+        await supabase.from("admin_message_recipients").delete().eq("message_id", message.id);
+        await supabase.from("admin_messages").delete().eq("id", message.id);
       } else {
-        // Just remove from recipient list
         await supabase
           .from("admin_message_recipients")
           .delete()
-          .eq("message_id", selectedMessage.id)
+          .eq("message_id", message.id)
           .eq("recipient_user_id", currentUserId);
       }
 
       toast({ title: "Message deleted" });
-      setSelectedMessage(null);
+      if (selectedMessage?.id === message.id) {
+        setSelectedMessage(null);
+      }
       fetchMessages();
     } catch (error: any) {
       toast({ title: "Failed to delete", description: error.message, variant: "destructive" });
     } finally {
-      setDeleting(false);
+      setDeletingMessageId(null);
     }
   };
 
@@ -365,69 +417,113 @@ export function WorkspaceMessagesTab({ schoolId, canCompose = true }: Props) {
 
   const hasActiveFilters = searchQuery || priorityFilter !== "all" || readFilter !== "all" || dateFrom || dateTo;
 
-  const MessageCard = ({ message, onClick }: { message: Message; onClick: () => void }) => (
-    <button
-      onClick={onClick}
-      className="w-full rounded-xl border bg-background p-3 text-left transition-all hover:bg-accent/50 sm:p-4"
-    >
-      <div className="flex items-start gap-3">
-        <div className="shrink-0 mt-0.5">
-          {message.is_sent ? (
-            <div className="grid h-8 w-8 place-items-center rounded-full bg-primary/10 sm:h-10 sm:w-10">
-              <Send className="h-3.5 w-3.5 text-primary sm:h-4 sm:w-4" />
-            </div>
-          ) : (
-            <div className="grid h-8 w-8 place-items-center rounded-full bg-accent sm:h-10 sm:w-10">
-              {message.is_read ? (
-                <Mail className="h-3.5 w-3.5 text-muted-foreground sm:h-4 sm:w-4" />
-              ) : (
-                <Circle className="h-3.5 w-3.5 fill-primary text-primary sm:h-4 sm:w-4" />
-              )}
-            </div>
+  const MessageCard = ({ message, onClick }: { message: Message; onClick: () => void }) => {
+    const senderName = profileMap[message.sender_user_id] || "User";
+    
+    return (
+      <div className="group relative">
+        <button
+          onClick={onClick}
+          className={cn(
+            "w-full rounded-xl border bg-background p-3 text-left transition-all hover:bg-accent/50 sm:p-4",
+            !message.is_sent && !message.is_read && "border-primary/30 bg-primary/5"
           )}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-medium text-sm sm:text-base truncate">
-              {message.subject || "(No subject)"}
-            </p>
-            <Badge variant="secondary" className={`text-[10px] sm:text-xs shrink-0 ${priorityColors[message.priority]}`}>
-              {message.priority}
-            </Badge>
-            {!message.is_sent && !message.is_read && (
-              <Badge variant="default" className="text-[10px] sm:text-xs shrink-0">
-                New
-              </Badge>
-            )}
+        >
+          <div className="flex items-start gap-3">
+            <Avatar className="h-10 w-10 shrink-0">
+              <AvatarFallback className={cn(
+                "text-xs font-medium",
+                message.is_sent ? "bg-primary/10 text-primary" : "bg-accent text-accent-foreground"
+              )}>
+                {message.is_sent ? <Send className="h-4 w-4" /> : getInitials(senderName)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0 pr-8">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-semibold text-sm truncate">
+                  {message.is_sent ? "You" : senderName}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {format(new Date(message.created_at), "MMM d, h:mm a")}
+                </span>
+                {!message.is_sent && !message.is_read && (
+                  <Badge variant="default" className="text-[10px] h-4 px-1.5">
+                    New
+                  </Badge>
+                )}
+              </div>
+              <p className="font-medium text-sm mt-0.5 truncate">
+                {message.subject || "(No subject)"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                {message.content}
+              </p>
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <Badge variant="secondary" className={`text-[10px] h-5 ${priorityColors[message.priority]}`}>
+                  {message.priority}
+                </Badge>
+                {message.is_sent && message.recipient_count !== undefined && (
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                    <Users className="h-3 w-3" />
+                    {message.recipient_count} recipient{message.recipient_count !== 1 ? "s" : ""}
+                  </span>
+                )}
+                {message.attachment_urls && message.attachment_urls.length > 0 && (
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                    <Paperclip className="h-3 w-3" />
+                    {message.attachment_urls.length}
+                  </span>
+                )}
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 sm:h-5 sm:w-5" />
           </div>
-          <p className="text-xs text-muted-foreground mt-1 line-clamp-2 sm:text-sm">
-            {message.content}
-          </p>
-          <div className="flex items-center gap-2 mt-2 text-[10px] text-muted-foreground sm:text-xs flex-wrap">
-            <Clock className="h-3 w-3" />
-            <span>{format(new Date(message.created_at), "MMM d, yyyy h:mm a")}</span>
-            {message.is_sent && message.recipient_count !== undefined && (
-              <>
-                <span>•</span>
-                <Users className="h-3 w-3" />
-                <span>{message.recipient_count} recipients</span>
-              </>
-            )}
-            {!message.is_sent && (
-              <>
-                <span>•</span>
-                <span>From: {profileMap[message.sender_user_id] || "Unknown"}</span>
-              </>
-            )}
-          </div>
-        </div>
-        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 sm:h-5 sm:w-5" />
+        </button>
+        
+        {/* Delete button overlay */}
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-12 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {deletingMessageId === message.id ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Message?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {message.is_sent
+                  ? "This will permanently delete the message for all recipients."
+                  : "This will remove the message from your inbox."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => handleDeleteMessage(message, e)}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
-    </button>
-  );
+    );
+  };
 
   // Mobile: Show detail view when message is selected
   if (selectedMessage) {
+    const senderName = profileMap[selectedMessage.sender_user_id] || "User";
+    
     return (
       <div className="space-y-4">
         <Button variant="ghost" onClick={() => setSelectedMessage(null)} className="gap-2">
@@ -436,207 +532,230 @@ export function WorkspaceMessagesTab({ schoolId, canCompose = true }: Props) {
           <span className="sm:hidden">Back</span>
         </Button>
 
-        <Card>
-          <CardHeader className="pb-3">
+        <Card className="overflow-hidden">
+          {/* Chat Header */}
+          <CardHeader className="border-b bg-muted/30 pb-4">
             <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start gap-3 flex-1 min-w-0">
-                <div className="grid h-10 w-10 place-items-center rounded-full bg-primary/10 shrink-0 sm:h-12 sm:w-12">
-                  {selectedMessage.is_sent ? (
-                    <Send className="h-4 w-4 text-primary sm:h-5 sm:w-5" />
-                  ) : (
-                    <Inbox className="h-4 w-4 text-primary sm:h-5 sm:w-5" />
-                  )}
-                </div>
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <Avatar className="h-12 w-12">
+                  <AvatarFallback className={cn(
+                    "text-sm font-medium",
+                    selectedMessage.is_sent ? "bg-primary/10 text-primary" : "bg-accent text-accent-foreground"
+                  )}>
+                    {selectedMessage.is_sent ? <Send className="h-5 w-5" /> : getInitials(senderName)}
+                  </AvatarFallback>
+                </Avatar>
                 <div className="flex-1 min-w-0">
-                  <CardTitle className="text-base sm:text-lg break-words">
-                    {selectedMessage.subject || "(No subject)"}
+                  <CardTitle className="text-base sm:text-lg">
+                    {selectedMessage.is_sent ? "You" : senderName}
                   </CardTitle>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <Badge variant="secondary" className={`text-xs ${priorityColors[selectedMessage.priority]}`}>
-                      {selectedMessage.priority}
-                    </Badge>
-                  </div>
+                  <p className="text-sm text-muted-foreground truncate">
+                    {selectedMessage.subject || "(No subject)"}
+                  </p>
                 </div>
               </div>
 
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="icon" className="shrink-0 text-destructive hover:text-destructive">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Message?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      {selectedMessage.is_sent
-                        ? "This will permanently delete the message for all recipients."
-                        : "This will remove the message from your inbox."}
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                      {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete"}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className={`text-xs ${priorityColors[selectedMessage.priority]}`}>
+                  {selectedMessage.priority}
+                </Badge>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="shrink-0 text-muted-foreground hover:text-destructive">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Message?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {selectedMessage.is_sent
+                          ? "This will permanently delete the message for all recipients."
+                          : "This will remove the message from your inbox."}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => handleDeleteMessage(selectedMessage)}
+                        disabled={deleting}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Message Meta Details */}
-            <div className="rounded-xl bg-muted/30 p-3 sm:p-4 space-y-2">
-              <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Date:</span>
-                  <span className="font-medium">{format(new Date(selectedMessage.created_at), "MMMM d, yyyy")}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Time:</span>
-                  <span className="font-medium">{format(new Date(selectedMessage.created_at), "h:mm a")}</span>
-                </div>
-                {!selectedMessage.is_sent && (
-                  <div className="flex items-center gap-2 sm:col-span-2">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">From:</span>
-                    <span className="font-medium">{profileMap[selectedMessage.sender_user_id] || "Unknown"}</span>
+
+          <CardContent className="p-0">
+            {/* Chat-style message bubble */}
+            <div className="p-4 sm:p-6 space-y-4">
+              {/* Message bubble */}
+              <div className={cn(
+                "flex gap-3",
+                selectedMessage.is_sent ? "flex-row-reverse" : "flex-row"
+              )}>
+                <Avatar className="h-8 w-8 shrink-0">
+                  <AvatarFallback className={cn(
+                    "text-xs",
+                    selectedMessage.is_sent ? "bg-primary text-primary-foreground" : "bg-accent text-accent-foreground"
+                  )}>
+                    {selectedMessage.is_sent ? "Y" : getInitials(senderName)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className={cn(
+                  "flex-1 max-w-[80%]",
+                  selectedMessage.is_sent ? "items-end" : "items-start"
+                )}>
+                  <div className={cn(
+                    "rounded-2xl p-4",
+                    selectedMessage.is_sent 
+                      ? "bg-primary text-primary-foreground rounded-tr-sm" 
+                      : "bg-muted rounded-tl-sm"
+                  )}>
+                    <p className="whitespace-pre-wrap text-sm sm:text-base">{selectedMessage.content}</p>
                   </div>
-                )}
-                {selectedMessage.is_sent && selectedMessage.recipient_count !== undefined && (
-                  <div className="flex items-center gap-2 sm:col-span-2">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Recipients:</span>
-                    <span className="font-medium">{selectedMessage.recipient_count} people</span>
+                  <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground px-1">
+                    <Clock className="h-3 w-3" />
+                    <span>{format(new Date(selectedMessage.created_at), "MMM d, yyyy 'at' h:mm a")}</span>
+                    {selectedMessage.is_sent && selectedMessage.recipient_count !== undefined && (
+                      <>
+                        <span>•</span>
+                        <span>{selectedMessage.recipient_count} recipient{selectedMessage.recipient_count !== 1 ? "s" : ""}</span>
+                      </>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
-            </div>
 
-            {/* Message Content */}
-            <div className="rounded-xl bg-muted/50 p-3 sm:p-4">
-              <p className="whitespace-pre-wrap text-sm sm:text-base">{selectedMessage.content}</p>
-            </div>
-
-            {/* Attachments */}
-            {selectedMessage.attachment_urls && selectedMessage.attachment_urls.length > 0 && (
-              <div>
-                <p className="text-sm font-medium mb-2 flex items-center gap-2">
-                  <Paperclip className="h-4 w-4" />
-                  Attachments ({selectedMessage.attachment_urls.length})
-                </p>
-                <div className="space-y-2">
-                  {selectedMessage.attachment_urls.map((url, idx) => {
-                    const fileName = url.split("/").pop() || "Attachment";
-                    const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(fileName);
-                    
-                    const handleDownload = async () => {
-                      const { data } = await supabase.storage
-                        .from("message-attachments")
-                        .createSignedUrl(url, 60);
+              {/* Attachments */}
+              {selectedMessage.attachment_urls && selectedMessage.attachment_urls.length > 0 && (
+                <div className="rounded-xl border p-3 sm:p-4 bg-muted/20">
+                  <p className="text-sm font-medium mb-3 flex items-center gap-2">
+                    <Paperclip className="h-4 w-4" />
+                    Attachments ({selectedMessage.attachment_urls.length})
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {selectedMessage.attachment_urls.map((url, idx) => {
+                      const fileName = url.split("/").pop() || "Attachment";
+                      const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(fileName);
                       
-                      if (data?.signedUrl) {
-                        window.open(data.signedUrl, "_blank");
-                      }
-                    };
+                      const handleDownload = async () => {
+                        const { data } = await supabase.storage
+                          .from("message-attachments")
+                          .createSignedUrl(url, 60);
+                        
+                        if (data?.signedUrl) {
+                          window.open(data.signedUrl, "_blank");
+                        }
+                      };
 
-                    return (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-2 rounded-lg bg-muted/30 p-2 text-sm"
-                      >
-                        {isImage ? (
-                          <Image className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <FileText className="h-4 w-4 text-muted-foreground" />
-                        )}
-                        <span className="flex-1 truncate">{fileName}</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="shrink-0 gap-1.5 h-7"
-                          onClick={handleDownload}
+                      return (
+                        <div
+                          key={idx}
+                          className="flex items-center gap-2 rounded-lg bg-background border p-2.5 text-sm"
                         >
-                          <Download className="h-3.5 w-3.5" />
-                          <span className="hidden sm:inline">Download</span>
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Recipients List (for sent messages) */}
-            {selectedMessage.is_sent && selectedMessage.recipients && (
-              <div>
-                <p className="text-sm font-medium mb-2 flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Recipients ({selectedMessage.recipients.length})
-                </p>
-                <ScrollArea className="max-h-[200px]">
-                  <div className="space-y-2">
-                    {selectedMessage.recipients.map((r) => (
-                      <div
-                        key={r.user_id}
-                        className="flex items-center gap-2 rounded-lg bg-muted/30 p-2 text-sm"
-                      >
-                        <User className="h-4 w-4 text-muted-foreground" />
-                        <span className="flex-1 truncate">{r.name}</span>
-                        <div className="flex items-center gap-2 shrink-0">
-                          {r.is_read ? (
-                            <>
-                              <CheckCircle className="h-4 w-4 text-primary" />
-                              <span className="text-xs text-muted-foreground">
-                                {r.read_at ? format(new Date(r.read_at), "MMM d, h:mm a") : "Read"}
-                              </span>
-                            </>
+                          {isImage ? (
+                            <Image className="h-4 w-4 text-muted-foreground shrink-0" />
                           ) : (
-                            <>
-                              <Circle className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-xs text-muted-foreground">Unread</span>
-                            </>
+                            <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
                           )}
+                          <span className="flex-1 truncate text-xs">{fileName}</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="shrink-0 gap-1.5 h-7 px-2"
+                            onClick={handleDownload}
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
-                </ScrollArea>
-              </div>
-            )}
+                </div>
+              )}
+
+              {/* Recipients List (for sent messages) */}
+              {selectedMessage.is_sent && selectedMessage.recipients && (
+                <div className="rounded-xl border p-3 sm:p-4 bg-muted/20">
+                  <p className="text-sm font-medium mb-3 flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Recipients ({selectedMessage.recipients.length})
+                  </p>
+                  <ScrollArea className="max-h-[180px]">
+                    <div className="space-y-2">
+                      {selectedMessage.recipients.map((r) => (
+                        <div
+                          key={r.user_id}
+                          className="flex items-center gap-3 rounded-lg bg-background border p-2.5"
+                        >
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback className="text-xs bg-accent text-accent-foreground">
+                              {getInitials(r.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="flex-1 truncate text-sm font-medium">{r.name}</span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {r.is_read ? (
+                              <div className="flex items-center gap-1.5 text-primary">
+                                <CheckCircle className="h-4 w-4" />
+                                <span className="text-xs">
+                                  {r.read_at ? format(new Date(r.read_at), "MMM d, h:mm a") : "Read"}
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 text-muted-foreground">
+                                <Circle className="h-4 w-4" />
+                                <span className="text-xs">Pending</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
+            </div>
 
             {/* Reply Section (for received messages) */}
             {!selectedMessage.is_sent && (
-              <>
-                <Separator />
-                <div className="space-y-3">
-                  <p className="text-sm font-medium flex items-center gap-2">
-                    <Reply className="h-4 w-4" />
-                    Reply
-                  </p>
-                  <Textarea
-                    value={replyContent}
-                    onChange={(e) => setReplyContent(e.target.value)}
-                    placeholder="Type your reply..."
-                    rows={3}
-                    className="resize-none"
-                  />
-                  <Button
-                    onClick={handleReply}
-                    disabled={replying || !replyContent.trim()}
-                    className="w-full sm:w-auto"
-                  >
-                    {replying ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="mr-2 h-4 w-4" />
-                    )}
-                    Send Reply
-                  </Button>
+              <div className="border-t bg-muted/20 p-4">
+                <div className="flex items-start gap-3">
+                  <Avatar className="h-8 w-8 shrink-0">
+                    <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+                      Y
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 space-y-3">
+                    <Textarea
+                      value={replyContent}
+                      onChange={(e) => setReplyContent(e.target.value)}
+                      placeholder="Type your reply..."
+                      rows={3}
+                      className="resize-none bg-background"
+                    />
+                    <div className="flex justify-end">
+                      <Button
+                        onClick={handleReply}
+                        disabled={replying || !replyContent.trim()}
+                        className="gap-2"
+                      >
+                        {replying ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
+                        Send Reply
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-              </>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -654,6 +773,19 @@ export function WorkspaceMessagesTab({ schoolId, canCompose = true }: Props) {
 
   return (
     <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+          <MessageCircle className="h-5 w-5 text-primary" />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold">Messages</h2>
+          <p className="text-sm text-muted-foreground">
+            {unreadCount > 0 ? `${unreadCount} unread message${unreadCount !== 1 ? "s" : ""}` : "All caught up!"}
+          </p>
+        </div>
+      </div>
+
       {/* Search and Filter Row */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-1 gap-2">
