@@ -5,10 +5,13 @@ import { CalendarDays, Trash2 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
+import { useSession } from "@/hooks/useSession";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+
+import { PeriodManagerCard } from "./components/PeriodManagerCard";
 
 type PeriodRow = {
   id: string;
@@ -119,6 +122,7 @@ export function TimetableBuilderModule() {
   const { schoolSlug } = useParams();
   const tenant = useTenant(schoolSlug);
   const schoolId = useMemo(() => (tenant.status === "ready" ? tenant.schoolId : null), [tenant.status, tenant.schoolId]);
+  const { user } = useSession();
 
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [sections, setSections] = useState<SectionRow[]>([]);
@@ -175,6 +179,11 @@ export function TimetableBuilderModule() {
     setSubjects(((subj ?? []) as SubjectRow[]).filter((s) => allowedSubjectIds.has(s.id)));
     setTeacherAssignments((tsa ?? []) as TeacherSubjectAssignmentRow[]);
     setEntries((tte ?? []) as EntryRow[]);
+  };
+
+  const refreshPeriods = async () => {
+    await refreshStatic();
+    await refreshSection();
   };
 
   useEffect(() => {
@@ -317,6 +326,8 @@ export function TimetableBuilderModule() {
           </div>
         </CardContent>
       </Card>
+
+      <PeriodManagerCard schoolId={schoolId} userId={user?.id ?? null} periods={periods} onChanged={refreshPeriods} />
 
       {!sectionId ? (
         <div className="rounded-3xl bg-surface p-6 shadow-elevated">
