@@ -117,6 +117,59 @@ export function TeacherHome() {
 
   return (
     <div className="space-y-6">
+      {/* Quick Actions - Top for better accessibility */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+            <a
+              href={`/${schoolSlug}/teacher/attendance`}
+              className="flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-colors hover:bg-accent"
+            >
+              <ClipboardCheck className="h-6 w-6 text-primary" />
+              <span className="text-sm">Take Attendance</span>
+            </a>
+            <a
+              href={`/${schoolSlug}/teacher/homework`}
+              className="flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-colors hover:bg-accent"
+            >
+              <BookOpen className="h-6 w-6 text-primary" />
+              <span className="text-sm">Add Homework</span>
+            </a>
+            <a
+              href={`/${schoolSlug}/teacher/gradebook`}
+              className="flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-colors hover:bg-accent"
+            >
+              <TableIcon className="h-6 w-6 text-primary" />
+              <span className="text-sm">Gradebook</span>
+            </a>
+            <a
+              href={`/${schoolSlug}/teacher/progress`}
+              className="flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-colors hover:bg-accent"
+            >
+              <TrendingUp className="h-6 w-6 text-primary" />
+              <span className="text-sm">Progress</span>
+            </a>
+            <a
+              href={`/${schoolSlug}/teacher/students`}
+              className="flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-colors hover:bg-accent"
+            >
+              <Users className="h-6 w-6 text-primary" />
+              <span className="text-sm">View Students</span>
+            </a>
+            <a
+              href={`/${schoolSlug}/teacher/messages`}
+              className="flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-colors hover:bg-accent"
+            >
+              <MessageSquare className="h-6 w-6 text-primary" />
+              <span className="text-sm">Messages</span>
+            </a>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card>
@@ -212,59 +265,6 @@ export function TeacherHome() {
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-            <a
-              href={`/${schoolSlug}/teacher/attendance`}
-              className="flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-colors hover:bg-accent"
-            >
-              <ClipboardCheck className="h-6 w-6 text-primary" />
-              <span className="text-sm">Take Attendance</span>
-            </a>
-            <a
-              href={`/${schoolSlug}/teacher/homework`}
-              className="flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-colors hover:bg-accent"
-            >
-              <BookOpen className="h-6 w-6 text-primary" />
-              <span className="text-sm">Add Homework</span>
-            </a>
-            <a
-              href={`/${schoolSlug}/teacher/gradebook`}
-              className="flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-colors hover:bg-accent"
-            >
-              <TableIcon className="h-6 w-6 text-primary" />
-              <span className="text-sm">Gradebook</span>
-            </a>
-            <a
-              href={`/${schoolSlug}/teacher/progress`}
-              className="flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-colors hover:bg-accent"
-            >
-              <TrendingUp className="h-6 w-6 text-primary" />
-              <span className="text-sm">Progress</span>
-            </a>
-            <a
-              href={`/${schoolSlug}/teacher/students`}
-              className="flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-colors hover:bg-accent"
-            >
-              <Users className="h-6 w-6 text-primary" />
-              <span className="text-sm">View Students</span>
-            </a>
-            <a
-              href={`/${schoolSlug}/teacher/messages`}
-              className="flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-colors hover:bg-accent"
-            >
-              <MessageSquare className="h-6 w-6 text-primary" />
-              <span className="text-sm">Messages</span>
-            </a>
-          </div>
         </CardContent>
       </Card>
     </div>
