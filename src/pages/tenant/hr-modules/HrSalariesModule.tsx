@@ -57,6 +57,7 @@ type SalaryRecord = {
 
 type PayRun = {
   id: string;
+  user_id: string;
   period_start: string;
   period_end: string;
   paid_at: string | null;
@@ -137,6 +138,7 @@ export function HrSalariesModule() {
       if (error) throw error;
       return (data || []).map((r) => ({
         id: r.id,
+        user_id: r.user_id,
         period_start: r.period_start,
         period_end: r.period_end,
         paid_at: r.paid_at,
@@ -280,30 +282,32 @@ export function HrSalariesModule() {
     }
 
     const active = salaryRecords.filter((s) => isRecordActive(s));
-    const grossAmount = active.reduce((sum, s) => sum + s.base_salary + s.allowances, 0);
-    const deductions = active.reduce((sum, s) => sum + s.deductions, 0);
-    const netAmount = grossAmount - deductions;
+    if (active.length === 0) {
+      toast.error("No active salary records to process");
+      return;
+    }
 
-    const { error } = await supabase.from("hr_pay_runs").insert([
-      {
-        school_id: schoolId,
-        user_id: active[0]?.user_id || null,
-        period_start: prPeriodStart,
-        period_end: prPeriodEnd,
-        gross_amount: grossAmount,
-        deductions,
-        net_amount: netAmount,
-        status: "draft",
-        notes: prNotes.trim() || null,
-      },
-    ]);
+    // Create individual pay runs for each staff member
+    const payRunRecords = active.map((salary) => ({
+      school_id: schoolId,
+      user_id: salary.user_id,
+      period_start: prPeriodStart,
+      period_end: prPeriodEnd,
+      gross_amount: salary.base_salary + salary.allowances,
+      deductions: salary.deductions,
+      net_amount: salary.base_salary + salary.allowances - salary.deductions,
+      status: "draft",
+      notes: prNotes.trim() || null,
+    }));
+
+    const { error } = await supabase.from("hr_pay_runs").insert(payRunRecords);
 
     if (error) {
       toast.error(error.message);
       return;
     }
 
-    toast.success("Pay run created");
+    toast.success(`${payRunRecords.length} pay runs created for individual staff members`);
     setPayRunDialogOpen(false);
     setPrPeriodStart("");
     setPrPeriodEnd("");
@@ -331,71 +335,71 @@ export function HrSalariesModule() {
   };
 
   const handleBulkPayslips = (run: PayRun) => {
-    const active = salaryRecords.filter((s) => isRecordActive(s));
-    if (active.length === 0) {
-      toast.error("No active salary records");
+    // Find the salary record for this specific user
+    const salary = salaryRecords.find((s) => s.user_id === run.user_id && isRecordActive(s));
+    const staff = getStaffMember(run.user_id);
+    
+    if (!staff) {
+      toast.error("Staff member not found");
       return;
     }
 
     const schoolName = tenant.status === "ready" ? tenant.school?.name || "School" : "School";
 
-    const payslips: PayslipData[] = active.map((salary) => {
-      const staff = getStaffMember(salary.user_id);
-      return {
-        employeeName: staff?.full_name || "Unknown",
-        employeeEmail: staff?.email || "",
-        employeeId: salary.user_id,
-        periodStart: run.period_start,
-        periodEnd: run.period_end,
-        paidAt: run.paid_at,
-        baseSalary: salary.base_salary,
-        allowances: salary.allowances,
-        deductions: salary.deductions,
-        grossAmount: salary.base_salary + salary.allowances,
-        netAmount: salary.base_salary + salary.allowances - salary.deductions,
-        currency: salary.currency,
-        schoolName,
-        payRunId: run.id,
-        status: run.status,
-      };
-    });
+    const payslip: PayslipData = {
+      employeeName: staff.full_name,
+      employeeEmail: staff.email || "",
+      employeeId: run.user_id,
+      periodStart: run.period_start,
+      periodEnd: run.period_end,
+      paidAt: run.paid_at,
+      baseSalary: salary?.base_salary || run.gross_amount - (salary?.allowances || 0),
+      allowances: salary?.allowances || 0,
+      deductions: run.deductions,
+      grossAmount: run.gross_amount,
+      netAmount: run.net_amount,
+      currency: salary?.currency || "PKR",
+      schoolName,
+      payRunId: run.id,
+      status: run.status,
+    };
 
-    openBulkPayslipsPDF(payslips);
-    toast.success(`${payslips.length} payslips generated!`);
+    openBulkPayslipsPDF([payslip]);
+    toast.success("Payslip generated!");
   };
 
   const handleDownloadPayslips = (run: PayRun) => {
-    const active = salaryRecords.filter((s) => isRecordActive(s));
-    if (active.length === 0) {
-      toast.error("No active salary records");
+    // Find the salary record for this specific user
+    const salary = salaryRecords.find((s) => s.user_id === run.user_id && isRecordActive(s));
+    const staff = getStaffMember(run.user_id);
+    
+    if (!staff) {
+      toast.error("Staff member not found");
       return;
     }
 
     const schoolName = tenant.status === "ready" ? tenant.school?.name || "School" : "School";
 
-    const payslips: PayslipData[] = active.map((salary) => {
-      const staff = getStaffMember(salary.user_id);
-      return {
-        employeeName: staff?.full_name || "Unknown",
-        employeeEmail: staff?.email || "",
-        employeeId: salary.user_id,
-        periodStart: run.period_start,
-        periodEnd: run.period_end,
-        paidAt: run.paid_at,
-        baseSalary: salary.base_salary,
-        allowances: salary.allowances,
-        deductions: salary.deductions,
-        grossAmount: salary.base_salary + salary.allowances,
-        netAmount: salary.base_salary + salary.allowances - salary.deductions,
-        currency: salary.currency,
-        schoolName,
-        payRunId: run.id,
-        status: run.status,
-      };
-    });
+    const payslip: PayslipData = {
+      employeeName: staff.full_name,
+      employeeEmail: staff.email || "",
+      employeeId: run.user_id,
+      periodStart: run.period_start,
+      periodEnd: run.period_end,
+      paidAt: run.paid_at,
+      baseSalary: salary?.base_salary || run.gross_amount - (salary?.allowances || 0),
+      allowances: salary?.allowances || 0,
+      deductions: run.deductions,
+      grossAmount: run.gross_amount,
+      netAmount: run.net_amount,
+      currency: salary?.currency || "PKR",
+      schoolName,
+      payRunId: run.id,
+      status: run.status,
+    };
 
-    downloadBulkPayslipsHTML(payslips, run.period_start, run.period_end);
-    toast.success(`${payslips.length} payslips downloaded!`);
+    downloadBulkPayslipsHTML([payslip], run.period_start, run.period_end);
+    toast.success("Payslip downloaded!");
   };
 
   const activeSalaries = salaryRecords.filter((s) => isRecordActive(s));
@@ -727,13 +731,17 @@ export function HrSalariesModule() {
                       <div className="flex items-start justify-between">
                         <div>
                           <div className="flex items-center gap-2 mb-2">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium">
-                              {new Date(run.period_start).toLocaleDateString()} — {new Date(run.period_end).toLocaleDateString()}
-                            </span>
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium">{getStaffName(run.user_id)}</span>
                             <Badge variant={run.status === "completed" ? "default" : "secondary"}>
                               {run.status}
                             </Badge>
+                          </div>
+                          <div className="flex items-center gap-2 mb-2 text-sm text-muted-foreground">
+                            <Calendar className="h-3 w-3" />
+                            <span>
+                              {new Date(run.period_start).toLocaleDateString()} — {new Date(run.period_end).toLocaleDateString()}
+                            </span>
                           </div>
                           <div className="grid grid-cols-3 gap-6 text-sm">
                             <div>
@@ -756,15 +764,15 @@ export function HrSalariesModule() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleBulkPayslips(run)}
-                            title="Print All Payslips"
+                            title="Print Payslip"
                           >
-                            <FileText className="h-4 w-4 mr-1" /> Print All
+                            <FileText className="h-4 w-4 mr-1" /> Print
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDownloadPayslips(run)}
-                            title="Download All Payslips"
+                            title="Download Payslip"
                           >
                             <Download className="h-4 w-4" />
                           </Button>
