@@ -1,4 +1,5 @@
 import { Fragment, useMemo } from "react";
+import { Coffee } from "lucide-react";
 
 type Period = {
   id: string;
@@ -6,6 +7,7 @@ type Period = {
   sort_order: number;
   start_time: string | null;
   end_time: string | null;
+  is_break?: boolean;
 };
 
 export type PeriodTimetableEntry = {
@@ -69,8 +71,11 @@ export function PeriodTimetableGrid({
           Day
         </div>
         {periods.map((p) => (
-          <div key={p.id} className="rounded-2xl bg-surface px-2 py-2">
-            <p className="text-sm font-medium">{p.label}</p>
+          <div key={p.id} className={`rounded-2xl px-2 py-2 ${p.is_break ? "bg-accent/50" : "bg-surface"}`}>
+            <p className="flex items-center gap-1.5 text-sm font-medium">
+              {p.is_break && <Coffee className="h-3.5 w-3.5 text-muted-foreground" />}
+              {p.label}
+            </p>
             <p className="text-xs text-muted-foreground">
               {timeLabel(p.start_time)}
               {p.start_time && p.end_time ? "–" : ""}
@@ -90,6 +95,21 @@ export function PeriodTimetableGrid({
               {d.label}
             </div>
             {periods.map((p) => {
+              // Break periods show a special cell
+              if (p.is_break) {
+                return (
+                  <div
+                    key={`cell:${d.id}:${p.id}`}
+                    className="flex min-h-[72px] items-center justify-center rounded-2xl border border-dashed border-accent bg-accent/30 p-2"
+                  >
+                    <div className="flex flex-col items-center gap-1 text-center">
+                      <Coffee className="h-4 w-4 text-muted-foreground" />
+                      <p className="text-xs font-medium text-muted-foreground">{p.label}</p>
+                    </div>
+                  </div>
+                );
+              }
+
               const e = entryBySlot.get(`${d.id}:${p.id}`) ?? null;
               return (
                 <div key={`cell:${d.id}:${p.id}`} className="min-h-[72px] rounded-2xl border bg-surface p-2">
