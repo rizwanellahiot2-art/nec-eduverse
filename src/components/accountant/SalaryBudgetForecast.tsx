@@ -393,12 +393,12 @@ export function SalaryBudgetForecast() {
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label>Role</Label>
-                  <Select value={formRole} onValueChange={setFormRole}>
+                  <Select value={formRole || "all"} onValueChange={(v) => setFormRole(v === "all" ? "" : v)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select role (optional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Roles</SelectItem>
+                      <SelectItem value="all">All Roles</SelectItem>
                       {availableRoles.map((role) => (
                         <SelectItem key={role} value={role}>
                           {role.charAt(0).toUpperCase() + role.slice(1).replace(/_/g, " ")}

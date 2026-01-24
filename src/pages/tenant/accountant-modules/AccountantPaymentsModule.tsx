@@ -332,13 +332,22 @@ export function AccountantPaymentsModule() {
                         <SelectValue placeholder="Select invoice" />
                       </SelectTrigger>
                       <SelectContent>
-                        {unpaidInvoices.map((inv) => (
-                          <SelectItem key={inv.id} value={inv.id}>
-                            {inv.invoice_no} - {getStudentName(inv.student_id)} ({inv.total.toLocaleString()})
+                        {unpaidInvoices.length === 0 ? (
+                          <SelectItem value="__none" disabled>
+                            No unpaid invoices
                           </SelectItem>
-                        ))}
+                        ) : (
+                          unpaidInvoices.map((inv) => (
+                            <SelectItem key={inv.id} value={inv.id}>
+                              {inv.invoice_no} - {getStudentName(inv.student_id)} ({inv.total.toLocaleString()})
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
+                    {invoices.length === 0 && (
+                      <p className="text-xs text-muted-foreground">No invoices found. Create an invoice first.</p>
+                    )}
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -352,11 +361,12 @@ export function AccountantPaymentsModule() {
                     </div>
                     <div className="space-y-2">
                       <Label>Payment Method</Label>
-                      <Select value={formMethodId} onValueChange={setFormMethodId}>
+                      <Select value={formMethodId || "none"} onValueChange={(v) => setFormMethodId(v === "none" ? "" : v)}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select method" />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="none">No method</SelectItem>
                           {paymentMethods.filter((m) => m.is_active).map((m) => (
                             <SelectItem key={m.id} value={m.id}>
                               {m.name}
