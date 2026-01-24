@@ -136,44 +136,44 @@ export function TeacherDetailsCard({
   return (
     <Card>
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
-            <User className="h-5 w-5" />
+            <User className="h-5 w-5 shrink-0" />
             Teachers Overview
           </CardTitle>
           <Badge variant="secondary">{teachers.length} teachers</Badge>
         </div>
       </CardHeader>
       <CardContent>
-        <ScrollArea className="h-[400px] pr-4">
+        <ScrollArea className="h-[400px] pr-2 sm:pr-4">
           <Accordion type="multiple" className="space-y-2">
             {teacherDetails.map((teacher) => (
               <AccordionItem
                 key={teacher.user_id}
                 value={teacher.user_id}
-                className="rounded-xl border bg-surface px-4"
+                className="rounded-xl border bg-surface px-3 sm:px-4"
               >
                 <AccordionTrigger className="py-3 hover:no-underline">
-                  <div className="flex flex-1 items-center justify-between pr-4">
-                    <div className="flex items-center gap-3">
-                      <div className="grid h-9 w-9 place-items-center rounded-full bg-primary/10">
+                  <div className="flex flex-1 flex-col gap-2 pr-2 sm:flex-row sm:items-center sm:justify-between sm:pr-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10">
                         <User className="h-4 w-4 text-primary" />
                       </div>
-                      <div className="text-left">
-                        <p className="font-medium">
+                      <div className="text-left min-w-0">
+                        <p className="font-medium truncate">
                           {teacher.display_name || teacher.email.split("@")[0]}
                         </p>
-                        <p className="text-xs text-muted-foreground">{teacher.email}</p>
+                        <p className="text-xs text-muted-foreground truncate">{teacher.email}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs">
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <Badge variant="outline" className="text-xs whitespace-nowrap">
                         <GraduationCap className="mr-1 h-3 w-3" />
-                        {teacher.totalSections} sections
+                        {teacher.totalSections} sec
                       </Badge>
-                      <Badge variant="outline" className="text-xs">
+                      <Badge variant="outline" className="text-xs whitespace-nowrap">
                         <BookOpen className="mr-1 h-3 w-3" />
-                        {teacher.totalSubjects} subjects
+                        {teacher.totalSubjects} subj
                       </Badge>
                     </div>
                   </div>
@@ -188,15 +188,15 @@ export function TeacherDetailsCard({
                       {teacher.sectionDetails.map((section) => (
                         <div
                           key={section.sectionId}
-                          className="rounded-lg bg-muted/50 p-3"
+                          className="rounded-lg bg-muted/50 p-2 sm:p-3"
                         >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <GraduationCap className="h-4 w-4 text-muted-foreground" />
-                              <span className="font-medium text-sm">{section.label}</span>
+                          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <GraduationCap className="h-4 w-4 shrink-0 text-muted-foreground" />
+                              <span className="font-medium text-sm truncate">{section.label}</span>
                             </div>
                             {section.isClassTeacher && (
-                              <Badge className="text-xs">Class Teacher</Badge>
+                              <Badge className="text-xs w-fit shrink-0">Class Teacher</Badge>
                             )}
                           </div>
                           {section.subjects.length > 0 && (

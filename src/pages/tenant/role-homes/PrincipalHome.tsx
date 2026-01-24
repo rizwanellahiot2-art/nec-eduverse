@@ -228,13 +228,13 @@ export function PrincipalHome() {
       {/* Quick Actions - Top for better accessibility */}
       <Card className="shadow-elevated">
         <CardHeader className="pb-2 sm:pb-3">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle className="text-base sm:text-lg">Quick Actions</CardTitle>
-            <div className="flex items-center gap-2">
-              <AlertSettingsDialog schoolId={schoolId} onSettingsChanged={refreshAlerts} />
-              <AlertsSummaryBadge criticalCount={criticalCount} warningCount={warningCount} />
-            </div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <CardTitle className="text-base sm:text-lg">Quick Actions</CardTitle>
+          <div className="flex items-center gap-2 shrink-0">
+            <AlertSettingsDialog schoolId={schoolId} onSettingsChanged={refreshAlerts} />
+            <AlertsSummaryBadge criticalCount={criticalCount} warningCount={warningCount} />
           </div>
+        </div>
         </CardHeader>
         <CardContent className="p-3 sm:p-6">
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-6">

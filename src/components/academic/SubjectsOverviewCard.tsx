@@ -117,29 +117,29 @@ export function SubjectsOverviewCard({
   return (
     <Card>
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
-            <BookOpen className="h-5 w-5" />
+            <BookOpen className="h-5 w-5 shrink-0" />
             Subjects Overview
           </CardTitle>
           <Badge variant="secondary">{subjects.length} subjects</Badge>
         </div>
       </CardHeader>
       <CardContent>
-        <ScrollArea className="h-[400px] pr-4">
+        <ScrollArea className="h-[400px] pr-2 sm:pr-4">
           <div className="grid gap-3 sm:grid-cols-2">
             {subjectDetails.map((subject) => (
               <div
                 key={subject.id}
-                className="rounded-xl border bg-surface p-4"
+                className="rounded-xl border bg-surface p-3 sm:p-4"
               >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10">
+                <div className="flex items-start justify-between mb-3 gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10">
                       <BookOpen className="h-5 w-5 text-primary" />
                     </div>
-                    <div>
-                      <p className="font-semibold">{subject.name}</p>
+                    <div className="min-w-0">
+                      <p className="font-semibold truncate">{subject.name}</p>
                       {subject.code && (
                         <p className="text-xs text-muted-foreground">Code: {subject.code}</p>
                       )}
@@ -150,8 +150,8 @@ export function SubjectsOverviewCard({
                 <div className="space-y-2">
                   {/* Sections */}
                   <div className="flex items-start gap-2">
-                    <GraduationCap className="h-4 w-4 text-muted-foreground mt-0.5" />
-                    <div className="flex-1">
+                    <GraduationCap className="h-4 w-4 shrink-0 text-muted-foreground mt-0.5" />
+                    <div className="flex-1 min-w-0">
                       <p className="text-xs text-muted-foreground mb-1">Taught in</p>
                       {subject.sectionsTaught.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
@@ -174,8 +174,8 @@ export function SubjectsOverviewCard({
 
                   {/* Teachers */}
                   <div className="flex items-start gap-2">
-                    <User className="h-4 w-4 text-muted-foreground mt-0.5" />
-                    <div className="flex-1">
+                    <User className="h-4 w-4 shrink-0 text-muted-foreground mt-0.5" />
+                    <div className="flex-1 min-w-0">
                       <p className="text-xs text-muted-foreground mb-1">Teachers</p>
                       {subject.uniqueTeachers.length > 0 ? (
                         <div className="flex flex-wrap gap-1">

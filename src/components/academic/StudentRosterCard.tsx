@@ -193,114 +193,118 @@ export function StudentRosterCard({
           </Select>
         </div>
 
-        {/* Table */}
-        <ScrollArea className="h-[350px] rounded-xl border">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead className="font-semibold">Student Name</TableHead>
-                <TableHead className="font-semibold">Parent Name</TableHead>
-                <TableHead className="font-semibold">Class / Section</TableHead>
-                <TableHead className="font-semibold">Status</TableHead>
-                <TableHead className="font-semibold">Portal Access</TableHead>
-                {(onEdit || onDelete) && (
-                  <TableHead className="font-semibold text-right">Actions</TableHead>
-                )}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredStudents.map((student) => (
-                <TableRow key={student.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="grid h-8 w-8 place-items-center rounded-full bg-muted">
-                        <span className="text-xs font-medium">
-                          {student.first_name[0]}
-                          {student.last_name?.[0] || ""}
-                        </span>
-                      </div>
-                      <span className="font-medium">
-                        {student.first_name} {student.last_name || ""}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm text-muted-foreground">
-                      {student.parent_name || "—"}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {student.sectionLabel ? (
-                      <div className="flex items-center gap-1.5">
-                        <GraduationCap className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="text-sm">{student.sectionLabel}</span>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Not enrolled</span>
+        {/* Table - Horizontal scroll wrapper for mobile */}
+        <div className="rounded-xl border">
+          <ScrollArea className="h-[350px]">
+            <div className="min-w-[700px]">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="font-semibold whitespace-nowrap">Student Name</TableHead>
+                    <TableHead className="font-semibold whitespace-nowrap">Parent Name</TableHead>
+                    <TableHead className="font-semibold whitespace-nowrap">Class / Section</TableHead>
+                    <TableHead className="font-semibold whitespace-nowrap">Status</TableHead>
+                    <TableHead className="font-semibold whitespace-nowrap">Portal Access</TableHead>
+                    {(onEdit || onDelete) && (
+                      <TableHead className="font-semibold text-right whitespace-nowrap">Actions</TableHead>
                     )}
-                  </TableCell>
-                  <TableCell>{getStatusBadge(student.status)}</TableCell>
-                  <TableCell>
-                    {student.profile_id ? (
-                      <Badge variant="outline" className="text-xs">
-                        Linked
-                      </Badge>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">Not linked</span>
-                    )}
-                  </TableCell>
-                  {(onEdit || onDelete) && (
-                    <TableCell className="text-right">
-                      <TooltipProvider>
-                        <div className="flex items-center justify-end gap-1">
-                          {onEdit && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() => onEdit(student)}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Edit Student</TooltipContent>
-                            </Tooltip>
-                          )}
-                          {onDelete && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-destructive hover:text-destructive"
-                                  onClick={() => onDelete(student)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Delete Student</TooltipContent>
-                            </Tooltip>
-                          )}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredStudents.map((student) => (
+                    <TableRow key={student.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-muted">
+                            <span className="text-xs font-medium">
+                              {student.first_name[0]}
+                              {student.last_name?.[0] || ""}
+                            </span>
+                          </div>
+                          <span className="font-medium whitespace-nowrap">
+                            {student.first_name} {student.last_name || ""}
+                          </span>
                         </div>
-                      </TooltipProvider>
-                    </TableCell>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-muted-foreground whitespace-nowrap">
+                          {student.parent_name || "—"}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        {student.sectionLabel ? (
+                          <div className="flex items-center gap-1.5">
+                            <GraduationCap className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                            <span className="text-sm whitespace-nowrap">{student.sectionLabel}</span>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground whitespace-nowrap">Not enrolled</span>
+                        )}
+                      </TableCell>
+                      <TableCell>{getStatusBadge(student.status)}</TableCell>
+                      <TableCell>
+                        {student.profile_id ? (
+                          <Badge variant="outline" className="text-xs whitespace-nowrap">
+                            Linked
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">Not linked</span>
+                        )}
+                      </TableCell>
+                      {(onEdit || onDelete) && (
+                        <TableCell className="text-right">
+                          <TooltipProvider>
+                            <div className="flex items-center justify-end gap-1">
+                              {onEdit && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8"
+                                      onClick={() => onEdit(student)}
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Edit Student</TooltipContent>
+                                </Tooltip>
+                              )}
+                              {onDelete && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-destructive hover:text-destructive"
+                                      onClick={() => onDelete(student)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Delete Student</TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
+                          </TooltipProvider>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                  {filteredStudents.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={onEdit || onDelete ? 6 : 5} className="text-center py-8 text-muted-foreground">
+                        {searchTerm || filterSection !== "all" || filterStatus !== "all"
+                          ? "No students match your filters"
+                          : "No students found"}
+                      </TableCell>
+                    </TableRow>
                   )}
-                </TableRow>
-              ))}
-              {filteredStudents.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={onEdit || onDelete ? 6 : 5} className="text-center py-8 text-muted-foreground">
-                    {searchTerm || filterSection !== "all" || filterStatus !== "all"
-                      ? "No students match your filters"
-                      : "No students found"}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </ScrollArea>
+                </TableBody>
+              </Table>
+            </div>
+          </ScrollArea>
+        </div>
 
         <p className="text-xs text-muted-foreground">
           Showing {filteredStudents.length} of {students.length} students
