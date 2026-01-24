@@ -1812,6 +1812,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          low_grade_threshold: number | null
           notify_absent: boolean
           notify_grades: boolean
           notify_homework: boolean
@@ -1824,6 +1825,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          low_grade_threshold?: number | null
           notify_absent?: boolean
           notify_grades?: boolean
           notify_homework?: boolean
@@ -1836,6 +1838,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          low_grade_threshold?: number | null
           notify_absent?: boolean
           notify_grades?: boolean
           notify_homework?: boolean
