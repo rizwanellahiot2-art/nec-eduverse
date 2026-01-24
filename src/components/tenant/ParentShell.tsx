@@ -133,7 +133,11 @@ export function ParentShell({
                           to={item.path ? `${basePath}/${item.path}` : basePath}
                           end={item.path === ""}
                           className={({ isActive }) =>
-                            isActive ? "bg-accent text-accent-foreground" : ""
+                            `flex items-center gap-2 transition-colors ${
+                              isActive 
+                                ? "bg-primary text-primary-foreground shadow-sm" 
+                                : "hover:bg-primary/10 hover:text-primary"
+                            }`
                           }
                         >
                           <item.icon className="h-4 w-4" />

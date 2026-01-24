@@ -67,71 +67,72 @@
               </div>
            </div>
  
-           <nav className="mt-6 space-y-1">
-             <NavLink
-               to={`/${schoolSlug}/accountant`}
-               className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-               activeClassName="bg-accent text-accent-foreground"
-             >
-               <LayoutGrid className="h-4 w-4" /> Dashboard
-             </NavLink>
- 
-             <NavLink
-               to={`/${schoolSlug}/accountant/fees`}
-               className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-               activeClassName="bg-accent text-accent-foreground"
-             >
-               <DollarSign className="h-4 w-4" /> Fee Plans
-             </NavLink>
- 
-             <NavLink
-               to={`/${schoolSlug}/accountant/invoices`}
-               className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-               activeClassName="bg-accent text-accent-foreground"
-             >
-               <FileText className="h-4 w-4" /> Invoices
-             </NavLink>
- 
-             <NavLink
-               to={`/${schoolSlug}/accountant/payments`}
-               className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-               activeClassName="bg-accent text-accent-foreground"
-             >
-               <CreditCard className="h-4 w-4" /> Payments
-             </NavLink>
- 
-             <NavLink
-               to={`/${schoolSlug}/accountant/expenses`}
-               className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-               activeClassName="bg-accent text-accent-foreground"
-             >
-               <TrendingUp className="h-4 w-4" /> Expenses
-             </NavLink>
- 
-             <NavLink
-               to={`/${schoolSlug}/accountant/payroll`}
-               className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-               activeClassName="bg-accent text-accent-foreground"
-             >
-               <Coins className="h-4 w-4" /> Payroll
-             </NavLink>
- 
-             <NavLink
-               to={`/${schoolSlug}/accountant/reports`}
-               className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-               activeClassName="bg-accent text-accent-foreground"
-             >
-               <BarChart3 className="h-4 w-4" /> Reports
-             </NavLink>
+          <nav className="mt-6 space-y-1">
+            <NavLink
+              to={`/${schoolSlug}/accountant`}
+              end
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
+            >
+              <LayoutGrid className="h-4 w-4" /> Dashboard
+            </NavLink>
 
-              <NavLink
-                to={`/${schoolSlug}/accountant/timetable`}
-                className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-                activeClassName="bg-accent text-accent-foreground"
-              >
-                <CalendarDays className="h-4 w-4" /> Timetable Builder
-              </NavLink>
-           </nav>
+            <NavLink
+              to={`/${schoolSlug}/accountant/fees`}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
+            >
+              <DollarSign className="h-4 w-4" /> Fee Plans
+            </NavLink>
+
+            <NavLink
+              to={`/${schoolSlug}/accountant/invoices`}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
+            >
+              <FileText className="h-4 w-4" /> Invoices
+            </NavLink>
+
+            <NavLink
+              to={`/${schoolSlug}/accountant/payments`}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
+            >
+              <CreditCard className="h-4 w-4" /> Payments
+            </NavLink>
+
+            <NavLink
+              to={`/${schoolSlug}/accountant/expenses`}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
+            >
+              <TrendingUp className="h-4 w-4" /> Expenses
+            </NavLink>
+
+            <NavLink
+              to={`/${schoolSlug}/accountant/payroll`}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
+            >
+              <Coins className="h-4 w-4" /> Payroll
+            </NavLink>
+
+            <NavLink
+              to={`/${schoolSlug}/accountant/reports`}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
+            >
+              <BarChart3 className="h-4 w-4" /> Reports
+            </NavLink>
+
+            <NavLink
+              to={`/${schoolSlug}/accountant/timetable`}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
+            >
+              <CalendarDays className="h-4 w-4" /> Timetable Builder
+            </NavLink>
+          </nav>
  
            <div className="mt-6 rounded-2xl bg-accent p-4">
              <p className="text-sm font-medium text-accent-foreground">Finance Portal</p>

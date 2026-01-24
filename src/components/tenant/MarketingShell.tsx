@@ -27,64 +27,65 @@ export function MarketingShell({ title, subtitle, schoolSlug, children }: Props)
           <nav className="mt-6 space-y-1">
             <NavLink
               to={`/${schoolSlug}/marketing`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
+              end
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <BarChart3 className="h-4 w-4" /> Overview
             </NavLink>
 
             <NavLink
               to={`/${schoolSlug}/marketing/leads`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <Users className="h-4 w-4" /> Leads
             </NavLink>
 
             <NavLink
               to={`/${schoolSlug}/marketing/follow-ups`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <ClipboardList className="h-4 w-4" /> Follow-ups
             </NavLink>
 
             <NavLink
               to={`/${schoolSlug}/marketing/calls`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <PhoneCall className="h-4 w-4" /> Call logs
             </NavLink>
 
             <NavLink
               to={`/${schoolSlug}/marketing/sources`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <Target className="h-4 w-4" /> Sources
             </NavLink>
 
             <NavLink
               to={`/${schoolSlug}/marketing/campaigns`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <Megaphone className="h-4 w-4" /> Campaigns
             </NavLink>
 
             <NavLink
               to={`/${schoolSlug}/marketing/reports`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <BarChart3 className="h-4 w-4" /> Reports
             </NavLink>
 
             <NavLink
               to={`/${schoolSlug}/marketing/timetable`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <CalendarDays className="h-4 w-4" /> Timetable Builder
             </NavLink>
