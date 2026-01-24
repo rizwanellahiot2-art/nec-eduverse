@@ -255,15 +255,15 @@ export function SendMessageDialog({ schoolId, trigger }: SendMessageDialogProps)
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col p-0">
+        <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
             Send Message to Staff
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4 -mr-4">
+        <div className="flex-1 overflow-y-auto px-6">
           <div className="space-y-4 pb-4">
             {/* Selected Recipients */}
             {selectedUsers.length > 0 && (
@@ -276,7 +276,7 @@ export function SendMessageDialog({ schoolId, trigger }: SendMessageDialogProps)
                     Clear All
                   </Button>
                 </div>
-                <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto">
+                <div className="flex flex-wrap gap-1">
                   {selectedUsers.map((user) => (
                     <Badge
                       key={user.user_id}
@@ -296,11 +296,9 @@ export function SendMessageDialog({ schoolId, trigger }: SendMessageDialogProps)
             <div className="space-y-2">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <Label>Select Recipients</Label>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={selectAllFiltered} className="text-xs">
-                    Select All Visible
-                  </Button>
-                </div>
+                <Button variant="outline" size="sm" onClick={selectAllFiltered} className="text-xs">
+                  Select All Visible
+                </Button>
               </div>
 
               {/* Search */}
@@ -336,13 +334,13 @@ export function SendMessageDialog({ schoolId, trigger }: SendMessageDialogProps)
               </Tabs>
 
               {/* User List */}
-              <div className="h-40 rounded-lg border overflow-y-auto">
+              <div className="max-h-32 rounded-lg border overflow-y-auto">
                 {loading ? (
-                  <div className="flex items-center justify-center h-full">
+                  <div className="flex items-center justify-center py-8">
                     <p className="text-sm text-muted-foreground">Loading users...</p>
                   </div>
                 ) : filteredUsers.length === 0 ? (
-                  <div className="flex items-center justify-center h-full">
+                  <div className="flex items-center justify-center py-8">
                     <p className="text-sm text-muted-foreground">No users found</p>
                   </div>
                 ) : (
@@ -359,7 +357,7 @@ export function SendMessageDialog({ schoolId, trigger }: SendMessageDialogProps)
                         >
                           <div className="flex items-center gap-2 min-w-0">
                             <div
-                              className={`h-4 w-4 rounded border flex items-center justify-center ${
+                              className={`h-4 w-4 rounded border flex items-center justify-center shrink-0 ${
                                 isSelected ? "bg-primary border-primary" : "border-muted-foreground/30"
                               }`}
                             >
@@ -397,17 +395,17 @@ export function SendMessageDialog({ schoolId, trigger }: SendMessageDialogProps)
                   id="content"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  rows={4}
+                  rows={3}
                   placeholder="Write your message..."
                   className="resize-none"
                 />
               </div>
             </div>
           </div>
-        </ScrollArea>
+        </div>
 
         {/* Send Button - Fixed at bottom */}
-        <DialogFooter className="pt-4 border-t mt-2">
+        <div className="shrink-0 border-t bg-background px-6 py-4">
           <Button
             onClick={handleSend}
             disabled={sending || !content.trim() || selectedUsers.length === 0}
@@ -416,7 +414,7 @@ export function SendMessageDialog({ schoolId, trigger }: SendMessageDialogProps)
             <Send className="mr-2 h-4 w-4" />
             {sending ? "Sending..." : `Send to ${selectedUsers.length} recipient(s)`}
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
