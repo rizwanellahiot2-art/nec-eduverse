@@ -362,7 +362,7 @@ export function MessagesModule({ schoolId }: Props) {
         .insert({
           school_id: schoolId,
           sender_user_id: currentUserId,
-          subject: null,
+          subject: "Direct Message",
           content: messageText.trim() || "[Attachment]",
           priority: "normal",
           status: "sent",
