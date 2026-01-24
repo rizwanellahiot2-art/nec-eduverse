@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   DollarSign,
   TrendingUp,
@@ -56,6 +56,7 @@ import { motion } from "framer-motion";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
+import { useRealtimeTable } from "@/hooks/useRealtime";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -78,9 +79,54 @@ export function AccountantHomeModule() {
   const { schoolSlug } = useParams();
   const navigate = useNavigate();
   const tenant = useTenant(schoolSlug);
+  const queryClient = useQueryClient();
   const schoolId = tenant.status === "ready" ? tenant.schoolId : null;
 
   const [activeTab, setActiveTab] = useState("overview");
+
+  // Invalidate all finance queries on realtime changes
+  const invalidateFinanceQueries = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["finance_invoices_home"] });
+    queryClient.invalidateQueries({ queryKey: ["finance_payments_home"] });
+    queryClient.invalidateQueries({ queryKey: ["finance_expenses_home"] });
+    queryClient.invalidateQueries({ queryKey: ["hr_pay_runs_home"] });
+    queryClient.invalidateQueries({ queryKey: ["hr_salary_records_home"] });
+    queryClient.invalidateQueries({ queryKey: ["finance_invoices"] });
+    queryClient.invalidateQueries({ queryKey: ["finance_payments"] });
+  }, [queryClient]);
+
+  // Real-time subscriptions for all finance tables
+  useRealtimeTable({
+    channel: `home-invoices-${schoolId}`,
+    table: "finance_invoices",
+    filter: schoolId ? `school_id=eq.${schoolId}` : undefined,
+    enabled: !!schoolId,
+    onChange: invalidateFinanceQueries,
+  });
+
+  useRealtimeTable({
+    channel: `home-payments-${schoolId}`,
+    table: "finance_payments",
+    filter: schoolId ? `school_id=eq.${schoolId}` : undefined,
+    enabled: !!schoolId,
+    onChange: invalidateFinanceQueries,
+  });
+
+  useRealtimeTable({
+    channel: `home-expenses-${schoolId}`,
+    table: "finance_expenses",
+    filter: schoolId ? `school_id=eq.${schoolId}` : undefined,
+    enabled: !!schoolId,
+    onChange: invalidateFinanceQueries,
+  });
+
+  useRealtimeTable({
+    channel: `home-pay-runs-${schoolId}`,
+    table: "hr_pay_runs",
+    filter: schoolId ? `school_id=eq.${schoolId}` : undefined,
+    enabled: !!schoolId,
+    onChange: invalidateFinanceQueries,
+  });
 
   // Fetch all financial data
   const { data: invoices = [] } = useQuery({
