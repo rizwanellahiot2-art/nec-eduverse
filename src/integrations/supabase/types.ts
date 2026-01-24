@@ -23,6 +23,8 @@ export type Database = {
           id: string
           max_marks: number
           school_id: string
+          subject_id: string | null
+          teacher_user_id: string | null
           title: string
         }
         Insert: {
@@ -33,6 +35,8 @@ export type Database = {
           id?: string
           max_marks?: number
           school_id: string
+          subject_id?: string | null
+          teacher_user_id?: string | null
           title: string
         }
         Update: {
@@ -43,9 +47,19 @@ export type Database = {
           id?: string
           max_marks?: number
           school_id?: string
+          subject_id?: string | null
+          teacher_user_id?: string | null
           title?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "academic_assessments_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       academic_classes: {
         Row: {
@@ -2522,6 +2536,7 @@ export type Database = {
           day_of_week: number
           end_time: string
           id: string
+          period_id: string | null
           room: string | null
           school_id: string
           start_time: string
@@ -2536,6 +2551,7 @@ export type Database = {
           day_of_week: number
           end_time: string
           id?: string
+          period_id?: string | null
           room?: string | null
           school_id: string
           start_time: string
@@ -2550,6 +2566,7 @@ export type Database = {
           day_of_week?: number
           end_time?: string
           id?: string
+          period_id?: string | null
           room?: string | null
           school_id?: string
           start_time?: string
@@ -2557,7 +2574,15 @@ export type Database = {
           teacher_user_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "timetable_entries_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "timetable_periods"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       timetable_periods: {
         Row: {
