@@ -1,7 +1,7 @@
 import { PropsWithChildren, useEffect, useState } from "react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
-import { BarChart3, Coins, GraduationCap, Headphones, KanbanSquare, LayoutGrid, Settings, ShieldCheck, Sparkles, Users } from "lucide-react";
+import { BarChart3, CalendarDays, Coins, GraduationCap, Headphones, KanbanSquare, LayoutGrid, Settings, ShieldCheck, Sparkles, Users } from "lucide-react";
 import type { EduverseRole } from "@/lib/eduverse-roles";
 import { supabase } from "@/integrations/supabase/client";
 import { GlobalCommandPalette } from "@/components/global/GlobalCommandPalette";
@@ -118,6 +118,16 @@ export function TenantShell({ title, subtitle, role, schoolSlug, children }: Pro
             >
               <GraduationCap className="h-4 w-4" /> Academic Core
             </NavLink>
+
+            {(["principal", "vice_principal", "super_admin", "school_owner"] as EduverseRole[]).includes(role) && (
+              <NavLink
+                to={`/${schoolSlug}/${role}/timetable`}
+                className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
+                activeClassName="bg-accent text-accent-foreground"
+              >
+                <CalendarDays className="h-4 w-4" /> Timetable Builder
+              </NavLink>
+            )}
 
             <NavLink
               to={`/${schoolSlug}/${role}/attendance`}
