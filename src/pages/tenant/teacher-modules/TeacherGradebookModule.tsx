@@ -271,6 +271,7 @@ export function TeacherGradebookModule() {
     const { error } = await supabase.from("academic_assessments").insert({
       school_id: schoolId,
       class_section_id: selectedSection,
+      teacher_user_id: user?.id,
       title: newAssessment.title.trim(),
       max_marks: newAssessment.max_marks,
       assessment_date: newAssessment.assessment_date,
@@ -514,14 +515,14 @@ export function TeacherGradebookModule() {
                 <div className="space-y-2">
                   <Label htmlFor="subject">Subject (optional)</Label>
                   <Select 
-                    value={newAssessment.subject_id} 
-                    onValueChange={(v) => setNewAssessment((p) => ({ ...p, subject_id: v }))}
+                    value={newAssessment.subject_id || "none"} 
+                    onValueChange={(v) => setNewAssessment((p) => ({ ...p, subject_id: v === "none" ? "" : v }))}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select subject" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No subject</SelectItem>
+                      <SelectItem value="none">No subject</SelectItem>
                       {subjects.map((s) => (
                         <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                       ))}
