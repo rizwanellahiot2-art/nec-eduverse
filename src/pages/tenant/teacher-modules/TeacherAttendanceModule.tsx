@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Check, X, Clock, FileCheck } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Check, X, Clock, FileCheck, Keyboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Section {
@@ -25,6 +26,8 @@ interface StudentRow {
   status: "present" | "absent" | "late" | "excused";
 }
 
+const STATUS_ORDER: StudentRow["status"][] = ["present", "absent", "late", "excused"];
+
 export function TeacherAttendanceModule() {
   const { schoolSlug } = useParams();
   const tenant = useTenant(schoolSlug);
@@ -36,6 +39,18 @@ export function TeacherAttendanceModule() {
   const [rows, setRows] = useState<StudentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [focusedRow, setFocusedRow] = useState<number>(0);
+  const tableRef = useRef<HTMLTableElement>(null);
+
+  // Summary stats
+  const stats = useMemo(() => {
+    return {
+      present: rows.filter((r) => r.status === "present").length,
+      absent: rows.filter((r) => r.status === "absent").length,
+      late: rows.filter((r) => r.status === "late").length,
+      excused: rows.filter((r) => r.status === "excused").length,
+    };
+  }, [rows]);
 
   useEffect(() => {
     if (tenant.status !== "ready") return;
@@ -159,6 +174,7 @@ export function TeacherAttendanceModule() {
     }));
 
     setRows(studentRows);
+    setFocusedRow(0);
   };
 
   const saveAttendance = async () => {
@@ -173,8 +189,9 @@ export function TeacherAttendanceModule() {
       status: r.status,
     }));
 
+    // Use the correct unique constraint: school_id, session_id, student_id
     const { error } = await supabase.from("attendance_entries").upsert(payload, {
-      onConflict: "session_id,student_id",
+      onConflict: "school_id,session_id,student_id",
     });
 
     if (error) {
@@ -186,15 +203,77 @@ export function TeacherAttendanceModule() {
     setSaving(false);
   };
 
-  const updateStatus = (studentId: string, status: StudentRow["status"]) => {
+  const updateStatus = useCallback((studentId: string, status: StudentRow["status"]) => {
     setRows((prev) =>
       prev.map((r) => (r.student_id === studentId ? { ...r, status } : r))
     );
-  };
+  }, []);
 
   const markAll = (status: StudentRow["status"]) => {
     setRows((prev) => prev.map((r) => ({ ...r, status })));
   };
+
+  // Keyboard navigation handler
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (rows.length === 0) return;
+
+      const currentStudent = rows[focusedRow];
+      if (!currentStudent) return;
+
+      switch (e.key) {
+        case "ArrowUp":
+          e.preventDefault();
+          setFocusedRow((prev) => Math.max(0, prev - 1));
+          break;
+        case "ArrowDown":
+          e.preventDefault();
+          setFocusedRow((prev) => Math.min(rows.length - 1, prev + 1));
+          break;
+        case "ArrowLeft": {
+          e.preventDefault();
+          const currentIdx = STATUS_ORDER.indexOf(currentStudent.status);
+          const newIdx = Math.max(0, currentIdx - 1);
+          updateStatus(currentStudent.student_id, STATUS_ORDER[newIdx]);
+          break;
+        }
+        case "ArrowRight": {
+          e.preventDefault();
+          const currentIdx = STATUS_ORDER.indexOf(currentStudent.status);
+          const newIdx = Math.min(STATUS_ORDER.length - 1, currentIdx + 1);
+          updateStatus(currentStudent.student_id, STATUS_ORDER[newIdx]);
+          break;
+        }
+        case "p":
+        case "P":
+          e.preventDefault();
+          updateStatus(currentStudent.student_id, "present");
+          break;
+        case "a":
+        case "A":
+          e.preventDefault();
+          updateStatus(currentStudent.student_id, "absent");
+          break;
+        case "l":
+        case "L":
+          e.preventDefault();
+          updateStatus(currentStudent.student_id, "late");
+          break;
+        case "e":
+        case "E":
+          e.preventDefault();
+          updateStatus(currentStudent.student_id, "excused");
+          break;
+        case "Enter":
+          e.preventDefault();
+          if (focusedRow < rows.length - 1) {
+            setFocusedRow((prev) => prev + 1);
+          }
+          break;
+      }
+    },
+    [rows, focusedRow, updateStatus]
+  );
 
   if (loading) {
     return <p className="text-sm text-muted-foreground">Loading...</p>;
@@ -254,9 +333,9 @@ export function TeacherAttendanceModule() {
       {/* Attendance Table */}
       {sessionId && (
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>Students ({rows.length})</CardTitle>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="outline" onClick={() => markAll("present")}>
                 All Present
               </Button>
@@ -270,102 +349,149 @@ export function TeacherAttendanceModule() {
               <p className="text-sm text-muted-foreground">No students enrolled in this section.</p>
             ) : (
               <>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Student</TableHead>
-                      <TableHead className="text-center">
-                        <span className="flex items-center justify-center gap-1">
-                          <Check className="h-4 w-4 text-green-600" /> Present
-                        </span>
-                      </TableHead>
-                      <TableHead className="text-center">
-                        <span className="flex items-center justify-center gap-1">
-                          <X className="h-4 w-4 text-red-600" /> Absent
-                        </span>
-                      </TableHead>
-                      <TableHead className="text-center">
-                        <span className="flex items-center justify-center gap-1">
-                          <Clock className="h-4 w-4 text-amber-600" /> Late
-                        </span>
-                      </TableHead>
-                      <TableHead className="text-center">
-                        <span className="flex items-center justify-center gap-1">
-                          <FileCheck className="h-4 w-4 text-blue-600" /> Excused
-                        </span>
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rows.map((r) => (
-                      <TableRow key={r.student_id}>
-                        <TableCell className="font-medium">
-                          {r.first_name} {r.last_name}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <button
-                            type="button"
-                            onClick={() => updateStatus(r.student_id, "present")}
-                            className={cn(
-                              "inline-flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all",
-                              r.status === "present"
-                                ? "border-green-600 bg-green-100 text-green-700"
-                                : "border-muted hover:border-green-400 hover:bg-green-50"
-                            )}
-                            aria-label="Mark present"
-                          >
-                            <Check className="h-4 w-4" />
-                          </button>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <button
-                            type="button"
-                            onClick={() => updateStatus(r.student_id, "absent")}
-                            className={cn(
-                              "inline-flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all",
-                              r.status === "absent"
-                                ? "border-red-600 bg-red-100 text-red-700"
-                                : "border-muted hover:border-red-400 hover:bg-red-50"
-                            )}
-                            aria-label="Mark absent"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <button
-                            type="button"
-                            onClick={() => updateStatus(r.student_id, "late")}
-                            className={cn(
-                              "inline-flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all",
-                              r.status === "late"
-                                ? "border-amber-600 bg-amber-100 text-amber-700"
-                                : "border-muted hover:border-amber-400 hover:bg-amber-50"
-                            )}
-                            aria-label="Mark late"
-                          >
-                            <Clock className="h-4 w-4" />
-                          </button>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <button
-                            type="button"
-                            onClick={() => updateStatus(r.student_id, "excused")}
-                            className={cn(
-                              "inline-flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all",
-                              r.status === "excused"
-                                ? "border-blue-600 bg-blue-100 text-blue-700"
-                                : "border-muted hover:border-blue-400 hover:bg-blue-50"
-                            )}
-                            aria-label="Mark excused"
-                          >
-                            <FileCheck className="h-4 w-4" />
-                          </button>
-                        </TableCell>
+                {/* Summary Stats */}
+                <div className="mb-4 flex flex-wrap gap-3 rounded-lg border bg-muted/30 p-3">
+                  <Badge variant="outline" className="gap-1.5 border-green-500/50 bg-green-500/10 text-green-700">
+                    <Check className="h-3.5 w-3.5" />
+                    Present: {stats.present}
+                  </Badge>
+                  <Badge variant="outline" className="gap-1.5 border-red-500/50 bg-red-500/10 text-red-700">
+                    <X className="h-3.5 w-3.5" />
+                    Absent: {stats.absent}
+                  </Badge>
+                  <Badge variant="outline" className="gap-1.5 border-amber-500/50 bg-amber-500/10 text-amber-700">
+                    <Clock className="h-3.5 w-3.5" />
+                    Late: {stats.late}
+                  </Badge>
+                  <Badge variant="outline" className="gap-1.5 border-blue-500/50 bg-blue-500/10 text-blue-700">
+                    <FileCheck className="h-3.5 w-3.5" />
+                    Excused: {stats.excused}
+                  </Badge>
+                </div>
+
+                {/* Keyboard Shortcuts Help */}
+                <div className="mb-4 flex items-center gap-2 text-xs text-muted-foreground">
+                  <Keyboard className="h-4 w-4" />
+                  <span>
+                    Shortcuts: <kbd className="rounded bg-muted px-1">↑↓</kbd> navigate, <kbd className="rounded bg-muted px-1">←→</kbd> change status,{" "}
+                    <kbd className="rounded bg-muted px-1">P</kbd> present,{" "}
+                    <kbd className="rounded bg-muted px-1">A</kbd> absent,{" "}
+                    <kbd className="rounded bg-muted px-1">L</kbd> late,{" "}
+                    <kbd className="rounded bg-muted px-1">E</kbd> excused
+                  </span>
+                </div>
+
+                <div
+                  tabIndex={0}
+                  onKeyDown={handleKeyDown}
+                  className="focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-md"
+                >
+                  <Table ref={tableRef}>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-8">#</TableHead>
+                        <TableHead>Student</TableHead>
+                        <TableHead className="text-center">
+                          <span className="flex items-center justify-center gap-1">
+                            <Check className="h-4 w-4 text-green-600" /> Present
+                          </span>
+                        </TableHead>
+                        <TableHead className="text-center">
+                          <span className="flex items-center justify-center gap-1">
+                            <X className="h-4 w-4 text-red-600" /> Absent
+                          </span>
+                        </TableHead>
+                        <TableHead className="text-center">
+                          <span className="flex items-center justify-center gap-1">
+                            <Clock className="h-4 w-4 text-amber-600" /> Late
+                          </span>
+                        </TableHead>
+                        <TableHead className="text-center">
+                          <span className="flex items-center justify-center gap-1">
+                            <FileCheck className="h-4 w-4 text-blue-600" /> Excused
+                          </span>
+                        </TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {rows.map((r, idx) => (
+                        <TableRow
+                          key={r.student_id}
+                          className={cn(
+                            "transition-colors",
+                            idx === focusedRow && "bg-accent/50 ring-1 ring-inset ring-primary/30"
+                          )}
+                          onClick={() => setFocusedRow(idx)}
+                        >
+                          <TableCell className="text-muted-foreground text-xs">{idx + 1}</TableCell>
+                          <TableCell className="font-medium">
+                            {r.first_name} {r.last_name}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <button
+                              type="button"
+                              onClick={() => updateStatus(r.student_id, "present")}
+                              className={cn(
+                                "inline-flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all",
+                                r.status === "present"
+                                  ? "border-green-600 bg-green-100 text-green-700"
+                                  : "border-muted hover:border-green-400 hover:bg-green-50"
+                              )}
+                              aria-label="Mark present"
+                            >
+                              <Check className="h-4 w-4" />
+                            </button>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <button
+                              type="button"
+                              onClick={() => updateStatus(r.student_id, "absent")}
+                              className={cn(
+                                "inline-flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all",
+                                r.status === "absent"
+                                  ? "border-red-600 bg-red-100 text-red-700"
+                                  : "border-muted hover:border-red-400 hover:bg-red-50"
+                              )}
+                              aria-label="Mark absent"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <button
+                              type="button"
+                              onClick={() => updateStatus(r.student_id, "late")}
+                              className={cn(
+                                "inline-flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all",
+                                r.status === "late"
+                                  ? "border-amber-600 bg-amber-100 text-amber-700"
+                                  : "border-muted hover:border-amber-400 hover:bg-amber-50"
+                              )}
+                              aria-label="Mark late"
+                            >
+                              <Clock className="h-4 w-4" />
+                            </button>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <button
+                              type="button"
+                              onClick={() => updateStatus(r.student_id, "excused")}
+                              className={cn(
+                                "inline-flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all",
+                                r.status === "excused"
+                                  ? "border-blue-600 bg-blue-100 text-blue-700"
+                                  : "border-muted hover:border-blue-400 hover:bg-blue-50"
+                              )}
+                              aria-label="Mark excused"
+                            >
+                              <FileCheck className="h-4 w-4" />
+                            </button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
                 <div className="mt-4">
                   <Button onClick={saveAttendance} disabled={saving}>
                     {saving ? "Saving..." : "Save Attendance"}
