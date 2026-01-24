@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { ChildInfo } from "@/hooks/useMyChildren";
 import { PeriodTimetableGrid, type PeriodTimetableEntry } from "@/components/timetable/PeriodTimetableGrid";
+import { Button } from "@/components/ui/button";
+import { Printer } from "lucide-react";
 
 interface ParentTimetableModuleProps {
   child: ChildInfo | null;
@@ -125,6 +127,12 @@ const ParentTimetableModule = ({ child, schoolId }: ParentTimetableModuleProps) 
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end no-print">
+        <Button variant="outline" onClick={() => window.print()}>
+          <Printer className="mr-2 h-4 w-4" /> Print
+        </Button>
+      </div>
+
       <div>
         <h1 className="font-display text-2xl font-bold tracking-tight">Timetable</h1>
         <p className="text-muted-foreground">
@@ -143,7 +151,9 @@ const ParentTimetableModule = ({ child, schoolId }: ParentTimetableModuleProps) 
           </CardContent>
         </Card>
       ) : (
-        <PeriodTimetableGrid periods={periods} entries={gridEntries} />
+        <div className="print-area">
+          <PeriodTimetableGrid periods={periods} entries={gridEntries} />
+        </div>
       )}
     </div>
   );

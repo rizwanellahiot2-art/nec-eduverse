@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { PeriodTimetableGrid, type PeriodTimetableEntry } from "@/components/timetable/PeriodTimetableGrid";
+import { Printer } from "lucide-react";
 
 type Enrollment = { class_section_id: string };
 type Period = { id: string; label: string; sort_order: number; start_time: string | null; end_time: string | null };
@@ -81,7 +82,12 @@ export function StudentTimetableModule({ myStudent, schoolId }: { myStudent: any
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">Your timetable</p>
-        <Button variant="soft" onClick={refresh}>Refresh</Button>
+        <div className="flex gap-2 no-print">
+          <Button variant="soft" onClick={refresh}>Refresh</Button>
+          <Button variant="outline" onClick={() => window.print()}>
+            <Printer className="mr-2 h-4 w-4" /> Print
+          </Button>
+        </div>
       </div>
 
       <p className="text-xs text-muted-foreground">Sections: {sectionIds.length ? sectionIds.join(", ") : "—"}</p>
@@ -91,7 +97,9 @@ export function StudentTimetableModule({ myStudent, schoolId }: { myStudent: any
           <p className="text-sm text-muted-foreground">No timetable entries yet.</p>
         </div>
       ) : (
-        <PeriodTimetableGrid periods={periods} entries={gridEntries} />
+        <div className="print-area">
+          <PeriodTimetableGrid periods={periods} entries={gridEntries} />
+        </div>
       )}
     </div>
   );

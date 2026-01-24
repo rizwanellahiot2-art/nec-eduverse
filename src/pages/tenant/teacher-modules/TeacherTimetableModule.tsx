@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PeriodTimetableGrid, type PeriodTimetableEntry } from "@/components/timetable/PeriodTimetableGrid";
+import { Button } from "@/components/ui/button";
+import { Printer } from "lucide-react";
 
 type Period = { id: string; label: string; sort_order: number; start_time: string | null; end_time: string | null };
 
@@ -141,8 +143,14 @@ export function TeacherTimetableModule() {
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader>
+      <div className="flex justify-end no-print">
+        <Button variant="outline" onClick={() => window.print()}>
+          <Printer className="mr-2 h-4 w-4" /> Print
+        </Button>
+      </div>
+
+      <Card className="print-area">
+        <CardHeader className="no-print">
           <CardTitle>My Timetable</CardTitle>
         </CardHeader>
         <CardContent>

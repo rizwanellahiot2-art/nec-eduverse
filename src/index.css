@@ -173,3 +173,34 @@ All colors MUST be HSL.
     text-wrap: balance;
   }
 }
+
+@media print {
+  /* Hide navigation + action controls across all portals */
+  aside,
+  nav,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Use full width for printable content */
+  section {
+    box-shadow: none !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+
+  .print-area {
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  .overflow-auto {
+    overflow: visible !important;
+  }
+
+  /* Avoid clipped tables/grids */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
