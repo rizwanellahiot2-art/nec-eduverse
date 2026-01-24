@@ -68,6 +68,8 @@ import {
 } from "@/components/messages/MessageThreadComponents";
 import { MessageSearchDialog } from "@/components/messages/MessageSearchDialog";
 import { ReadReceiptIndicator } from "@/components/messages/ReadReceiptIndicator";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { PushNotificationBanner } from "@/components/messages/PushNotificationBanner";
 
 interface Conversation {
   id: string;
@@ -129,6 +131,13 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
 
   // Get current user's role for restrictions
   const { isStudent, isStaff, loading: roleLoading } = useUserRole(schoolId, currentUserId);
+
+  // Push notifications hook
+  const { supported: pushSupported, permission: pushPermission, requestPermission } = usePushNotifications({
+    schoolId,
+    userId: currentUserId,
+    enabled: true,
+  });
 
   // Typing indicator hook
   const { isPartnerTyping, handleTyping, stopTyping } = useTypingIndicator({
@@ -625,7 +634,15 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
   const showChatOnMobile = isMobile && selectedConversation;
 
   return (
-    <div className="flex h-[calc(100vh-12rem)] overflow-hidden rounded-2xl border bg-background shadow-elevated">
+    <div className="space-y-0">
+      {/* Push Notification Banner */}
+      <PushNotificationBanner
+        permission={pushPermission}
+        supported={pushSupported}
+        onRequestPermission={requestPermission}
+      />
+      
+      <div className="flex h-[calc(100vh-12rem)] overflow-hidden rounded-2xl border bg-background shadow-elevated">
       {/* Conversation List */}
       <div
         className={cn(
@@ -1117,6 +1134,7 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
             </Button>
           </div>
         )}
+      </div>
       </div>
     </div>
   );
