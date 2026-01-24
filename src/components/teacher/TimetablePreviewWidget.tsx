@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, ChevronRight } from "lucide-react";
+import { CalendarDays, Check, ChevronRight, Clock, Pencil, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PeriodLogDialog } from "./PeriodLogDialog";
 
 interface Period {
   id: string;
@@ -24,6 +25,15 @@ interface TimetableEntry {
   period_label: string;
   start_time: string | null;
   end_time: string | null;
+  sort_order: number;
+}
+
+interface PeriodLog {
+  id: string;
+  timetable_entry_id: string;
+  status: string;
+  notes: string | null;
+  topics_covered: string | null;
 }
 
 interface TimetablePreviewWidgetProps {
@@ -36,9 +46,25 @@ function timeLabel(v: string | null): string {
   return v.slice(0, 5);
 }
 
+function getStatusIcon(status: string) {
+  switch (status) {
+    case "completed":
+      return <Check className="h-3.5 w-3.5 text-primary" />;
+    case "partial":
+      return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
+    case "cancelled":
+      return <X className="h-3.5 w-3.5 text-destructive" />;
+    default:
+      return null;
+  }
+}
+
 export function TimetablePreviewWidget({ schoolId, schoolSlug }: TimetablePreviewWidgetProps) {
   const [todayEntries, setTodayEntries] = useState<TimetableEntry[]>([]);
+  const [periodLogs, setPeriodLogs] = useState<Map<string, PeriodLog>>(new Map());
   const [loading, setLoading] = useState(true);
+  const [dialogEntry, setDialogEntry] = useState<TimetableEntry | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const fetchTodaySchedule = useCallback(async () => {
     setLoading(true);
@@ -52,6 +78,7 @@ export function TimetablePreviewWidget({ schoolId, schoolSlug }: TimetablePrevie
 
     // Get today's day of week (0 = Sunday, 6 = Saturday)
     const today = new Date().getDay();
+    const todayDate = new Date().toISOString().split("T")[0];
 
     // Fetch periods
     const { data: periods } = await supabase
@@ -86,15 +113,31 @@ export function TimetablePreviewWidget({ schoolId, schoolSlug }: TimetablePrevie
         period_label: period?.label ?? "",
         start_time: period?.start_time ?? null,
         end_time: period?.end_time ?? null,
+        sort_order: period?.sort_order ?? 0,
       };
     });
 
     // Sort by period sort_order
-    enriched.sort((a, b) => {
-      const pA = periodMap.get(a.period_id);
-      const pB = periodMap.get(b.period_id);
-      return (pA?.sort_order ?? 0) - (pB?.sort_order ?? 0);
-    });
+    enriched.sort((a, b) => a.sort_order - b.sort_order);
+
+    // Fetch today's period logs
+    const entryIds = enriched.map((e) => e.id);
+    if (entryIds.length > 0) {
+      const { data: logs } = await supabase
+        .from("teacher_period_logs")
+        .select("id, timetable_entry_id, status, notes, topics_covered")
+        .eq("teacher_user_id", userId)
+        .eq("log_date", todayDate)
+        .in("timetable_entry_id", entryIds);
+
+      const logsMap = new Map<string, PeriodLog>();
+      (logs ?? []).forEach((log: any) => {
+        logsMap.set(log.timetable_entry_id, log);
+      });
+      setPeriodLogs(logsMap);
+    } else {
+      setPeriodLogs(new Map());
+    }
 
     setTodayEntries(enriched);
     setLoading(false);
@@ -104,8 +147,31 @@ export function TimetablePreviewWidget({ schoolId, schoolSlug }: TimetablePrevie
     void fetchTodaySchedule();
   }, [fetchTodaySchedule]);
 
+  const handleOpenLog = (entry: TimetableEntry) => {
+    setDialogEntry(entry);
+    setDialogOpen(true);
+  };
+
   const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const todayName = dayNames[new Date().getDay()];
+
+  // Determine current period based on time
+  const currentPeriodIndex = useMemo(() => {
+    const now = new Date();
+    const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    
+    for (let i = 0; i < todayEntries.length; i++) {
+      const entry = todayEntries[i];
+      if (entry.start_time && entry.end_time) {
+        const start = entry.start_time.slice(0, 5);
+        const end = entry.end_time.slice(0, 5);
+        if (currentTime >= start && currentTime <= end) {
+          return i;
+        }
+      }
+    }
+    return -1;
+  }, [todayEntries]);
 
   if (loading) {
     return (
@@ -121,63 +187,104 @@ export function TimetablePreviewWidget({ schoolId, schoolSlug }: TimetablePrevie
     );
   }
 
+  const existingLog = dialogEntry ? periodLogs.get(dialogEntry.id) : null;
+
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <div>
-          <CardTitle className="text-lg">Today's Schedule</CardTitle>
-          <p className="text-sm text-muted-foreground">{todayName}</p>
-        </div>
-        <CalendarDays className="h-5 w-5 text-muted-foreground" />
-      </CardHeader>
-      <CardContent>
-        {todayEntries.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No classes scheduled for today.</p>
-        ) : (
-          <div className="space-y-2">
-            {todayEntries.slice(0, 5).map((entry) => (
-              <div
-                key={entry.id}
-                className="flex items-center justify-between rounded-lg border p-3"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{entry.subject_name}</p>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span>{entry.period_label}</span>
-                    {entry.start_time && (
-                      <span>• {timeLabel(entry.start_time)} - {timeLabel(entry.end_time)}</span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 ml-2">
-                  {entry.section_label && (
-                    <Badge variant="outline" className="text-xs whitespace-nowrap">
-                      {entry.section_label}
-                    </Badge>
-                  )}
-                  {entry.room && (
-                    <Badge variant="secondary" className="text-xs">
-                      {entry.room}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            ))}
-            {todayEntries.length > 5 && (
-              <p className="text-xs text-muted-foreground text-center">
-                +{todayEntries.length - 5} more periods
-              </p>
-            )}
+    <>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <div>
+            <CardTitle className="text-lg">Today's Schedule</CardTitle>
+            <p className="text-sm text-muted-foreground">{todayName}</p>
           </div>
-        )}
-        <div className="mt-4 pt-3 border-t">
-          <Button variant="ghost" size="sm" asChild className="w-full">
-            <Link to={`/${schoolSlug}/teacher/timetable`}>
-              View Full Timetable <ChevronRight className="ml-1 h-4 w-4" />
-            </Link>
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+          <CalendarDays className="h-5 w-5 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          {todayEntries.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No classes scheduled for today.</p>
+          ) : (
+            <div className="space-y-2">
+              {todayEntries.slice(0, 6).map((entry, index) => {
+                const log = periodLogs.get(entry.id);
+                const isCurrent = index === currentPeriodIndex;
+                
+                return (
+                  <div
+                    key={entry.id}
+                    className={`flex items-center justify-between rounded-lg border p-3 transition-colors ${
+                      isCurrent ? "border-primary bg-primary/5" : ""
+                    } ${log ? "bg-muted/30" : ""}`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium truncate">{entry.subject_name}</p>
+                        {log && (
+                          <span className="flex items-center gap-0.5" title={`${log.status}${log.topics_covered ? `: ${log.topics_covered}` : ""}`}>
+                            {getStatusIcon(log.status)}
+                          </span>
+                        )}
+                        {isCurrent && (
+                          <Badge variant="default" className="text-xs px-1.5 py-0">Now</Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>{entry.period_label}</span>
+                        {entry.start_time && (
+                          <span>• {timeLabel(entry.start_time)} - {timeLabel(entry.end_time)}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 ml-2">
+                      {entry.section_label && (
+                        <Badge variant="outline" className="text-xs whitespace-nowrap hidden sm:inline-flex">
+                          {entry.section_label}
+                        </Badge>
+                      )}
+                      {entry.room && (
+                        <Badge variant="secondary" className="text-xs">
+                          {entry.room}
+                        </Badge>
+                      )}
+                      <Button
+                        variant={log ? "ghost" : "outline"}
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => handleOpenLog(entry)}
+                        title={log ? "Edit log" : "Mark complete"}
+                      >
+                        {log ? <Pencil className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+              {todayEntries.length > 6 && (
+                <p className="text-xs text-muted-foreground text-center">
+                  +{todayEntries.length - 6} more periods
+                </p>
+              )}
+            </div>
+          )}
+          <div className="mt-4 pt-3 border-t">
+            <Button variant="ghost" size="sm" asChild className="w-full">
+              <Link to={`/${schoolSlug}/teacher/timetable`}>
+                View Full Timetable <ChevronRight className="ml-1 h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {dialogEntry && (
+        <PeriodLogDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          entry={dialogEntry}
+          schoolId={schoolId}
+          existingLog={existingLog}
+          onSaved={fetchTodaySchedule}
+        />
+      )}
+    </>
   );
 }
