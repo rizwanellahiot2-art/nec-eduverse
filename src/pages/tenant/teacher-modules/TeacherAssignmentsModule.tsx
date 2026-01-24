@@ -1,17 +1,20 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Plus, Edit, Users } from "lucide-react";
+import { Plus, Users, CheckCircle, Clock, FileCheck, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
+import { useSession } from "@/hooks/useSession";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Section {
   id: string;
@@ -30,6 +33,18 @@ interface Assignment {
   section_name: string;
 }
 
+interface Submission {
+  id: string;
+  student_id: string;
+  first_name: string;
+  last_name: string | null;
+  submission_text: string | null;
+  submitted_at: string;
+  status: string;
+  marks_obtained: number | null;
+  feedback: string | null;
+}
+
 interface StudentResult {
   student_id: string;
   first_name: string;
@@ -42,6 +57,7 @@ interface StudentResult {
 export function TeacherAssignmentsModule() {
   const { schoolSlug } = useParams();
   const tenant = useTenant(schoolSlug);
+  const { user } = useSession();
   const [sections, setSections] = useState<Section[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,9 +73,19 @@ export function TeacherAssignmentsModule() {
     class_section_id: "",
   });
 
-  // Enter results dialog
-  const [resultsOpen, setResultsOpen] = useState(false);
+  // View submissions dialog
+  const [submissionsOpen, setSubmissionsOpen] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [savingGrade, setSavingGrade] = useState(false);
+
+  // Grade dialog
+  const [gradeOpen, setGradeOpen] = useState(false);
+  const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
+  const [gradeForm, setGradeForm] = useState({ marks: "", feedback: "" });
+
+  // Enter results dialog (legacy)
+  const [resultsOpen, setResultsOpen] = useState(false);
   const [results, setResults] = useState<StudentResult[]>([]);
   const [savingResults, setSavingResults] = useState(false);
 
@@ -132,16 +158,14 @@ export function TeacherAssignmentsModule() {
 
   const handleAddAssignment = async () => {
     if (!newAssignment.title.trim() || !newAssignment.class_section_id) {
-      toast({ title: "Title and section are required", variant: "destructive" });
+      toast.error("Title and section are required");
       return;
     }
-
-    const { data: user } = await supabase.auth.getUser();
 
     const { error } = await supabase.from("assignments").insert({
       school_id: tenant.schoolId,
       class_section_id: newAssignment.class_section_id,
-      teacher_user_id: user.user?.id,
+      teacher_user_id: user?.id,
       title: newAssignment.title.trim(),
       description: newAssignment.description.trim() || null,
       max_marks: parseFloat(newAssignment.max_marks) || 100,
@@ -150,11 +174,11 @@ export function TeacherAssignmentsModule() {
     });
 
     if (error) {
-      toast({ title: "Failed to add assignment", description: error.message, variant: "destructive" });
+      toast.error(error.message);
       return;
     }
 
-    toast({ title: "Assignment created successfully" });
+    toast.success("Assignment created successfully");
     setAddOpen(false);
     setNewAssignment({
       title: "",
@@ -244,13 +268,104 @@ export function TeacherAssignmentsModule() {
     });
 
     if (error) {
-      toast({ title: "Failed to save results", description: error.message, variant: "destructive" });
+      toast.error(error.message);
     } else {
-      toast({ title: "Results saved successfully" });
+      toast.success("Results saved successfully");
       setResultsOpen(false);
     }
 
     setSavingResults(false);
+  };
+
+  // Load student submissions for an assignment
+  const openSubmissionsDialog = async (assignment: Assignment) => {
+    setSelectedAssignment(assignment);
+    
+    // Load enrolled students
+    const { data: enrollments } = await supabase
+      .from("student_enrollments")
+      .select("student_id")
+      .eq("school_id", tenant.schoolId)
+      .eq("class_section_id", assignment.class_section_id);
+
+    if (!enrollments?.length) {
+      setSubmissions([]);
+      setSubmissionsOpen(true);
+      return;
+    }
+
+    const studentIds = enrollments.map((e) => e.student_id);
+    const { data: students } = await supabase
+      .from("students")
+      .select("id, first_name, last_name")
+      .in("id", studentIds);
+
+    // Load submissions
+    const { data: subs } = await supabase
+      .from("assignment_submissions")
+      .select("*")
+      .eq("school_id", tenant.schoolId)
+      .eq("assignment_id", assignment.id);
+
+    const subMap = new Map((subs || []).map((s: any) => [s.student_id, s]));
+    
+    const enriched: Submission[] = (students || []).map((s: any) => {
+      const sub = subMap.get(s.id);
+      return {
+        id: sub?.id || "",
+        student_id: s.id,
+        first_name: s.first_name,
+        last_name: s.last_name,
+        submission_text: sub?.submission_text || null,
+        submitted_at: sub?.submitted_at || "",
+        status: sub?.status || "not_submitted",
+        marks_obtained: sub?.marks_obtained ?? null,
+        feedback: sub?.feedback || null,
+      };
+    });
+
+    setSubmissions(enriched);
+    setSubmissionsOpen(true);
+  };
+
+  const openGradeDialog = (sub: Submission) => {
+    setSelectedSubmission(sub);
+    setGradeForm({
+      marks: sub.marks_obtained?.toString() || "",
+      feedback: sub.feedback || "",
+    });
+    setGradeOpen(true);
+  };
+
+  const saveGrade = async () => {
+    if (!selectedSubmission || !selectedAssignment) return;
+    
+    setSavingGrade(true);
+    const { error } = await supabase
+      .from("assignment_submissions")
+      .update({
+        marks_obtained: gradeForm.marks ? parseFloat(gradeForm.marks) : null,
+        feedback: gradeForm.feedback || null,
+        status: "graded",
+        graded_by: user?.id,
+        graded_at: new Date().toISOString(),
+      })
+      .eq("id", selectedSubmission.id);
+
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Grade saved!");
+      setGradeOpen(false);
+      openSubmissionsDialog(selectedAssignment);
+    }
+    setSavingGrade(false);
+  };
+
+  const getSubmissionStats = (assignment: Assignment) => {
+    const subs = submissions.filter((s) => s.status !== "not_submitted");
+    const graded = submissions.filter((s) => s.status === "graded");
+    return { submitted: subs.length, graded: graded.length, total: submissions.length };
   };
 
   const filteredAssignments = filterSection === "all"
@@ -388,13 +503,13 @@ export function TeacherAssignmentsModule() {
             <div className="space-y-3">
               {filteredAssignments.map((a) => (
                 <div key={a.id} className="rounded-lg border p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <p className="font-medium">{a.title}</p>
-                        <span className="rounded bg-accent px-2 py-0.5 text-xs capitalize">
+                        <Badge variant="outline" className="text-xs capitalize">
                           {a.assignment_type}
-                        </span>
+                        </Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">{a.section_name}</p>
                       {a.description && <p className="mt-2 text-sm">{a.description}</p>}
@@ -402,9 +517,14 @@ export function TeacherAssignmentsModule() {
                         Max: {a.max_marks} marks {a.due_date && `• Due: ${a.due_date}`}
                       </p>
                     </div>
-                    <Button size="sm" variant="outline" onClick={() => openResultsDialog(a)}>
-                      <Users className="mr-1 h-4 w-4" /> Enter Results
-                    </Button>
+                    <div className="flex flex-col gap-2">
+                      <Button size="sm" variant="outline" onClick={() => openSubmissionsDialog(a)}>
+                        <FileCheck className="mr-1 h-4 w-4" /> Submissions
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => openResultsDialog(a)}>
+                        <Users className="mr-1 h-4 w-4" /> Quick Grade
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -413,12 +533,149 @@ export function TeacherAssignmentsModule() {
         </CardContent>
       </Card>
 
-      {/* Enter Results Dialog */}
+      {/* View Submissions Dialog */}
+      <Dialog open={submissionsOpen} onOpenChange={setSubmissionsOpen}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileCheck className="h-5 w-5" />
+              Submissions: {selectedAssignment?.title}
+            </DialogTitle>
+            <DialogDescription>
+              Max: {selectedAssignment?.max_marks} marks
+              {selectedAssignment?.due_date && ` • Due: ${selectedAssignment.due_date}`}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Tabs defaultValue="all" className="mt-4">
+            <TabsList>
+              <TabsTrigger value="all">All ({submissions.length})</TabsTrigger>
+              <TabsTrigger value="submitted">
+                Submitted ({submissions.filter((s) => s.status !== "not_submitted").length})
+              </TabsTrigger>
+              <TabsTrigger value="graded">
+                Graded ({submissions.filter((s) => s.status === "graded").length})
+              </TabsTrigger>
+              <TabsTrigger value="pending">
+                Pending ({submissions.filter((s) => s.status === "not_submitted").length})
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="all" className="mt-4 space-y-2">
+              {submissions.map((sub) => (
+                <SubmissionRow 
+                  key={sub.student_id} 
+                  sub={sub} 
+                  maxMarks={selectedAssignment?.max_marks || 100}
+                  onGrade={() => openGradeDialog(sub)}
+                />
+              ))}
+            </TabsContent>
+            
+            <TabsContent value="submitted" className="mt-4 space-y-2">
+              {submissions.filter((s) => s.status !== "not_submitted").map((sub) => (
+                <SubmissionRow 
+                  key={sub.student_id} 
+                  sub={sub} 
+                  maxMarks={selectedAssignment?.max_marks || 100}
+                  onGrade={() => openGradeDialog(sub)}
+                />
+              ))}
+            </TabsContent>
+            
+            <TabsContent value="graded" className="mt-4 space-y-2">
+              {submissions.filter((s) => s.status === "graded").map((sub) => (
+                <SubmissionRow 
+                  key={sub.student_id} 
+                  sub={sub} 
+                  maxMarks={selectedAssignment?.max_marks || 100}
+                  onGrade={() => openGradeDialog(sub)}
+                />
+              ))}
+            </TabsContent>
+            
+            <TabsContent value="pending" className="mt-4 space-y-2">
+              {submissions.filter((s) => s.status === "not_submitted").map((sub) => (
+                <SubmissionRow 
+                  key={sub.student_id} 
+                  sub={sub} 
+                  maxMarks={selectedAssignment?.max_marks || 100}
+                  onGrade={() => openGradeDialog(sub)}
+                />
+              ))}
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      {/* Grade Submission Dialog */}
+      <Dialog open={gradeOpen} onOpenChange={setGradeOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Grade Submission</DialogTitle>
+            <DialogDescription>
+              {selectedSubmission?.first_name} {selectedSubmission?.last_name}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {selectedSubmission?.submission_text && (
+              <div>
+                <Label className="text-muted-foreground">Student's Answer</Label>
+                <div className="mt-2 rounded-lg border p-3 text-sm max-h-40 overflow-y-auto bg-muted/50">
+                  {selectedSubmission.submission_text}
+                </div>
+              </div>
+            )}
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Marks (out of {selectedAssignment?.max_marks})</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={selectedAssignment?.max_marks}
+                  value={gradeForm.marks}
+                  onChange={(e) => setGradeForm((p) => ({ ...p, marks: e.target.value }))}
+                  className="mt-1"
+                />
+              </div>
+              <div className="flex items-end">
+                {gradeForm.marks && selectedAssignment && (
+                  <Badge variant="secondary" className="mb-2">
+                    {((parseFloat(gradeForm.marks) / selectedAssignment.max_marks) * 100).toFixed(0)}%
+                  </Badge>
+                )}
+              </div>
+            </div>
+            
+            <div>
+              <Label>Feedback</Label>
+              <Textarea
+                value={gradeForm.feedback}
+                onChange={(e) => setGradeForm((p) => ({ ...p, feedback: e.target.value }))}
+                placeholder="Add feedback for the student..."
+                rows={4}
+                className="mt-1"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGradeOpen(false)}>Cancel</Button>
+            <Button onClick={saveGrade} disabled={savingGrade}>
+              {savingGrade ? "Saving..." : "Save Grade"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Enter Results Dialog (Quick Grade) */}
       <Dialog open={resultsOpen} onOpenChange={setResultsOpen}>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              Enter Results: {selectedAssignment?.title}
+              Quick Grade: {selectedAssignment?.title}
               <span className="ml-2 text-sm font-normal text-muted-foreground">
                 (Max: {selectedAssignment?.max_marks})
               </span>
@@ -487,6 +744,61 @@ export function TeacherAssignmentsModule() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+// Submission row component
+function SubmissionRow({ 
+  sub, 
+  maxMarks, 
+  onGrade 
+}: { 
+  sub: Submission; 
+  maxMarks: number; 
+  onGrade: () => void;
+}) {
+  const getStatusBadge = () => {
+    switch (sub.status) {
+      case "graded":
+        return <Badge variant="default" className="flex items-center gap-1"><CheckCircle className="h-3 w-3" /> Graded</Badge>;
+      case "submitted":
+        return <Badge variant="secondary" className="flex items-center gap-1"><Clock className="h-3 w-3" /> Submitted</Badge>;
+      case "late":
+        return <Badge variant="destructive" className="flex items-center gap-1"><Clock className="h-3 w-3" /> Late</Badge>;
+      default:
+        return <Badge variant="outline" className="text-muted-foreground">Not Submitted</Badge>;
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-between rounded-lg border p-3">
+      <div className="flex items-center gap-3">
+        <div>
+          <p className="font-medium">{sub.first_name} {sub.last_name}</p>
+          {sub.submitted_at && (
+            <p className="text-xs text-muted-foreground">
+              Submitted: {new Date(sub.submitted_at).toLocaleString()}
+            </p>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center gap-3">
+        {sub.status === "graded" && (
+          <div className="text-right">
+            <p className="font-medium">{sub.marks_obtained}/{maxMarks}</p>
+            <p className="text-xs text-muted-foreground">
+              {((sub.marks_obtained || 0) / maxMarks * 100).toFixed(0)}%
+            </p>
+          </div>
+        )}
+        {getStatusBadge()}
+        {sub.status !== "not_submitted" && (
+          <Button size="sm" variant="outline" onClick={onGrade}>
+            <MessageSquare className="h-4 w-4 mr-1" /> {sub.status === "graded" ? "Edit" : "Grade"}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
