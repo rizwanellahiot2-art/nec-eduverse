@@ -121,7 +121,8 @@ export function PrincipalTeachersTab({ schoolId }: PrincipalTeachersTabProps) {
     setLoading(true);
     try {
       const [
-        { data: teacherRoles },
+        { data: teacherRolesData },
+        { data: directoryData },
         { data: classesData },
         { data: sectionsData },
         { data: subjectsData },
@@ -131,10 +132,14 @@ export function PrincipalTeachersTab({ schoolId }: PrincipalTeachersTabProps) {
         { data: periodsData },
       ] = await Promise.all([
         supabase
+          .from("user_roles")
+          .select("user_id")
+          .eq("school_id", schoolId)
+          .eq("role", "teacher"),
+        supabase
           .from("school_user_directory")
           .select("user_id, email, display_name")
-          .eq("school_id", schoolId)
-          .contains("roles", ["teacher"]),
+          .eq("school_id", schoolId),
         supabase.from("academic_classes").select("id, name").eq("school_id", schoolId).order("name"),
         supabase.from("class_sections").select("id, name, class_id").eq("school_id", schoolId),
         supabase.from("subjects").select("id, name, code").eq("school_id", schoolId),
@@ -144,7 +149,13 @@ export function PrincipalTeachersTab({ schoolId }: PrincipalTeachersTabProps) {
         supabase.from("timetable_periods").select("id, label, sort_order, start_time, end_time, is_break").eq("school_id", schoolId).order("sort_order"),
       ]);
 
-      setTeachers((teacherRoles ?? []) as Teacher[]);
+      // Get teacher user IDs from user_roles
+      const teacherUserIds = new Set((teacherRolesData ?? []).map((r: { user_id: string }) => r.user_id));
+      
+      // Filter directory to only teachers
+      const teachersList = (directoryData ?? []).filter((d: Teacher) => teacherUserIds.has(d.user_id));
+
+      setTeachers(teachersList as Teacher[]);
       setClasses((classesData ?? []) as ClassRow[]);
       setSections((sectionsData ?? []) as SectionRow[]);
       setSubjects((subjectsData ?? []) as SubjectRow[]);
