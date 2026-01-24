@@ -89,40 +89,40 @@ export function TeacherShell({ title, subtitle, schoolSlug, children }: Props) {
             <NavLink
               to={basePath}
               end
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <LayoutGrid className="h-4 w-4" /> Dashboard
             </NavLink>
 
             <NavLink
               to={`${basePath}/students`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <Users className="h-4 w-4" /> My Students
             </NavLink>
 
             <NavLink
               to={`${basePath}/attendance`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <ClipboardCheck className="h-4 w-4" /> Attendance
             </NavLink>
 
             <NavLink
               to={`${basePath}/homework`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <BookOpen className="h-4 w-4" /> Homework
             </NavLink>
 
             <NavLink
               to={`${basePath}/assignments`}
-              className="flex items-center justify-between rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
+              className="flex items-center justify-between rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <span className="flex items-center gap-2">
                 <FileText className="h-4 w-4" /> Assignments & Results
@@ -136,56 +136,56 @@ export function TeacherShell({ title, subtitle, schoolSlug, children }: Props) {
 
             <NavLink
               to={`${basePath}/behavior`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <NotebookPen className="h-4 w-4" /> Behavior Notes
             </NavLink>
 
             <NavLink
               to={`${basePath}/gradebook`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <TableIcon className="h-4 w-4" /> Gradebook
             </NavLink>
 
             <NavLink
               to={`${basePath}/progress`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <TrendingUp className="h-4 w-4" /> Student Progress
             </NavLink>
 
             <NavLink
               to={`${basePath}/lesson-plans`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <BookCheck className="h-4 w-4" /> Lesson Planner
             </NavLink>
 
             <NavLink
               to={`${basePath}/reports`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <GraduationCap className="h-4 w-4" /> Report Cards
             </NavLink>
 
             <NavLink
               to={`${basePath}/timetable`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <CalendarDays className="h-4 w-4" /> Timetable
             </NavLink>
 
             <NavLink
               to={`${basePath}/messages`}
-              className="flex items-center justify-between rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
+              className="flex items-center justify-between rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <span className="flex items-center gap-2">
                 <MessageSquare className="h-4 w-4" /> Parent Messages
@@ -199,8 +199,8 @@ export function TeacherShell({ title, subtitle, schoolSlug, children }: Props) {
 
             <NavLink
               to={`${basePath}/admin-inbox`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <Send className="h-4 w-4" /> Message Admin
             </NavLink>

@@ -67,87 +67,88 @@
               </div>
            </div>
  
-           <nav className="mt-6 space-y-1">
-             <NavLink
-               to={`/${schoolSlug}/hr`}
-               className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-               activeClassName="bg-accent text-accent-foreground"
-             >
-               <LayoutGrid className="h-4 w-4" /> Dashboard
-             </NavLink>
- 
-             <NavLink
-               to={`/${schoolSlug}/hr/users`}
-               className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-               activeClassName="bg-accent text-accent-foreground"
-             >
-               <UsersIcon className="h-4 w-4" /> Staff & Users
-             </NavLink>
- 
-             <NavLink
-               to={`/${schoolSlug}/hr/leaves`}
-               className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-               activeClassName="bg-accent text-accent-foreground"
-             >
-               <Calendar className="h-4 w-4" /> Leave Management
-             </NavLink>
- 
-             <NavLink
-               to={`/${schoolSlug}/hr/attendance`}
-               className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-               activeClassName="bg-accent text-accent-foreground"
-             >
-               <ClipboardList className="h-4 w-4" /> Staff Attendance
-             </NavLink>
- 
-             <NavLink
-               to={`/${schoolSlug}/hr/salaries`}
-               className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-               activeClassName="bg-accent text-accent-foreground"
-             >
-               <Coins className="h-4 w-4" /> Salaries
-             </NavLink>
- 
-             <NavLink
-               to={`/${schoolSlug}/hr/contracts`}
-               className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-               activeClassName="bg-accent text-accent-foreground"
-             >
-               <FileText className="h-4 w-4" /> Contracts
-             </NavLink>
- 
-             <NavLink
-               to={`/${schoolSlug}/hr/reviews`}
-               className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-               activeClassName="bg-accent text-accent-foreground"
-             >
-               <Star className="h-4 w-4" /> Performance Reviews
-             </NavLink>
- 
-             <NavLink
-               to={`/${schoolSlug}/hr/documents`}
-               className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-               activeClassName="bg-accent text-accent-foreground"
-             >
-               <Briefcase className="h-4 w-4" /> Documents
-             </NavLink>
+          <nav className="mt-6 space-y-1">
+            <NavLink
+              to={`/${schoolSlug}/hr`}
+              end
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
+            >
+              <LayoutGrid className="h-4 w-4" /> Dashboard
+            </NavLink>
 
-              <NavLink
-                to={`/${schoolSlug}/hr/support`}
-                className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-                activeClassName="bg-accent text-accent-foreground"
-              >
-                <Headphones className="h-4 w-4" /> Support Inbox
-              </NavLink>
+            <NavLink
+              to={`/${schoolSlug}/hr/users`}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
+            >
+              <UsersIcon className="h-4 w-4" /> Staff & Users
+            </NavLink>
 
-              <NavLink
-                to={`/${schoolSlug}/hr/timetable`}
-                className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-                activeClassName="bg-accent text-accent-foreground"
-              >
-                <CalendarDays className="h-4 w-4" /> Timetable Builder
-              </NavLink>
-           </nav>
+            <NavLink
+              to={`/${schoolSlug}/hr/leaves`}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
+            >
+              <Calendar className="h-4 w-4" /> Leave Management
+            </NavLink>
+
+            <NavLink
+              to={`/${schoolSlug}/hr/attendance`}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
+            >
+              <ClipboardList className="h-4 w-4" /> Staff Attendance
+            </NavLink>
+
+            <NavLink
+              to={`/${schoolSlug}/hr/salaries`}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
+            >
+              <Coins className="h-4 w-4" /> Salaries
+            </NavLink>
+
+            <NavLink
+              to={`/${schoolSlug}/hr/contracts`}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
+            >
+              <FileText className="h-4 w-4" /> Contracts
+            </NavLink>
+
+            <NavLink
+              to={`/${schoolSlug}/hr/reviews`}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
+            >
+              <Star className="h-4 w-4" /> Performance Reviews
+            </NavLink>
+
+            <NavLink
+              to={`/${schoolSlug}/hr/documents`}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
+            >
+              <Briefcase className="h-4 w-4" /> Documents
+            </NavLink>
+
+            <NavLink
+              to={`/${schoolSlug}/hr/support`}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
+            >
+              <Headphones className="h-4 w-4" /> Support Inbox
+            </NavLink>
+
+            <NavLink
+              to={`/${schoolSlug}/hr/timetable`}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
+            >
+              <CalendarDays className="h-4 w-4" /> Timetable Builder
+            </NavLink>
+          </nav>
  
            <div className="mt-6 rounded-2xl bg-accent p-4">
              <p className="text-sm font-medium text-accent-foreground">HR Portal</p>

@@ -27,56 +27,57 @@ export function StudentShell({ title, subtitle, schoolSlug, children }: Props) {
           <nav className="mt-6 space-y-1">
             <NavLink
               to={`/${schoolSlug}/student`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
+              end
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <LayoutGrid className="h-4 w-4" /> Home
             </NavLink>
 
             <NavLink
               to={`/${schoolSlug}/student/attendance`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <CalendarDays className="h-4 w-4" /> Attendance
             </NavLink>
 
             <NavLink
               to={`/${schoolSlug}/student/grades`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <BookOpen className="h-4 w-4" /> Grades
             </NavLink>
 
             <NavLink
               to={`/${schoolSlug}/student/timetable`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <ScrollText className="h-4 w-4" /> Timetable
             </NavLink>
 
             <NavLink
               to={`/${schoolSlug}/student/assignments`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <ScrollText className="h-4 w-4" /> Assignments
             </NavLink>
 
             <NavLink
               to={`/${schoolSlug}/student/certificates`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <ScrollText className="h-4 w-4" /> Certificates
             </NavLink>
 
             <NavLink
               to={`/${schoolSlug}/student/support`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-              activeClassName="bg-accent text-accent-foreground"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <Headphones className="h-4 w-4" /> Support
             </NavLink>

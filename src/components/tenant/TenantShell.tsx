@@ -96,8 +96,8 @@ export function TenantShell({ title, subtitle, role, schoolSlug, children }: Pro
             key={item.to}
             to={item.to}
             end={item.to === `/${schoolSlug}/${role}`}
-            className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
-            activeClassName="bg-accent text-accent-foreground"
+            className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+            activeClassName="bg-primary text-primary-foreground shadow-sm"
             onClick={() => setMobileNavOpen(false)}
           >
             <item.icon className="h-4 w-4" /> {item.label}
@@ -172,7 +172,7 @@ export function TenantShell({ title, subtitle, role, schoolSlug, children }: Pro
             to={item.to}
             end={item.to === `/${schoolSlug}/${role}`}
             className="flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-2 text-muted-foreground transition-colors"
-            activeClassName="text-primary bg-primary/10"
+            activeClassName="text-primary-foreground bg-primary shadow-sm"
           >
             <item.icon className="h-5 w-5" />
             <span className="text-[10px] font-medium">{item.label}</span>
