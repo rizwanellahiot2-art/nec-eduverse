@@ -2732,6 +2732,7 @@ export type Database = {
           first_name: string
           id: string
           last_name: string | null
+          parent_name: string | null
           profile_id: string | null
           school_id: string
           status: string
@@ -2745,6 +2746,7 @@ export type Database = {
           first_name: string
           id?: string
           last_name?: string | null
+          parent_name?: string | null
           profile_id?: string | null
           school_id: string
           status?: string
@@ -2758,6 +2760,7 @@ export type Database = {
           first_name?: string
           id?: string
           last_name?: string | null
+          parent_name?: string | null
           profile_id?: string | null
           school_id?: string
           status?: string
