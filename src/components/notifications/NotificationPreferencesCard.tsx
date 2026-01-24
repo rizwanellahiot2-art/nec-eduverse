@@ -3,8 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import { toast } from "@/hooks/use-toast";
-import { Bell, BookOpen, ClipboardCheck, Clock, X } from "lucide-react";
+import { Bell, BookOpen, ClipboardCheck, Clock, X, TrendingDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface NotificationPreference {
@@ -14,6 +15,7 @@ interface NotificationPreference {
   notify_late: boolean;
   notify_grades: boolean;
   notify_homework: boolean;
+  low_grade_threshold: number | null;
 }
 
 interface Student {
@@ -123,6 +125,7 @@ export function NotificationPreferencesCard({ schoolId }: Props) {
         notify_late: field === "notify_late" ? value : true,
         notify_grades: field === "notify_grades" ? value : true,
         notify_homework: field === "notify_homework" ? value : true,
+        low_grade_threshold: 60,
       };
 
       const { data, error } = await supabase
@@ -144,6 +147,69 @@ export function NotificationPreferencesCard({ schoolId }: Props) {
     }
 
     setSaving(null);
+  };
+
+  const updateThreshold = async (studentId: string, value: number) => {
+    setSaving(studentId + "threshold");
+
+    const { data: user } = await supabase.auth.getUser();
+    if (!user.user) return;
+
+    const existing = preferences.get(studentId);
+
+    if (existing) {
+      const { error } = await supabase
+        .from("parent_notification_preferences")
+        .update({ low_grade_threshold: value })
+        .eq("id", existing.id);
+
+      if (error) {
+        toast({ title: "Failed to update", description: error.message, variant: "destructive" });
+      } else {
+        setPreferences((prev) => {
+          const newMap = new Map(prev);
+          newMap.set(studentId, { ...existing, low_grade_threshold: value });
+          return newMap;
+        });
+        toast({ title: "Threshold updated" });
+      }
+    } else {
+      // Insert new with threshold
+      const newPref = {
+        school_id: schoolId,
+        user_id: user.user.id,
+        student_id: studentId,
+        notify_absent: true,
+        notify_late: true,
+        notify_grades: true,
+        notify_homework: true,
+        low_grade_threshold: value,
+      };
+
+      const { data, error } = await supabase
+        .from("parent_notification_preferences")
+        .insert(newPref)
+        .select()
+        .single();
+
+      if (error) {
+        toast({ title: "Failed to save", description: error.message, variant: "destructive" });
+      } else {
+        setPreferences((prev) => {
+          const newMap = new Map(prev);
+          newMap.set(studentId, data as NotificationPreference);
+          return newMap;
+        });
+        toast({ title: "Threshold saved" });
+      }
+    }
+
+    setSaving(null);
+  };
+
+  const getThreshold = (studentId: string): number => {
+    const pref = preferences.get(studentId);
+    return pref?.low_grade_threshold ?? 60;
   };
 
   const getPreference = (studentId: string, field: keyof NotificationPreference): boolean => {
@@ -238,9 +304,9 @@ export function NotificationPreferencesCard({ schoolId }: Props) {
                   </div>
                   <div>
                     <Label htmlFor={`grades-${child.id}`} className="font-medium cursor-pointer">
-                      Grade Notifications
+                      Low Grade Alerts
                     </Label>
-                    <p className="text-xs text-muted-foreground">New grades posted</p>
+                    <p className="text-xs text-muted-foreground">When grade falls below threshold</p>
                   </div>
                 </div>
                 <Switch
@@ -250,6 +316,38 @@ export function NotificationPreferencesCard({ schoolId }: Props) {
                   disabled={saving === child.id + "notify_grades"}
                 />
               </div>
+
+              {getPreference(child.id, "notify_grades") && (
+                <div className="rounded-lg border p-3 sm:col-span-2">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="rounded-full bg-orange-100 p-2 text-orange-600 dark:bg-orange-900/30">
+                      <TrendingDown className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1">
+                      <Label className="font-medium">
+                        Alert Threshold: {getThreshold(child.id)}%
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Notify when grade falls below this percentage
+                      </p>
+                    </div>
+                  </div>
+                  <Slider
+                    value={[getThreshold(child.id)]}
+                    onValueCommit={(v) => updateThreshold(child.id, v[0])}
+                    min={30}
+                    max={90}
+                    step={5}
+                    className="w-full"
+                    disabled={saving === child.id + "threshold"}
+                  />
+                  <div className="flex justify-between mt-1 text-xs text-muted-foreground">
+                    <span>30%</span>
+                    <span>60%</span>
+                    <span>90%</span>
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center justify-between rounded-lg border p-3">
                 <div className="flex items-center gap-3">
