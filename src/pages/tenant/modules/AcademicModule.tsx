@@ -22,6 +22,7 @@ import {
 } from "@/pages/tenant/modules/components/TeacherSubjectAssignmentsCard";
 
 import { AssessmentManagerCard } from "@/pages/tenant/modules/components/AssessmentManagerCard";
+import { GradeThresholdsCard } from "@/pages/tenant/modules/components/GradeThresholdsCard";
 
 type ClassRow = { id: string; name: string; grade_level: number | null };
 type SectionRow = { id: string; name: string; class_id: string; room: string | null };
@@ -438,6 +439,8 @@ export function AcademicModule() {
       />
 
       <AssessmentManagerCard schoolId={schoolId} />
+
+      {schoolId && <GradeThresholdsCard schoolId={schoolId} />}
     </div>
   );
 }

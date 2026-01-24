@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 
 type Assessment = { id: string; title: string; assessment_date: string; max_marks: number };
-type Mark = { id: string; assessment_id: string; marks: number | null; remarks: string | null };
+type Mark = { id: string; assessment_id: string; marks: number | null; remarks: string | null; computed_grade: string | null; grade_points: number | null };
 
 export function StudentGradesModule({ myStudent, schoolId }: { myStudent: any; schoolId: string }) {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
@@ -15,7 +15,7 @@ export function StudentGradesModule({ myStudent, schoolId }: { myStudent: any; s
     const [{ data: m }, { data: a }] = await Promise.all([
       supabase
         .from("student_marks")
-        .select("id,assessment_id,marks,remarks")
+        .select("id,assessment_id,marks,remarks,computed_grade,grade_points")
         .eq("school_id", schoolId)
         .eq("student_id", myStudent.studentId),
       supabase
@@ -52,6 +52,7 @@ export function StudentGradesModule({ myStudent, schoolId }: { myStudent: any; s
             <TableHead>Assessment</TableHead>
             <TableHead>Date</TableHead>
             <TableHead>Marks</TableHead>
+            <TableHead>Grade</TableHead>
             <TableHead>Remarks</TableHead>
           </TableRow>
         </TableHeader>
@@ -63,13 +64,20 @@ export function StudentGradesModule({ myStudent, schoolId }: { myStudent: any; s
                 <TableCell className="font-medium">{a.title}</TableCell>
                 <TableCell className="text-muted-foreground">{new Date(a.assessment_date).toLocaleDateString()}</TableCell>
                 <TableCell className="text-muted-foreground">{m?.marks ?? "—"} / {a.max_marks}</TableCell>
+                <TableCell>
+                  {m?.computed_grade ? (
+                    <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                      {m.computed_grade}
+                    </span>
+                  ) : "—"}
+                </TableCell>
                 <TableCell className="text-muted-foreground">{m?.remarks ?? "—"}</TableCell>
               </TableRow>
             );
           })}
           {assessments.length === 0 && (
             <TableRow>
-              <TableCell colSpan={4} className="text-sm text-muted-foreground">No assessments found yet.</TableCell>
+              <TableCell colSpan={5} className="text-sm text-muted-foreground">No assessments found yet.</TableCell>
             </TableRow>
           )}
         </TableBody>
