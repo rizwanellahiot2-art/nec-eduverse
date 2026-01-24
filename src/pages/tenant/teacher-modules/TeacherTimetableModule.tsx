@@ -55,6 +55,13 @@ export function TeacherTimetableModule() {
     const { data: user } = await supabase.auth.getUser();
     const userId = user.user?.id ?? null;
 
+    if (!userId) {
+      console.error("TeacherTimetableModule: No user ID found");
+      setLoading(false);
+      return;
+    }
+
+    // Fetch periods and directory
     const [{ data: p }, { data: dir }] = await Promise.all([
       supabase
         .from("timetable_periods")
@@ -89,24 +96,18 @@ export function TeacherTimetableModule() {
       setMySections([]);
     }
 
-    const [{ data: mine }, { data: bySections }] = await Promise.all([
-      supabase
-        .from("timetable_entries")
-        .select("id,subject_name,day_of_week,period_id,room,teacher_user_id,class_section_id, class_sections(name, academic_classes(name))")
-        .eq("school_id", tenant.schoolId)
-        .eq("teacher_user_id", userId)
-        .order("day_of_week")
-        .order("period_id"),
-      sectionIds.length
-        ? supabase
-            .from("timetable_entries")
-            .select("id,subject_name,day_of_week,period_id,room,teacher_user_id,class_section_id, class_sections(name, academic_classes(name))")
-            .eq("school_id", tenant.schoolId)
-            .in("class_section_id", sectionIds)
-            .order("day_of_week")
-            .order("period_id")
-        : Promise.resolve({ data: [] as any }),
-    ]);
+    // Fetch ALL timetable entries for this school first, then filter
+    // This ensures we get entries where teacher_user_id matches OR is in assigned sections
+    const { data: allEntries, error: entriesError } = await supabase
+      .from("timetable_entries")
+      .select("id,subject_name,day_of_week,period_id,room,teacher_user_id,class_section_id, class_sections(name, academic_classes(name))")
+      .eq("school_id", tenant.schoolId)
+      .order("day_of_week")
+      .order("period_id");
+
+    if (entriesError) {
+      console.error("TeacherTimetableModule: Error fetching entries", entriesError);
+    }
 
     const enrich = (rows: any[] | null | undefined) =>
       (rows ?? []).map((e: any) => {
@@ -125,8 +126,15 @@ export function TeacherTimetableModule() {
         } satisfies TimetableEntry;
       });
 
-    const mineEnriched = enrich(mine as any);
-    const sectionEnriched = enrich(bySections as any);
+    const enrichedAll = enrich(allEntries);
+
+    // Filter: "My periods" = entries where I am the teacher
+    const mineEnriched = enrichedAll.filter((e) => e.teacher_user_id === userId);
+    
+    // Filter: "All assigned sections" = entries in sections I'm assigned to
+    const sectionSet = new Set(sectionIds);
+    const sectionEnriched = enrichedAll.filter((e) => e.class_section_id && sectionSet.has(e.class_section_id));
+
     setMyEntries(mineEnriched);
     setSectionEntries(sectionEnriched);
 
