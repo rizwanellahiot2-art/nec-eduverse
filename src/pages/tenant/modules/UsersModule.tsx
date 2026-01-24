@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Download, FileUp, KeyRound, UserMinus, UserPlus } from "lucide-react";
+import { Download, FileUp, KeyRound, UserMinus, UserPlus, Phone } from "lucide-react";
+import { StaffProfileDialog } from "@/components/hr/StaffProfileDialog";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
@@ -19,6 +20,7 @@ type DirectoryRow = {
   user_id: string;
   email: string;
   display_name: string | null;
+  phone: string | null;
 };
 
 type BulkRow = {
@@ -68,12 +70,33 @@ export function UsersModule() {
   const refresh = async () => {
     if (!schoolId) return;
 
+    // Fetch directory data
     const { data: dir } = await supabase
       .from("school_user_directory")
       .select("user_id,email,display_name")
       .eq("school_id", schoolId)
       .order("email", { ascending: true });
-    setDirectory((dir ?? []) as DirectoryRow[]);
+
+    // Fetch phone numbers from profiles
+    const userIds = (dir ?? []).map((d: any) => d.user_id);
+    const { data: profiles } = userIds.length > 0
+      ? await supabase
+          .from("profiles")
+          .select("user_id, phone")
+          .in("user_id", userIds)
+      : { data: [] };
+
+    const phoneByUser: Record<string, string | null> = {};
+    (profiles ?? []).forEach((p: any) => {
+      phoneByUser[p.user_id] = p.phone;
+    });
+
+    setDirectory(
+      (dir ?? []).map((d: any) => ({
+        ...d,
+        phone: phoneByUser[d.user_id] ?? null,
+      })) as DirectoryRow[]
+    );
 
     const { data: ur } = await supabase
       .from("user_roles")
@@ -530,6 +553,7 @@ export function UsersModule() {
                 <TableRow>
                   <TableHead>Email</TableHead>
                   <TableHead>Name</TableHead>
+                  <TableHead>Phone</TableHead>
                   <TableHead>Roles</TableHead>
                   {canGovernStaff && <TableHead className="text-right">Actions</TableHead>}
                 </TableRow>
@@ -538,7 +562,31 @@ export function UsersModule() {
                 {directory.map((r) => (
                   <TableRow key={r.user_id}>
                     <TableCell className="font-medium">{r.email}</TableCell>
-                    <TableCell>{r.display_name ?? "—"}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span>{r.display_name ?? "—"}</span>
+                        {canGovernStaff && (
+                          <StaffProfileDialog
+                            userId={r.user_id}
+                            email={r.email}
+                            displayName={r.display_name}
+                            onUpdated={refresh}
+                          />
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        {r.phone ? (
+                          <>
+                            <Phone className="h-3 w-3 text-muted-foreground" />
+                            <span>{r.phone}</span>
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       {(rolesByUser[r.user_id] ?? []).map((x) => roleLabel[x]).join(", ") || "—"}
                     </TableCell>
@@ -648,7 +696,7 @@ export function UsersModule() {
                 ))}
                 {directory.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={canGovernStaff ? 4 : 3} className="text-muted-foreground">
+                    <TableCell colSpan={canGovernStaff ? 5 : 4} className="text-muted-foreground">
                       No users found.
                     </TableCell>
                   </TableRow>
