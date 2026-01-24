@@ -20,6 +20,7 @@ import {
   AlertCircle,
   ShieldAlert,
   Pin,
+  Forward,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -130,6 +131,9 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [messageReadStatus, setMessageReadStatus] = useState<Record<string, { is_read: boolean; read_at: string | null }>>({});
+  const [forwardingMessage, setForwardingMessage] = useState<ChatMessage | null>(null);
+  const [forwardSearch, setForwardSearch] = useState("");
+  const [forwardSending, setForwardSending] = useState(false);
 
   // Get current user's role for restrictions
   const { isStudent, isStaff, loading: roleLoading } = useUserRole(schoolId, currentUserId);
@@ -694,6 +698,69 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
     );
   }, [allUsers, newChatSearch, isStudent]);
 
+  const filteredForwardUsers = useMemo(() => {
+    let users = allUsers.filter((u) => u.user_id !== currentUserId);
+    
+    if (isStudent) {
+      users = users.filter((u) => u.canMessage !== false);
+    }
+    
+    if (!forwardSearch) return users;
+    const q = forwardSearch.toLowerCase();
+    return users.filter(
+      (u) => u.display_name.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q)
+    );
+  }, [allUsers, forwardSearch, isStudent, currentUserId]);
+
+  const handleForwardMessage = async (recipientId: string) => {
+    if (!forwardingMessage || !currentUserId) return;
+    
+    setForwardSending(true);
+    try {
+      const forwardedContent = `📤 Forwarded message:\n\n${forwardingMessage.content}`;
+      
+      const { data: newMsg, error } = await supabase
+        .from("admin_messages")
+        .insert({
+          school_id: schoolId,
+          sender_user_id: currentUserId,
+          subject: forwardingMessage.subject ? `Fwd: ${forwardingMessage.subject}` : null,
+          content: forwardedContent,
+          attachment_urls: forwardingMessage.attachment_urls || [],
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      await supabase.from("admin_message_recipients").insert({
+        message_id: newMsg.id,
+        recipient_user_id: recipientId,
+      });
+
+      // Create notification
+      await supabase.from("app_notifications").insert({
+        school_id: schoolId,
+        user_id: recipientId,
+        type: "message",
+        title: "New message",
+        body: `${currentUserName} forwarded a message to you`,
+        entity_type: "admin_message",
+        entity_id: newMsg.id,
+        created_by: currentUserId,
+      });
+
+      toast({ title: "Message forwarded successfully" });
+      setForwardingMessage(null);
+      setForwardSearch("");
+      fetchConversations();
+    } catch (err: any) {
+      toast({ title: "Failed to forward message", description: err.message, variant: "destructive" });
+    } finally {
+      setForwardSending(false);
+    }
+  };
+
   const totalUnread = useMemo(() => conversations.reduce((sum, c) => sum + c.unreadCount, 0), [conversations]);
 
   // Mobile: show conversation list or chat view
@@ -708,7 +775,7 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
         onRequestPermission={requestPermission}
       />
       
-      <div className="flex h-[calc(100vh-12rem)] overflow-hidden rounded-2xl border bg-background shadow-elevated">
+      <div className="flex h-[calc(100vh-12rem)] max-h-[calc(100dvh-10rem)] min-h-[400px] overflow-hidden rounded-2xl border bg-background shadow-elevated sm:h-[calc(100vh-12rem)]">
       {/* Conversation List */}
       <div
         className={cn(
@@ -986,15 +1053,24 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                           </div>
                         )}
                         <div className={cn("group flex items-end gap-1", msg.is_mine ? "justify-end" : "justify-start")}>
-                          {/* Reply button for other's messages */}
+                          {/* Action buttons for other's messages */}
                           {!msg.is_mine && (
-                            <button
-                              onClick={() => setReplyingTo(msg)}
-                              className="mb-2 opacity-0 transition-opacity group-hover:opacity-100"
-                              title="Reply"
-                            >
-                              <Reply className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                            </button>
+                            <div className="mb-2 flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                              <button
+                                onClick={() => setReplyingTo(msg)}
+                                className="p-1 rounded hover:bg-muted"
+                                title="Reply"
+                              >
+                                <Reply className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                              </button>
+                              <button
+                                onClick={() => setForwardingMessage(msg)}
+                                className="p-1 rounded hover:bg-muted"
+                                title="Forward"
+                              >
+                                <Forward className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                              </button>
+                            </div>
                           )}
                           <div className={cn(
                             "flex max-w-[85%] flex-col gap-1 sm:max-w-[75%] lg:max-w-[65%]",
@@ -1094,15 +1170,24 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                               isMine={msg.is_mine}
                             />
                           </div>
-                          {/* Reply button for own messages */}
+                          {/* Action buttons for own messages */}
                           {msg.is_mine && (
-                            <button
-                              onClick={() => setReplyingTo(msg)}
-                              className="mb-2 opacity-0 transition-opacity group-hover:opacity-100"
-                              title="Reply"
-                            >
-                              <Reply className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                            </button>
+                            <div className="mb-2 flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                              <button
+                                onClick={() => setForwardingMessage(msg)}
+                                className="p-1 rounded hover:bg-muted"
+                                title="Forward"
+                              >
+                                <Forward className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                              </button>
+                              <button
+                                onClick={() => setReplyingTo(msg)}
+                                className="p-1 rounded hover:bg-muted"
+                                title="Reply"
+                              >
+                                <Reply className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                              </button>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -1150,8 +1235,8 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
               </div>
             )}
 
-            {/* Message Input */}
-            <div className="border-t p-4">
+            {/* Message Input - Fixed at bottom on mobile */}
+            <div className="shrink-0 border-t bg-background p-3 sm:p-4">
               <div className="flex items-end gap-2">
                 <input
                   type="file"
@@ -1164,10 +1249,10 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-10 w-10 shrink-0"
+                  className="h-9 w-9 shrink-0 sm:h-10 sm:w-10"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <Paperclip className="h-5 w-5" />
+                  <Paperclip className="h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
                 <Textarea
                   placeholder={replyingTo ? "Type a reply..." : "Type a message..."}
@@ -1182,19 +1267,19 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                       handleSendMessage();
                     }
                   }}
-                  className="min-h-[44px] max-h-32 resize-none"
+                  className="min-h-[40px] max-h-28 resize-none text-sm sm:min-h-[44px] sm:max-h-32"
                   rows={1}
                 />
                 <Button
                   size="icon"
-                  className="h-10 w-10 shrink-0"
+                  className="h-9 w-9 shrink-0 sm:h-10 sm:w-10"
                   disabled={sending || (!messageText.trim() && attachments.length === 0)}
                   onClick={handleSendMessage}
                 >
                   {sending ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin sm:h-5 sm:w-5" />
                   ) : (
-                    <Send className="h-5 w-5" />
+                    <Send className="h-4 w-4 sm:h-5 sm:w-5" />
                   )}
                 </Button>
               </div>
@@ -1217,6 +1302,84 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
         )}
       </div>
       </div>
+
+      {/* Forward Message Dialog */}
+      <Dialog open={!!forwardingMessage} onOpenChange={(open) => !open && setForwardingMessage(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Forward className="h-5 w-5" />
+              Forward Message
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Message Preview */}
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <p className="text-xs text-muted-foreground mb-1">Message to forward:</p>
+              <p className="text-sm line-clamp-3" style={{ wordBreak: "break-word" }}>
+                {forwardingMessage?.content}
+              </p>
+              {forwardingMessage?.attachment_urls && forwardingMessage.attachment_urls.length > 0 && (
+                <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
+                  <Paperclip className="h-3 w-3" />
+                  <span>{forwardingMessage.attachment_urls.length} attachment(s)</span>
+                </div>
+              )}
+            </div>
+
+            <Input
+              placeholder="Search users..."
+              value={forwardSearch}
+              onChange={(e) => setForwardSearch(e.target.value)}
+            />
+            {isStudent && (
+              <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-2 text-xs text-muted-foreground">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>Students can only forward to teachers and staff.</span>
+              </div>
+            )}
+            <ScrollArea className="h-56">
+              <div className="space-y-2">
+                {filteredForwardUsers.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <MessageCircle className="h-10 w-10 text-muted-foreground/30" />
+                    <p className="mt-2 text-sm text-muted-foreground">No users found</p>
+                  </div>
+                ) : (
+                  filteredForwardUsers.map((user) => (
+                    <button
+                      key={user.user_id}
+                      onClick={() => handleForwardMessage(user.user_id)}
+                      disabled={forwardSending}
+                      className="flex w-full items-center gap-3 rounded-lg p-2 text-left transition-colors hover:bg-accent disabled:opacity-50"
+                    >
+                      <Avatar className="h-10 w-10">
+                        <AvatarFallback>{getInitials(user.display_name)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 overflow-hidden">
+                        <div className="flex items-center gap-2">
+                          <p className="truncate font-medium">{user.display_name}</p>
+                          {user.role && (
+                            <Badge variant="secondary" className="text-[10px] h-4 shrink-0">
+                              {user.role}
+                            </Badge>
+                          )}
+                        </div>
+                        {user.email && (
+                          <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                        )}
+                      </div>
+                      {forwardSending && (
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      )}
+                    </button>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
