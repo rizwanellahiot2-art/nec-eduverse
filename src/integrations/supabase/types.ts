@@ -3335,6 +3335,7 @@ export type Database = {
       }
       is_platform_super_admin: { Args: never; Returns: boolean }
       is_school_member: { Args: { _school_id: string }; Returns: boolean }
+      is_school_user: { Args: { _school_id: string }; Returns: boolean }
       is_super_admin: { Args: { _school_id: string }; Returns: boolean }
       is_teacher_assigned: {
         Args: { _class_section_id: string; _school_id: string }
