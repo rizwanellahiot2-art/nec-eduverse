@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
-import { BarChart3, LogOut, UserRound, Coins, UserPlus, ClipboardList } from "lucide-react";
+import { BarChart3, LogOut, UserRound, Coins, UserPlus, ClipboardList, GraduationCap, FileText, Users } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -74,6 +74,9 @@ const TenantDashboard = () => {
     queryClient.invalidateQueries({ queryKey: ["dashboard_kpi_revenue", schoolId] });
     queryClient.invalidateQueries({ queryKey: ["dashboard_kpi_leads", schoolId] });
     queryClient.invalidateQueries({ queryKey: ["dashboard_kpi_attendance", schoolId] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard_kpi_students", schoolId] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard_kpi_invoices", schoolId] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard_kpi_staff", schoolId] });
   }, [queryClient, schoolId]);
 
   // Realtime subscriptions for KPIs
@@ -96,6 +99,30 @@ const TenantDashboard = () => {
   useRealtimeTable({
     channel: `dashboard-kpi-attendance-${schoolId}`,
     table: "attendance_entries",
+    filter: schoolId ? `school_id=eq.${schoolId}` : undefined,
+    enabled: !!schoolId,
+    onChange: invalidateKpiQueries,
+  });
+
+  useRealtimeTable({
+    channel: `dashboard-kpi-students-${schoolId}`,
+    table: "students",
+    filter: schoolId ? `school_id=eq.${schoolId}` : undefined,
+    enabled: !!schoolId,
+    onChange: invalidateKpiQueries,
+  });
+
+  useRealtimeTable({
+    channel: `dashboard-kpi-invoices-${schoolId}`,
+    table: "finance_invoices",
+    filter: schoolId ? `school_id=eq.${schoolId}` : undefined,
+    enabled: !!schoolId,
+    onChange: invalidateKpiQueries,
+  });
+
+  useRealtimeTable({
+    channel: `dashboard-kpi-staff-${schoolId}`,
+    table: "school_memberships",
     filter: schoolId ? `school_id=eq.${schoolId}` : undefined,
     enabled: !!schoolId,
     onChange: invalidateKpiQueries,
@@ -156,6 +183,51 @@ const TenantDashboard = () => {
         total,
         present,
         rate: total > 0 ? Math.round((present / total) * 100) : 0,
+      };
+    },
+    enabled: !!schoolId,
+  });
+
+  // Fetch Students count
+  const { data: studentsCount = 0 } = useQuery({
+    queryKey: ["dashboard_kpi_students", schoolId],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("students")
+        .select("id", { count: "exact", head: true })
+        .eq("school_id", schoolId!);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!schoolId,
+  });
+
+  // Fetch Pending Invoices
+  const { data: pendingInvoices = 0 } = useQuery({
+    queryKey: ["dashboard_kpi_invoices", schoolId],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("finance_invoices")
+        .select("id", { count: "exact", head: true })
+        .eq("school_id", schoolId!)
+        .eq("status", "pending");
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!schoolId,
+  });
+
+  // Fetch Staff count
+  const { data: staffData } = useQuery({
+    queryKey: ["dashboard_kpi_staff", schoolId],
+    queryFn: async () => {
+      const [totalRes, teachersRes] = await Promise.all([
+        supabase.from("school_memberships").select("id", { count: "exact", head: true }).eq("school_id", schoolId!),
+        supabase.from("user_roles").select("id", { count: "exact", head: true }).eq("school_id", schoolId!).eq("role", "teacher"),
+      ]);
+      return {
+        total: totalRes.count ?? 0,
+        teachers: teachersRes.count ?? 0,
       };
     },
     enabled: !!schoolId,
@@ -254,17 +326,42 @@ const TenantDashboard = () => {
   return (
     <TenantShell title={title} subtitle="Role-isolated workspace" role={role} schoolSlug={tenant.slug}>
       <div className="flex flex-col gap-6">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {/* Primary KPIs */}
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
           {/* Revenue KPI */}
           <div className="rounded-3xl bg-surface p-5 shadow-elevated">
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">Revenue (MTD)</p>
-              <Coins className="h-4 w-4 text-muted-foreground" />
+              <Coins className="h-4 w-4 text-primary" />
             </div>
             <p className="mt-3 font-display text-2xl font-semibold tracking-tight text-primary">
               {revenueMtd.toLocaleString()}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">This month's collections</p>
+            <p className="mt-1 text-xs text-muted-foreground">This month</p>
+          </div>
+
+          {/* Students KPI */}
+          <div className="rounded-3xl bg-surface p-5 shadow-elevated">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">Students</p>
+              <GraduationCap className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <p className="mt-3 font-display text-2xl font-semibold tracking-tight">
+              {studentsCount.toLocaleString()}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">Enrolled</p>
+          </div>
+
+          {/* Staff KPI */}
+          <div className="rounded-3xl bg-surface p-5 shadow-elevated">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">Staff</p>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <p className="mt-3 font-display text-2xl font-semibold tracking-tight">
+              {staffData?.total ?? 0}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">{staffData?.teachers ?? 0} teachers</p>
           </div>
 
           {/* Admissions KPI */}
@@ -276,19 +373,31 @@ const TenantDashboard = () => {
             <p className="mt-3 font-display text-2xl font-semibold tracking-tight">
               {leadsData?.open ?? 0}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">{leadsData?.total ?? 0} total leads</p>
+            <p className="mt-1 text-xs text-muted-foreground">{leadsData?.total ?? 0} leads</p>
+          </div>
+
+          {/* Pending Invoices KPI */}
+          <div className="rounded-3xl bg-surface p-5 shadow-elevated">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">Pending</p>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <p className="mt-3 font-display text-2xl font-semibold tracking-tight">
+              {pendingInvoices}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">Invoices</p>
           </div>
 
           {/* Attendance KPI */}
           <div className="rounded-3xl bg-surface p-5 shadow-elevated">
             <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">Attendance (7d)</p>
+              <p className="text-sm text-muted-foreground">Attendance</p>
               <ClipboardList className="h-4 w-4 text-muted-foreground" />
             </div>
             <p className="mt-3 font-display text-2xl font-semibold tracking-tight">
               {attendanceData?.rate ?? 0}%
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">Present rate</p>
+            <p className="mt-1 text-xs text-muted-foreground">7-day rate</p>
           </div>
         </div>
 
