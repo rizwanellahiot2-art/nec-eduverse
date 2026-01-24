@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { WorkspaceMessagesTab } from "@/components/messages/WorkspaceMessagesTab";
+import { MessagesModule } from "@/pages/tenant/modules/MessagesModule";
 
 export function AccountantMessagesModule() {
   const { schoolSlug } = useParams();
@@ -37,5 +37,5 @@ export function AccountantMessagesModule() {
     return <p className="text-sm text-muted-foreground">School not found.</p>;
   }
 
-  return <WorkspaceMessagesTab schoolId={schoolId} canCompose={true} />;
+  return <MessagesModule schoolId={schoolId} isStudentPortal={false} />;
 }
