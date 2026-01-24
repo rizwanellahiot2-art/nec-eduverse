@@ -111,10 +111,12 @@ export function TeacherAssignmentsModule() {
   const fetchData = async () => {
     setLoading(true);
 
+    // Only get assignments for THIS teacher
     const { data: teacherAssignments } = await supabase
       .from("teacher_assignments")
       .select("class_section_id")
-      .eq("school_id", tenant.schoolId);
+      .eq("school_id", tenant.schoolId)
+      .eq("teacher_user_id", user?.id);
 
     if (!teacherAssignments?.length) {
       setLoading(false);

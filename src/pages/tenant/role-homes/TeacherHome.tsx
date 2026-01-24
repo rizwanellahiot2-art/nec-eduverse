@@ -60,21 +60,31 @@ export function TeacherHome() {
         totalStudents = count || 0;
       }
 
-      // Get pending homework
+      // Get pending homework - only for THIS teacher's sections or created by this teacher
       const today = new Date().toISOString().split("T")[0];
-      const { count: pendingHomework } = await supabase
-        .from("homework")
-        .select("id", { count: "exact", head: true })
-        .eq("school_id", schoolId)
-        .eq("status", "active")
-        .gte("due_date", today);
+      let pendingHomeworkCount = 0;
+      if (assignedSectionIds.length > 0) {
+        const { count } = await supabase
+          .from("homework")
+          .select("id", { count: "exact", head: true })
+          .eq("school_id", schoolId)
+          .eq("status", "active")
+          .gte("due_date", today)
+          .or(`class_section_id.in.(${assignedSectionIds.join(",")}),teacher_user_id.eq.${user.id}`);
+        pendingHomeworkCount = count || 0;
+      }
 
-      // Get today's attendance sessions
-      const { count: todayAttendance } = await supabase
-        .from("attendance_sessions")
-        .select("id", { count: "exact", head: true })
-        .eq("school_id", schoolId)
-        .eq("session_date", today);
+      // Get today's attendance sessions - only for THIS teacher's sections
+      let todayAttendanceCount = 0;
+      if (assignedSectionIds.length > 0) {
+        const { count } = await supabase
+          .from("attendance_sessions")
+          .select("id", { count: "exact", head: true })
+          .eq("school_id", schoolId)
+          .eq("session_date", today)
+          .in("class_section_id", assignedSectionIds);
+        todayAttendanceCount = count || 0;
+      }
 
       // Get unread parent messages
       const { count: unreadMessages } = await supabase
@@ -84,23 +94,28 @@ export function TeacherHome() {
         .eq("recipient_user_id", user.id)
         .eq("is_read", false);
 
-      // Get recent homework
-      const { data: homework } = await supabase
-        .from("homework")
-        .select("id, title, due_date")
-        .eq("school_id", schoolId)
-        .eq("status", "active")
-        .order("due_date", { ascending: true })
-        .limit(5);
+      // Get recent homework - only for THIS teacher's sections or created by this teacher
+      let homework: { id: string; title: string; due_date: string }[] = [];
+      if (assignedSectionIds.length > 0) {
+        const { data } = await supabase
+          .from("homework")
+          .select("id, title, due_date")
+          .eq("school_id", schoolId)
+          .eq("status", "active")
+          .or(`class_section_id.in.(${assignedSectionIds.join(",")}),teacher_user_id.eq.${user.id}`)
+          .order("due_date", { ascending: true })
+          .limit(5);
+        homework = data || [];
+      }
 
       setStats({
         totalStudents,
         assignedSections,
-        pendingHomework: pendingHomework || 0,
-        todayAttendance: todayAttendance || 0,
+        pendingHomework: pendingHomeworkCount,
+        todayAttendance: todayAttendanceCount,
         unreadMessages: unreadMessages || 0,
       });
-      setRecentHomework(homework || []);
+      setRecentHomework(homework);
       setLoading(false);
     };
 

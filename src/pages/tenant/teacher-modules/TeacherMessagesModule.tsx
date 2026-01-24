@@ -66,13 +66,19 @@ export function TeacherMessagesModule() {
     setLoading(true);
 
     const { data: user } = await supabase.auth.getUser();
-    setCurrentUserId(user.user?.id || null);
+    const userId = user.user?.id;
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+    setCurrentUserId(userId);
 
-    // Get assigned sections
+    // Get assigned sections - only for THIS teacher
     const { data: assignments } = await supabase
       .from("teacher_assignments")
       .select("class_section_id")
-      .eq("school_id", tenant.schoolId);
+      .eq("school_id", tenant.schoolId)
+      .eq("teacher_user_id", userId);
 
     if (!assignments?.length) {
       setLoading(false);
