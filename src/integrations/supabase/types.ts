@@ -1170,6 +1170,45 @@ export type Database = {
           },
         ]
       }
+      grade_thresholds: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          grade_label: string
+          grade_points: number | null
+          id: string
+          max_percentage: number
+          min_percentage: number
+          school_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          grade_label: string
+          grade_points?: number | null
+          id?: string
+          max_percentage: number
+          min_percentage: number
+          school_id: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          grade_label?: string
+          grade_points?: number | null
+          id?: string
+          max_percentage?: number
+          min_percentage?: number
+          school_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       homework: {
         Row: {
           attachment_urls: string[] | null
@@ -2285,7 +2324,9 @@ export type Database = {
       student_marks: {
         Row: {
           assessment_id: string
+          computed_grade: string | null
           created_by: string | null
+          grade_points: number | null
           graded_at: string
           graded_by: string | null
           id: string
@@ -2296,7 +2337,9 @@ export type Database = {
         }
         Insert: {
           assessment_id: string
+          computed_grade?: string | null
           created_by?: string | null
+          grade_points?: number | null
           graded_at?: string
           graded_by?: string | null
           id?: string
@@ -2307,7 +2350,9 @@ export type Database = {
         }
         Update: {
           assessment_id?: string
+          computed_grade?: string | null
           created_by?: string | null
+          grade_points?: number | null
           graded_at?: string
           graded_by?: string | null
           id?: string
@@ -2773,6 +2818,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_grade: {
+        Args: { p_percentage: number; p_school_id: string }
+        Returns: {
+          grade_label: string
+          grade_points: number
+        }[]
+      }
       can_manage_finance: { Args: { _school_id: string }; Returns: boolean }
       can_manage_hr: { Args: { _school_id: string }; Returns: boolean }
       can_manage_staff: { Args: { _school_id: string }; Returns: boolean }
