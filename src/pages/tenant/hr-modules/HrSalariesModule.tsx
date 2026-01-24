@@ -157,13 +157,13 @@ export function HrSalariesModule() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("school_memberships")
-        .select("user_id, profiles:user_id(full_name, email)")
+        .select("user_id, profiles:user_id(display_name)")
         .eq("school_id", schoolId!);
       if (error) throw error;
       return (data || []).map((m: any) => ({
         id: m.user_id,
-        full_name: m.profiles?.full_name || "Unknown",
-        email: m.profiles?.email || "",
+        full_name: m.profiles?.display_name || "Unknown",
+        email: "",
       })) as StaffMember[];
     },
     enabled: !!schoolId,
