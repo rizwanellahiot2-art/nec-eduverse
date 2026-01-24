@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { BarChart3, BookOpen, CalendarCheck, ClipboardCheck, MessageSquare, Users } from "lucide-react";
+import { BarChart3, BookOpen, CalendarCheck, ClipboardCheck, FileText, MessageSquare, TableIcon, TrendingUp, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
+import { useSession } from "@/hooks/useSession";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AtRiskStudentsCard } from "@/components/teacher/AtRiskStudentsCard";
+import { ClassPerformanceChart } from "@/components/teacher/ClassPerformanceChart";
 
 interface Stats {
   totalStudents: number;
@@ -16,6 +19,7 @@ interface Stats {
 export function TeacherHome() {
   const { schoolSlug } = useParams();
   const tenant = useTenant(schoolSlug);
+  const { user } = useSession();
   const [stats, setStats] = useState<Stats>({
     totalStudents: 0,
     assignedSections: 0,
@@ -23,33 +27,36 @@ export function TeacherHome() {
     todayAttendance: 0,
     unreadMessages: 0,
   });
+  const [sectionIds, setSectionIds] = useState<string[]>([]);
   const [recentHomework, setRecentHomework] = useState<{ id: string; title: string; due_date: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (tenant.status !== "ready") return;
+    if (tenant.status !== "ready" || !user) return;
 
     const fetchStats = async () => {
       setLoading(true);
       const schoolId = tenant.schoolId;
 
-      // Get assigned sections
+      // Get assigned sections for this teacher
       const { data: assignments } = await supabase
         .from("teacher_assignments")
         .select("class_section_id")
-        .eq("school_id", schoolId);
+        .eq("school_id", schoolId)
+        .eq("teacher_user_id", user.id);
 
-      const sectionIds = assignments?.map((a) => a.class_section_id) || [];
-      const assignedSections = sectionIds.length;
+      const assignedSectionIds = [...new Set(assignments?.map((a) => a.class_section_id) || [])];
+      setSectionIds(assignedSectionIds);
+      const assignedSections = assignedSectionIds.length;
 
       // Get total students in assigned sections
       let totalStudents = 0;
-      if (sectionIds.length > 0) {
+      if (assignedSectionIds.length > 0) {
         const { count } = await supabase
           .from("student_enrollments")
           .select("id", { count: "exact", head: true })
           .eq("school_id", schoolId)
-          .in("class_section_id", sectionIds);
+          .in("class_section_id", assignedSectionIds);
         totalStudents = count || 0;
       }
 
@@ -70,12 +77,11 @@ export function TeacherHome() {
         .eq("session_date", today);
 
       // Get unread parent messages
-      const { data: user } = await supabase.auth.getUser();
       const { count: unreadMessages } = await supabase
         .from("parent_messages")
         .select("id", { count: "exact", head: true })
         .eq("school_id", schoolId)
-        .eq("recipient_user_id", user.user?.id || "")
+        .eq("recipient_user_id", user.id)
         .eq("is_read", false);
 
       // Get recent homework
@@ -99,7 +105,7 @@ export function TeacherHome() {
     };
 
     fetchStats();
-  }, [tenant.status, tenant.schoolId]);
+  }, [tenant.status, tenant.schoolId, user]);
 
   if (loading) {
     return (
@@ -180,6 +186,14 @@ export function TeacherHome() {
         </Card>
       </div>
 
+      {/* Analytics Cards - At-Risk Students & Class Performance */}
+      {tenant.status === "ready" && (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <AtRiskStudentsCard schoolId={tenant.schoolId} sectionIds={sectionIds} />
+          <ClassPerformanceChart schoolId={tenant.schoolId} sectionIds={sectionIds} />
+        </div>
+      )}
+
       {/* Recent Homework */}
       <Card>
         <CardHeader>
@@ -207,7 +221,7 @@ export function TeacherHome() {
           <CardTitle className="text-lg">Quick Actions</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
             <a
               href={`/${schoolSlug}/teacher/attendance`}
               className="flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-colors hover:bg-accent"
@@ -221,6 +235,20 @@ export function TeacherHome() {
             >
               <BookOpen className="h-6 w-6 text-primary" />
               <span className="text-sm">Add Homework</span>
+            </a>
+            <a
+              href={`/${schoolSlug}/teacher/gradebook`}
+              className="flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-colors hover:bg-accent"
+            >
+              <TableIcon className="h-6 w-6 text-primary" />
+              <span className="text-sm">Gradebook</span>
+            </a>
+            <a
+              href={`/${schoolSlug}/teacher/progress`}
+              className="flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-colors hover:bg-accent"
+            >
+              <TrendingUp className="h-6 w-6 text-primary" />
+              <span className="text-sm">Progress</span>
             </a>
             <a
               href={`/${schoolSlug}/teacher/students`}
