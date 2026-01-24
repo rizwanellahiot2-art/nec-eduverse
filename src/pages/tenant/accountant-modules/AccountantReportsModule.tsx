@@ -69,9 +69,9 @@ export function AccountantReportsModule() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("hr_pay_runs")
-        .select("net_amount, run_date, status")
+        .select("net_amount, paid_at, status, created_at")
         .eq("school_id", schoolId!)
-        .order("run_date", { ascending: true });
+        .order("created_at", { ascending: true });
       if (error) throw error;
       return data;
     },
@@ -112,14 +112,14 @@ export function AccountantReportsModule() {
   });
 
   const periodPayRuns = payRuns.filter((p) => {
-    const date = new Date(p.run_date);
+    const date = new Date(p.paid_at || p.created_at);
     return date >= startDate && date <= endDate;
   });
 
   // Calculate stats
   const totalRevenue = periodPayments.reduce((sum, p) => sum + p.amount, 0);
   const totalExpenses = periodExpenses.reduce((sum, e) => sum + e.amount, 0);
-  const totalPayroll = periodPayRuns.filter((p) => p.status === "completed").reduce((sum, p) => sum + p.net_amount, 0);
+  const totalPayroll = periodPayRuns.filter((p) => p.status === "completed").reduce((sum, p) => sum + (p.net_amount || 0), 0);
   const netProfit = totalRevenue - totalExpenses - totalPayroll;
 
   // Chart data - trend by date

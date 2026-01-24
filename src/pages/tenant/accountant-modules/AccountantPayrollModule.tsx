@@ -40,7 +40,7 @@ type PayRun = {
   id: string;
   period_start: string;
   period_end: string;
-  run_date: string;
+  paid_at: string | null;
   gross_amount: number;
   deductions: number;
   net_amount: number;
@@ -52,11 +52,11 @@ type SalaryRecord = {
   id: string;
   user_id: string;
   base_salary: number;
-  allowances: number;
-  deductions: number;
   effective_from: string;
   effective_to: string | null;
-  is_active: boolean;
+  currency: string;
+  pay_frequency: string;
+  notes: string | null;
 };
 
 type StaffMember = {
@@ -94,9 +94,19 @@ export function AccountantPayrollModule() {
         .from("hr_pay_runs")
         .select("*")
         .eq("school_id", schoolId!)
-        .order("run_date", { ascending: false });
+        .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as PayRun[];
+      return (data || []).map((r) => ({
+        id: r.id,
+        period_start: r.period_start,
+        period_end: r.period_end,
+        paid_at: r.paid_at,
+        gross_amount: r.gross_amount,
+        deductions: r.deductions,
+        net_amount: r.net_amount,
+        status: r.status,
+        notes: r.notes,
+      })) as PayRun[];
     },
     enabled: !!schoolId,
   });
@@ -110,7 +120,16 @@ export function AccountantPayrollModule() {
         .eq("school_id", schoolId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as SalaryRecord[];
+      return (data || []).map((r) => ({
+        id: r.id,
+        user_id: r.user_id,
+        base_salary: r.base_salary,
+        effective_from: r.effective_from,
+        effective_to: r.effective_to,
+        currency: r.currency,
+        pay_frequency: r.pay_frequency,
+        notes: r.notes,
+      })) as SalaryRecord[];
     },
     enabled: !!schoolId,
   });
@@ -153,23 +172,24 @@ export function AccountantPayrollModule() {
       return;
     }
 
-    // Calculate totals from active salary records
-    const activeSalaries = salaryRecords.filter((s) => s.is_active);
-    const grossAmount = activeSalaries.reduce((sum, s) => sum + s.base_salary + s.allowances, 0);
-    const deductions = activeSalaries.reduce((sum, s) => sum + s.deductions, 0);
+    // Calculate totals from salary records
+    const grossAmount = salaryRecords.reduce((sum, s) => sum + s.base_salary, 0);
+    const deductions = 0; // No deductions column in salary_records
     const netAmount = grossAmount - deductions;
 
-    const { error } = await supabase.from("hr_pay_runs").insert({
-      school_id: schoolId,
-      period_start: formPeriodStart,
-      period_end: formPeriodEnd,
-      run_date: new Date().toISOString().split("T")[0],
-      gross_amount: grossAmount,
-      deductions,
-      net_amount: netAmount,
-      status: "draft",
-      notes: formNotes.trim() || null,
-    });
+    const { error } = await supabase.from("hr_pay_runs").insert([
+      {
+        school_id: schoolId,
+        user_id: salaryRecords[0]?.user_id || null, // Required field
+        period_start: formPeriodStart,
+        period_end: formPeriodEnd,
+        gross_amount: grossAmount,
+        deductions,
+        net_amount: netAmount,
+        status: "draft",
+        notes: formNotes.trim() || null,
+      },
+    ]);
 
     if (error) {
       toast.error(error.message);
@@ -194,23 +214,24 @@ export function AccountantPayrollModule() {
       return;
     }
 
-    // Deactivate existing records for this user
+    // Mark previous records as ended
     await supabase
       .from("hr_salary_records")
-      .update({ is_active: false, effective_to: formEffectiveFrom })
+      .update({ effective_to: formEffectiveFrom })
       .eq("school_id", schoolId)
       .eq("user_id", formUserId)
-      .eq("is_active", true);
+      .is("effective_to", null);
 
-    const { error } = await supabase.from("hr_salary_records").insert({
-      school_id: schoolId,
-      user_id: formUserId,
-      base_salary: baseSalary,
-      allowances: Number(formAllowances) || 0,
-      deductions: Number(formDeductions) || 0,
-      effective_from: formEffectiveFrom,
-      is_active: true,
-    });
+    const { error } = await supabase.from("hr_salary_records").insert([
+      {
+        school_id: schoolId,
+        user_id: formUserId,
+        base_salary: baseSalary,
+        effective_from: formEffectiveFrom,
+        currency: "PKR",
+        pay_frequency: "monthly",
+      },
+    ]);
 
     if (error) {
       toast.error(error.message);
@@ -290,12 +311,12 @@ export function AccountantPayrollModule() {
     ? payRuns
     : payRuns.filter((pr) => pr.status === statusFilter);
 
-  const activeSalaries = salaryRecords.filter((s) => s.is_active);
+  // Use all salary records (no is_active column)
   const stats = {
     totalPayRuns: payRuns.length,
     completedPayRuns: payRuns.filter((p) => p.status === "completed").length,
-    totalPayroll: activeSalaries.reduce((sum, s) => sum + s.base_salary + s.allowances - s.deductions, 0),
-    activeEmployees: activeSalaries.length,
+    totalPayroll: salaryRecords.reduce((sum, s) => sum + s.base_salary, 0),
+    activeEmployees: salaryRecords.length,
   };
 
   if (loadingPayRuns || loadingSalaries) {
@@ -388,14 +409,12 @@ export function AccountantPayrollModule() {
                         <div>
                           <p className="text-muted-foreground">Gross</p>
                           <p className="font-semibold">
-                            {activeSalaries.reduce((s, r) => s + r.base_salary + r.allowances, 0).toLocaleString()}
+                            {salaryRecords.reduce((s, r) => s + r.base_salary, 0).toLocaleString()}
                           </p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Deductions</p>
-                          <p className="font-semibold">
-                            {activeSalaries.reduce((s, r) => s + r.deductions, 0).toLocaleString()}
-                          </p>
+                          <p className="font-semibold">0</p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Net</p>
@@ -605,11 +624,11 @@ export function AccountantPayrollModule() {
                       <TableCell className="font-medium">{getStaffName(record.user_id)}</TableCell>
                       <TableCell>{record.base_salary.toLocaleString()}</TableCell>
                       <TableCell className="text-primary">
-                        {(record.base_salary + record.allowances - record.deductions).toLocaleString()}
+                        {record.base_salary.toLocaleString()}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={record.is_active ? "default" : "secondary"}>
-                          {record.is_active ? "Active" : "Inactive"}
+                        <Badge variant={!record.effective_to ? "default" : "secondary"}>
+                          {!record.effective_to ? "Active" : "Inactive"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
