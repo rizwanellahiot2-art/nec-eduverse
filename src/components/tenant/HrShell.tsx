@@ -123,9 +123,16 @@ export function HrShell({ title, subtitle, schoolSlug, children }: Props) {
         </p>
       </div>
 
-      <Button onClick={handleLogout} variant="outline" className="mt-6 w-full">
-        <LogOut className="mr-2 h-4 w-4" /> Logout
-      </Button>
+      <div className="mt-6">
+        <Button
+          variant="ghost"
+          className="w-full justify-start gap-2 text-muted-foreground hover:text-destructive"
+          onClick={handleLogout}
+        >
+          <LogOut className="h-4 w-4" />
+          Sign Out
+        </Button>
+      </div>
     </>
   );
 
