@@ -18,6 +18,11 @@ import {
   Calendar,
   X,
   Loader2,
+  Paperclip,
+  FileText,
+  Image,
+  Download,
+  ExternalLink,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,6 +54,7 @@ interface Message {
   recipients?: { user_id: string; name: string; is_read: boolean; read_at?: string }[];
   is_sent: boolean;
   is_read?: boolean;
+  attachment_urls?: string[];
 }
 
 interface Props {
@@ -134,6 +140,7 @@ export function WorkspaceMessagesTab({ schoolId, canCompose = true }: Props) {
       created_at: m.created_at,
       sender_user_id: m.sender_user_id,
       is_sent: true,
+      attachment_urls: (m as any).attachment_urls || [],
     }));
 
     // Process received messages
@@ -151,6 +158,7 @@ export function WorkspaceMessagesTab({ schoolId, canCompose = true }: Props) {
           sender_user_id: msg.sender_user_id,
           is_sent: false,
           is_read: r.is_read,
+          attachment_urls: msg.attachment_urls || [],
         };
       });
 
@@ -511,6 +519,55 @@ export function WorkspaceMessagesTab({ schoolId, canCompose = true }: Props) {
             <div className="rounded-xl bg-muted/50 p-3 sm:p-4">
               <p className="whitespace-pre-wrap text-sm sm:text-base">{selectedMessage.content}</p>
             </div>
+
+            {/* Attachments */}
+            {selectedMessage.attachment_urls && selectedMessage.attachment_urls.length > 0 && (
+              <div>
+                <p className="text-sm font-medium mb-2 flex items-center gap-2">
+                  <Paperclip className="h-4 w-4" />
+                  Attachments ({selectedMessage.attachment_urls.length})
+                </p>
+                <div className="space-y-2">
+                  {selectedMessage.attachment_urls.map((url, idx) => {
+                    const fileName = url.split("/").pop() || "Attachment";
+                    const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(fileName);
+                    
+                    const handleDownload = async () => {
+                      const { data } = await supabase.storage
+                        .from("message-attachments")
+                        .createSignedUrl(url, 60);
+                      
+                      if (data?.signedUrl) {
+                        window.open(data.signedUrl, "_blank");
+                      }
+                    };
+
+                    return (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-2 rounded-lg bg-muted/30 p-2 text-sm"
+                      >
+                        {isImage ? (
+                          <Image className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                        )}
+                        <span className="flex-1 truncate">{fileName}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="shrink-0 gap-1.5 h-7"
+                          onClick={handleDownload}
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">Download</span>
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Recipients List (for sent messages) */}
             {selectedMessage.is_sent && selectedMessage.recipients && (

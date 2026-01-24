@@ -145,6 +145,7 @@ export type Database = {
       }
       admin_messages: {
         Row: {
+          attachment_urls: string[] | null
           content: string
           created_at: string
           created_by: string | null
@@ -159,6 +160,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          attachment_urls?: string[] | null
           content: string
           created_at?: string
           created_by?: string | null
@@ -173,6 +175,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          attachment_urls?: string[] | null
           content?: string
           created_at?: string
           created_by?: string | null
