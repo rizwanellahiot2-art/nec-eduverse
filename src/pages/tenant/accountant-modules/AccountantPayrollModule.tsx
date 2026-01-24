@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Play, CheckCircle, Clock, Trash2, Users, Coins, FileText, Download, History } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
-import { openPayslipPDF, openBulkPayslipsPDF, downloadBulkPayslipsHTML, PayslipData } from "@/lib/payslip-pdf";
+import { useRealtimeTable } from "@/hooks/useRealtime";
+import { openBulkPayslipsPDF, downloadBulkPayslipsHTML, PayslipData } from "@/lib/payslip-pdf";
 import { SalaryHistoryDialog } from "@/components/hr/SalaryHistoryDialog";
 
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ import { toast } from "sonner";
 
 type PayRun = {
   id: string;
+  user_id: string;
   period_start: string;
   period_end: string;
   paid_at: string | null;
@@ -94,6 +96,31 @@ export function AccountantPayrollModule() {
   const [formDeductions, setFormDeductions] = useState("0");
   const [formEffectiveFrom, setFormEffectiveFrom] = useState(new Date().toISOString().split("T")[0]);
 
+  // Invalidate all payroll queries on realtime changes
+  const invalidatePayrollQueries = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["hr_pay_runs", schoolId] });
+    queryClient.invalidateQueries({ queryKey: ["hr_salary_records", schoolId] });
+    queryClient.invalidateQueries({ queryKey: ["hr_pay_runs_home"] });
+    queryClient.invalidateQueries({ queryKey: ["hr_salary_records_home"] });
+  }, [queryClient, schoolId]);
+
+  // Real-time subscriptions
+  useRealtimeTable({
+    channel: `accountant-payroll-pay-runs-${schoolId}`,
+    table: "hr_pay_runs",
+    filter: schoolId ? `school_id=eq.${schoolId}` : undefined,
+    enabled: !!schoolId,
+    onChange: invalidatePayrollQueries,
+  });
+
+  useRealtimeTable({
+    channel: `accountant-payroll-salaries-${schoolId}`,
+    table: "hr_salary_records",
+    filter: schoolId ? `school_id=eq.${schoolId}` : undefined,
+    enabled: !!schoolId,
+    onChange: invalidatePayrollQueries,
+  });
+
   const { data: payRuns = [], isLoading: loadingPayRuns } = useQuery({
     queryKey: ["hr_pay_runs", schoolId],
     queryFn: async () => {
@@ -105,6 +132,7 @@ export function AccountantPayrollModule() {
       if (error) throw error;
       return (data || []).map((r) => ({
         id: r.id,
+        user_id: r.user_id,
         period_start: r.period_start,
         period_end: r.period_end,
         paid_at: r.paid_at,
@@ -182,32 +210,34 @@ export function AccountantPayrollModule() {
       return;
     }
 
-    // Calculate totals from active salary records
+    // Get active salary records
     const activeSalaries = salaryRecords.filter((s) => s.is_active);
-    const grossAmount = activeSalaries.reduce((sum, s) => sum + s.base_salary + s.allowances, 0);
-    const deductions = activeSalaries.reduce((sum, s) => sum + s.deductions, 0);
-    const netAmount = grossAmount - deductions;
+    if (activeSalaries.length === 0) {
+      toast.error("No active salary records to process");
+      return;
+    }
 
-    const { error } = await supabase.from("hr_pay_runs").insert([
-      {
-        school_id: schoolId,
-        user_id: activeSalaries[0]?.user_id || null,
-        period_start: formPeriodStart,
-        period_end: formPeriodEnd,
-        gross_amount: grossAmount,
-        deductions,
-        net_amount: netAmount,
-        status: "draft",
-        notes: formNotes.trim() || null,
-      },
-    ]);
+    // Create individual pay runs for each staff member
+    const payRunRecords = activeSalaries.map((salary) => ({
+      school_id: schoolId,
+      user_id: salary.user_id,
+      period_start: formPeriodStart,
+      period_end: formPeriodEnd,
+      gross_amount: salary.base_salary + salary.allowances,
+      deductions: salary.deductions,
+      net_amount: salary.base_salary + salary.allowances - salary.deductions,
+      status: "draft",
+      notes: formNotes.trim() || null,
+    }));
+
+    const { error } = await supabase.from("hr_pay_runs").insert(payRunRecords);
 
     if (error) {
       toast.error(error.message);
       return;
     }
 
-    toast.success("Pay run created");
+    toast.success(`${payRunRecords.length} pay runs created for individual staff members`);
     setPayRunDialogOpen(false);
     resetPayRunForm();
     queryClient.invalidateQueries({ queryKey: ["hr_pay_runs", schoolId] });
@@ -297,78 +327,72 @@ export function AccountantPayrollModule() {
   const getStaffName = (userId: string) => getStaffMember(userId)?.full_name || "Unknown";
   const getStaffEmail = (userId: string) => getStaffMember(userId)?.email || "";
 
-  const handleGeneratePayslips = (run: PayRun, bulk: boolean = false) => {
-    const active = salaryRecords.filter((s) => s.is_active);
-    if (active.length === 0) {
-      toast.error("No active salary records to generate payslips");
+  const handleGeneratePayslip = (run: PayRun) => {
+    // Find the salary record for this specific user
+    const salary = salaryRecords.find((s) => s.user_id === run.user_id && s.is_active);
+    const staff = getStaffMember(run.user_id);
+    
+    if (!staff) {
+      toast.error("Staff member not found");
       return;
     }
 
     const schoolName = tenant.status === "ready" ? tenant.school?.name || "School" : "School";
 
-    const payslips: PayslipData[] = active.map((salary) => {
-      const staff = getStaffMember(salary.user_id);
-      return {
-        employeeName: staff?.full_name || "Unknown",
-        employeeEmail: staff?.email || "",
-        employeeId: salary.user_id,
-        periodStart: run.period_start,
-        periodEnd: run.period_end,
-        paidAt: run.paid_at,
-        baseSalary: salary.base_salary,
-        allowances: salary.allowances,
-        deductions: salary.deductions,
-        grossAmount: salary.base_salary + salary.allowances,
-        netAmount: salary.base_salary + salary.allowances - salary.deductions,
-        currency: salary.currency,
-        schoolName,
-        payRunId: run.id,
-        status: run.status,
-      };
-    });
+    const payslip: PayslipData = {
+      employeeName: staff.full_name,
+      employeeEmail: staff.email || "",
+      employeeId: run.user_id,
+      periodStart: run.period_start,
+      periodEnd: run.period_end,
+      paidAt: run.paid_at,
+      baseSalary: salary?.base_salary || run.gross_amount - (salary?.allowances || 0),
+      allowances: salary?.allowances || 0,
+      deductions: run.deductions,
+      grossAmount: run.gross_amount,
+      netAmount: run.net_amount,
+      currency: salary?.currency || "PKR",
+      schoolName,
+      payRunId: run.id,
+      status: run.status,
+    };
 
-    if (bulk) {
-      openBulkPayslipsPDF(payslips);
-      toast.success(`${payslips.length} payslips generated! Print dialog will open.`);
-    } else {
-      // Single payslip - use first employee
-      openPayslipPDF(payslips[0]);
-      toast.success("Payslip generated! Print dialog will open.");
-    }
+    openBulkPayslipsPDF([payslip]);
+    toast.success("Payslip generated!");
   };
 
-  const handleDownloadAllPayslips = (run: PayRun) => {
-    const active = salaryRecords.filter((s) => s.is_active);
-    if (active.length === 0) {
-      toast.error("No active salary records");
+  const handleDownloadPayslip = (run: PayRun) => {
+    // Find the salary record for this specific user
+    const salary = salaryRecords.find((s) => s.user_id === run.user_id && s.is_active);
+    const staff = getStaffMember(run.user_id);
+    
+    if (!staff) {
+      toast.error("Staff member not found");
       return;
     }
 
     const schoolName = tenant.status === "ready" ? tenant.school?.name || "School" : "School";
 
-    const payslips: PayslipData[] = active.map((salary) => {
-      const staff = getStaffMember(salary.user_id);
-      return {
-        employeeName: staff?.full_name || "Unknown",
-        employeeEmail: staff?.email || "",
-        employeeId: salary.user_id,
-        periodStart: run.period_start,
-        periodEnd: run.period_end,
-        paidAt: run.paid_at,
-        baseSalary: salary.base_salary,
-        allowances: salary.allowances,
-        deductions: salary.deductions,
-        grossAmount: salary.base_salary + salary.allowances,
-        netAmount: salary.base_salary + salary.allowances - salary.deductions,
-        currency: salary.currency,
-        schoolName,
-        payRunId: run.id,
-        status: run.status,
-      };
-    });
+    const payslip: PayslipData = {
+      employeeName: staff.full_name,
+      employeeEmail: staff.email || "",
+      employeeId: run.user_id,
+      periodStart: run.period_start,
+      periodEnd: run.period_end,
+      paidAt: run.paid_at,
+      baseSalary: salary?.base_salary || run.gross_amount - (salary?.allowances || 0),
+      allowances: salary?.allowances || 0,
+      deductions: run.deductions,
+      grossAmount: run.gross_amount,
+      netAmount: run.net_amount,
+      currency: salary?.currency || "PKR",
+      schoolName,
+      payRunId: run.id,
+      status: run.status,
+    };
 
-    downloadBulkPayslipsHTML(payslips, run.period_start, run.period_end);
-    toast.success(`${payslips.length} payslips downloaded!`);
+    downloadBulkPayslipsHTML([payslip], run.period_start, run.period_end);
+    toast.success("Payslip downloaded!");
   };
 
   const openSalaryHistory = (userId: string) => {
@@ -544,11 +568,12 @@ export function AccountantPayrollModule() {
                     <div className="flex items-start justify-between">
                       <div>
                         <div className="flex items-center gap-2">
-                          <Coins className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">
-                            {new Date(run.period_start).toLocaleDateString()} — {new Date(run.period_end).toLocaleDateString()}
-                          </span>
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{getStaffName(run.user_id)}</span>
                         </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {new Date(run.period_start).toLocaleDateString()} — {new Date(run.period_end).toLocaleDateString()}
+                        </p>
                         <div className="mt-2 grid grid-cols-3 gap-4 text-sm">
                           <div>
                             <p className="text-muted-foreground">Gross</p>
@@ -569,16 +594,16 @@ export function AccountantPayrollModule() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleGeneratePayslips(run, true)}
-                          title="Print All Payslips"
+                          onClick={() => handleGeneratePayslip(run)}
+                          title="Print Payslip"
                         >
-                          <FileText className="h-4 w-4 mr-1" /> Print All
+                          <FileText className="h-4 w-4 mr-1" /> Print
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDownloadAllPayslips(run)}
-                          title="Download All Payslips"
+                          onClick={() => handleDownloadPayslip(run)}
+                          title="Download Payslip"
                         >
                           <Download className="h-4 w-4" />
                         </Button>
