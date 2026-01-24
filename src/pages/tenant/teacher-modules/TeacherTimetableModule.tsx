@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PeriodTimetableGrid, type PeriodTimetableEntry } from "@/components/timetable/PeriodTimetableGrid";
 import { Button } from "@/components/ui/button";
 import { Printer } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type Period = { id: string; label: string; sort_order: number; start_time: string | null; end_time: string | null };
 
@@ -22,7 +23,9 @@ interface TimetableEntry {
 export function TeacherTimetableModule() {
   const { schoolSlug } = useParams();
   const tenant = useTenant(schoolSlug);
-  const [entries, setEntries] = useState<TimetableEntry[]>([]);
+  const [myEntries, setMyEntries] = useState<TimetableEntry[]>([]);
+  const [sectionEntries, setSectionEntries] = useState<TimetableEntry[]>([]);
+  const [viewMode, setViewMode] = useState<"mine" | "sections">("mine");
   const [periods, setPeriods] = useState<Period[]>([]);
   const [directory, setDirectory] = useState<Array<{ user_id: string; display_name: string | null; email: string }>>([]);
   const [loading, setLoading] = useState(true);
@@ -47,70 +50,56 @@ export function TeacherTimetableModule() {
       setPeriods((p ?? []) as any);
       setDirectory((dir ?? []) as any);
 
-      // Get teacher's timetable entries
-      const { data: timetableData } = await supabase
-        .from("timetable_entries")
-        .select("id,subject_name,day_of_week,period_id,room,teacher_user_id,class_section_id, class_sections(name, academic_classes(name))")
-        .eq("school_id", tenant.schoolId)
-        .eq("teacher_user_id", user.user?.id)
-        .order("day_of_week")
-        .order("period_id");
+      const userId = user.user?.id ?? null;
 
-      if (!timetableData?.length) {
-        // Also check for sections they're assigned to
-        const { data: assignments } = await supabase
-          .from("teacher_assignments")
-          .select("class_section_id")
-          .eq("school_id", tenant.schoolId);
+      const { data: assignments } = await supabase
+        .from("teacher_assignments")
+        .select("class_section_id")
+        .eq("school_id", tenant.schoolId);
+      const sectionIds = (assignments ?? []).map((a) => a.class_section_id).filter(Boolean);
 
-        if (assignments?.length) {
-          const sectionIds = assignments.map((a) => a.class_section_id);
-          const { data: sectionTimetable } = await supabase
-            .from("timetable_entries")
-            .select("id,subject_name,day_of_week,period_id,room,teacher_user_id,class_section_id, class_sections(name, academic_classes(name))")
-            .eq("school_id", tenant.schoolId)
-            .in("class_section_id", sectionIds)
-            .order("day_of_week")
-            .order("period_id");
+      const [{ data: mine }, { data: bySections }] = await Promise.all([
+        supabase
+          .from("timetable_entries")
+          .select("id,subject_name,day_of_week,period_id,room,teacher_user_id,class_section_id, class_sections(name, academic_classes(name))")
+          .eq("school_id", tenant.schoolId)
+          .eq("teacher_user_id", userId)
+          .order("day_of_week")
+          .order("period_id"),
+        sectionIds.length
+          ? supabase
+              .from("timetable_entries")
+              .select("id,subject_name,day_of_week,period_id,room,teacher_user_id,class_section_id, class_sections(name, academic_classes(name))")
+              .eq("school_id", tenant.schoolId)
+              .in("class_section_id", sectionIds)
+              .order("day_of_week")
+              .order("period_id")
+          : Promise.resolve({ data: [] as any }),
+      ]);
 
-          if (sectionTimetable?.length) {
-            const enriched = sectionTimetable.map((e: any) => {
-              const sectionLabel = e.class_sections
-                ? `${e.class_sections.academic_classes?.name || ""} • ${e.class_sections.name}`.trim()
-                : null;
-              return {
-                id: e.id,
-                subject_name: e.subject_name,
-                day_of_week: e.day_of_week,
-                period_id: e.period_id,
-                room: e.room,
-                teacher_user_id: e.teacher_user_id,
-                section_label: sectionLabel,
-              } satisfies TimetableEntry;
-            });
-            setEntries(enriched as any);
-          }
-        }
-        setLoading(false);
-        return;
-      }
+      const enrich = (rows: any[] | null | undefined) =>
+        (rows ?? []).map((e: any) => {
+          const sectionLabel = e.class_sections
+            ? `${e.class_sections.academic_classes?.name || ""} • ${e.class_sections.name}`.trim()
+            : null;
+          return {
+            id: e.id,
+            subject_name: e.subject_name,
+            day_of_week: e.day_of_week,
+            period_id: e.period_id,
+            room: e.room,
+            teacher_user_id: e.teacher_user_id,
+            section_label: sectionLabel,
+          } satisfies TimetableEntry;
+        });
 
-      const enriched = timetableData.map((e: any) => {
-        const sectionLabel = e.class_sections
-          ? `${e.class_sections.academic_classes?.name || ""} • ${e.class_sections.name}`.trim()
-          : null;
-        return {
-          id: e.id,
-          subject_name: e.subject_name,
-          day_of_week: e.day_of_week,
-          period_id: e.period_id,
-          room: e.room,
-          teacher_user_id: e.teacher_user_id,
-          section_label: sectionLabel,
-        } satisfies TimetableEntry;
-      });
+      const mineEnriched = enrich(mine as any);
+      const sectionEnriched = enrich(bySections as any);
+      setMyEntries(mineEnriched as any);
+      setSectionEntries(sectionEnriched as any);
 
-      setEntries(enriched);
+      // Default: My periods (per your choice). If empty but sections exist, auto-switch.
+      if (mineEnriched.length === 0 && sectionEnriched.length > 0) setViewMode("sections");
       setLoading(false);
     };
 
@@ -122,6 +111,8 @@ export function TeacherTimetableModule() {
     for (const d of directory) m.set(d.user_id, d.display_name ?? d.email);
     return m;
   }, [directory]);
+
+  const entries = viewMode === "mine" ? myEntries : sectionEntries;
 
   const gridEntries = useMemo(() => {
     return entries.map((e) =>
@@ -143,7 +134,17 @@ export function TeacherTimetableModule() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end no-print">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end no-print">
+        <Select value={viewMode} onValueChange={(v) => setViewMode(v as any)}>
+          <SelectTrigger className="w-full sm:w-[260px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="mine">My periods</SelectItem>
+            <SelectItem value="sections">All assigned sections</SelectItem>
+          </SelectContent>
+        </Select>
+
         <Button variant="outline" onClick={() => window.print()}>
           <Printer className="mr-2 h-4 w-4" /> Print
         </Button>
@@ -156,7 +157,7 @@ export function TeacherTimetableModule() {
         <CardContent>
           {entries.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No timetable entries found. Timetable can be configured by school administrators.
+              No timetable entries found for this view.
             </p>
           ) : (
             <PeriodTimetableGrid periods={periods} entries={gridEntries} />
