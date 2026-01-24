@@ -138,7 +138,8 @@ export function TeacherStudentsModule() {
       const { data: studentData } = await supabase
         .from("students")
         .select("id, first_name, last_name, student_code, status")
-        .in("id", studentIds);
+        .in("id", studentIds)
+        .eq("status", "enrolled"); // Only show enrolled students to teachers
 
       const section = sections.find((s) => s.id === selectedSection);
       const mapped = (studentData || []).map((s) => ({

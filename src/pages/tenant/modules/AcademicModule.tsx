@@ -15,6 +15,8 @@ import { TeacherDetailsCard } from "@/components/academic/TeacherDetailsCard";
 import { ClassStructureCard } from "@/components/academic/ClassStructureCard";
 import { StudentRosterCard } from "@/components/academic/StudentRosterCard";
 import { SubjectsOverviewCard } from "@/components/academic/SubjectsOverviewCard";
+import { EditClassDialog } from "@/components/academic/EditClassDialog";
+import { EditSectionDialog } from "@/components/academic/EditSectionDialog";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
@@ -541,12 +543,23 @@ export function AcademicModule() {
                     <Plus className="mr-2 h-4 w-4" /> Create
                   </Button>
                 </div>
-                <ScrollArea className="h-[200px] rounded-xl border">
+                <ScrollArea className="h-[250px] rounded-xl border">
                   <div className="p-3 space-y-2">
                     {classes.map((c) => (
                       <div key={c.id} className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
-                        <span className="font-medium">{c.name}</span>
-                        <Badge variant="outline">{c.grade_level ? `Grade ${c.grade_level}` : "No grade"}</Badge>
+                        <div className="flex-1 min-w-0">
+                          <span className="font-medium">{c.name}</span>
+                          <Badge variant="outline" className="ml-2">
+                            {c.grade_level ? `Grade ${c.grade_level}` : "No grade"}
+                          </Badge>
+                        </div>
+                        {schoolId && (
+                          <EditClassDialog
+                            classData={c}
+                            schoolId={schoolId}
+                            onSaved={refresh}
+                          />
+                        )}
                       </div>
                     ))}
                     {classes.length === 0 && (
@@ -583,12 +596,27 @@ export function AcademicModule() {
                     </Button>
                   </div>
                 </div>
-                <ScrollArea className="h-[200px] rounded-xl border">
+                <ScrollArea className="h-[250px] rounded-xl border">
                   <div className="p-3 space-y-2">
                     {sections.map((s) => (
                       <div key={s.id} className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
-                        <span className="font-medium">{s.name}</span>
-                        <Badge variant="secondary">{classes.find((c) => c.id === s.class_id)?.name ?? "—"}</Badge>
+                        <div className="flex-1 min-w-0">
+                          <span className="font-medium">{s.name}</span>
+                          <Badge variant="secondary" className="ml-2">
+                            {classes.find((c) => c.id === s.class_id)?.name ?? "—"}
+                          </Badge>
+                          {s.room && (
+                            <span className="ml-2 text-xs text-muted-foreground">Room: {s.room}</span>
+                          )}
+                        </div>
+                        {schoolId && (
+                          <EditSectionDialog
+                            section={s}
+                            classes={classes}
+                            schoolId={schoolId}
+                            onSaved={refresh}
+                          />
+                        )}
                       </div>
                     ))}
                     {sections.length === 0 && (

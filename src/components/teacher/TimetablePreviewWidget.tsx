@@ -65,8 +65,13 @@ export function TimetablePreviewWidget({ schoolId, schoolSlug }: TimetablePrevie
   const [loading, setLoading] = useState(true);
   const [dialogEntry, setDialogEntry] = useState<TimetableEntry | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedDay, setSelectedDay] = useState(() => {
+    const today = new Date().getDay();
+    // If weekend (0 or 6), default to Monday (1)
+    return today === 0 || today === 6 ? 1 : today;
+  });
 
-  const fetchTodaySchedule = useCallback(async () => {
+  const fetchSchedule = useCallback(async (dayOfWeek: number) => {
     setLoading(true);
 
     const { data: user } = await supabase.auth.getUser();
@@ -76,8 +81,6 @@ export function TimetablePreviewWidget({ schoolId, schoolSlug }: TimetablePrevie
       return;
     }
 
-    // Get today's day of week (0 = Sunday, 6 = Saturday)
-    const today = new Date().getDay();
     const todayDate = new Date().toISOString().split("T")[0];
 
     // Fetch periods
@@ -90,13 +93,13 @@ export function TimetablePreviewWidget({ schoolId, schoolSlug }: TimetablePrevie
     const periodMap = new Map<string, Period>();
     (periods ?? []).forEach((p: any) => periodMap.set(p.id, p));
 
-    // Fetch today's entries for this teacher
+    // Fetch entries for selected day for this teacher
     const { data: entries } = await supabase
       .from("timetable_entries")
       .select("id,subject_name,period_id,room,class_section_id,class_sections(name,academic_classes(name))")
       .eq("school_id", schoolId)
       .eq("teacher_user_id", userId)
-      .eq("day_of_week", today)
+      .eq("day_of_week", dayOfWeek)
       .order("period_id");
 
     const enriched: TimetableEntry[] = (entries ?? []).map((e: any) => {
@@ -144,19 +147,23 @@ export function TimetablePreviewWidget({ schoolId, schoolSlug }: TimetablePrevie
   }, [schoolId]);
 
   useEffect(() => {
-    void fetchTodaySchedule();
-  }, [fetchTodaySchedule]);
+    void fetchSchedule(selectedDay);
+  }, [fetchSchedule, selectedDay]);
 
   const handleOpenLog = (entry: TimetableEntry) => {
     setDialogEntry(entry);
     setDialogOpen(true);
   };
 
-  const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  const todayName = dayNames[new Date().getDay()];
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const fullDayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const todayDayOfWeek = new Date().getDay();
+  const isToday = selectedDay === todayDayOfWeek;
 
-  // Determine current period based on time
+  // Determine current period based on time (only for today)
   const currentPeriodIndex = useMemo(() => {
+    if (!isToday) return -1;
+    
     const now = new Date();
     const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
     
@@ -171,7 +178,7 @@ export function TimetablePreviewWidget({ schoolId, schoolSlug }: TimetablePrevie
       }
     }
     return -1;
-  }, [todayEntries]);
+  }, [todayEntries, isToday]);
 
   if (loading) {
     return (
@@ -194,12 +201,29 @@ export function TimetablePreviewWidget({ schoolId, schoolSlug }: TimetablePrevie
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <div>
-            <CardTitle className="text-lg">Today's Schedule</CardTitle>
-            <p className="text-sm text-muted-foreground">{todayName}</p>
+            <CardTitle className="text-lg">My Schedule</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {fullDayNames[selectedDay]} {isToday && "(Today)"}
+            </p>
           </div>
           <CalendarDays className="h-5 w-5 text-muted-foreground" />
         </CardHeader>
         <CardContent>
+          {/* Day Selector */}
+          <div className="flex gap-1 mb-4">
+            {[1, 2, 3, 4, 5].map((day) => (
+              <Button
+                key={day}
+                variant={selectedDay === day ? "default" : "outline"}
+                size="sm"
+                className="flex-1 px-2"
+                onClick={() => setSelectedDay(day)}
+              >
+                {dayNames[day]}
+                {day === todayDayOfWeek && <span className="ml-1 text-xs">•</span>}
+              </Button>
+            ))}
+          </div>
           {todayEntries.length === 0 ? (
             <p className="text-sm text-muted-foreground">No classes scheduled for today.</p>
           ) : (
@@ -282,7 +306,7 @@ export function TimetablePreviewWidget({ schoolId, schoolSlug }: TimetablePrevie
           entry={dialogEntry}
           schoolId={schoolId}
           existingLog={existingLog}
-          onSaved={fetchTodaySchedule}
+          onSaved={() => fetchSchedule(selectedDay)}
         />
       )}
     </>
