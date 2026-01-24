@@ -8,6 +8,7 @@ import {
   GraduationCap,
   Headphones,
   KanbanSquare,
+  MessageSquare,
   RefreshCw,
   Users,
   UserPlus,
@@ -25,6 +26,7 @@ import { DashboardAlertsPanel, AlertsSummaryBadge } from "@/components/dashboard
 import { AlertSettingsDialog } from "@/components/dashboard/AlertSettingsDialog";
 import { PrincipalTeachersTab } from "@/components/principal/PrincipalTeachersTab";
 import { PrincipalStudentsTab } from "@/components/principal/PrincipalStudentsTab";
+import { SendMessageDialog } from "@/components/principal/SendMessageDialog";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -243,7 +245,18 @@ export function PrincipalHome() {
         </div>
         </CardHeader>
         <CardContent className="p-3 sm:p-6">
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-6">
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3 lg:grid-cols-7">
+            {schoolId && (
+              <SendMessageDialog
+                schoolId={schoolId}
+                trigger={
+                  <Button variant="soft" className="h-auto flex-col gap-1 px-2 py-3 sm:gap-2 sm:py-4">
+                    <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5" />
+                    <span className="text-[10px] sm:text-xs">Message</span>
+                  </Button>
+                }
+              />
+            )}
             <Button variant="soft" onClick={() => navigate(`${basePath}/users`)} className="h-auto flex-col gap-1 px-2 py-3 sm:gap-2 sm:py-4">
               <UserPlus className="h-4 w-4 sm:h-5 sm:w-5" />
               <span className="text-[10px] sm:text-xs">Add Staff</span>
