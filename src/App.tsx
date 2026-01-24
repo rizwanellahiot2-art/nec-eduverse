@@ -10,6 +10,7 @@ import PlatformDashboardPage from "./pages/platform/PlatformDashboardPage";
 import PlatformDirectoryPage from "./pages/platform/PlatformDirectoryPage";
 import PlatformSchoolsPage from "./pages/platform/PlatformSchoolsPage";
 import PlatformUpdatePassword from "./pages/platform/PlatformUpdatePassword";
+import PlatformRecoverMaster from "./pages/platform/PlatformRecoverMaster";
 import TenantAuth from "./pages/tenant/TenantAuth";
 import TenantDashboard from "./pages/tenant/TenantDashboard";
 import TeacherDashboard from "./pages/tenant/TeacherDashboard";
@@ -32,6 +33,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<PlatformAuth />} />
           <Route path="/auth/update-password" element={<PlatformUpdatePassword />} />
+          <Route path="/auth/recover-master" element={<PlatformRecoverMaster />} />
           {/* Global Super Admin (platform-level) */}
           <Route path="/super_admin" element={<PlatformDashboardPage />} />
           <Route path="/super_admin/directory" element={<PlatformDirectoryPage />} />

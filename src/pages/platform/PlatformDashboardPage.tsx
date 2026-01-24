@@ -18,7 +18,9 @@ type SchoolRow = {
   created_at: string;
 };
 
-export default function PlatformDashboardPage() {
+ import { Navigate } from "react-router-dom";
+ 
+ export default function PlatformDashboardPage() {
   const navigate = useNavigate();
   const { user, loading } = useSession();
   const authz = usePlatformSuperAdmin(user?.id);
@@ -75,13 +77,11 @@ export default function PlatformDashboardPage() {
   }, [schools, activeSchoolId]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background p-8">
-        <div className="rounded-3xl bg-surface p-6 shadow-elevated">
-          <p className="text-sm text-muted-foreground">Loading session…</p>
-        </div>
-      </div>
-    );
+    return null;
+  }
+  
+  if (!authz.loading && !authz.allowed) {
+    return <Navigate to="/auth" replace />;
   }
 
   return (

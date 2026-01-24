@@ -17,7 +17,9 @@ type StudentRow = { id: string; school_id: string; first_name: string; last_name
 type LeadRow = { id: string; school_id: string; full_name: string; email: string | null; phone: string | null; status: string; created_at: string };
 type DirRow = { id: string; school_id: string; email: string; display_name: string | null; user_id: string; created_at: string };
 
-export default function PlatformDirectoryPage() {
+ import { Navigate } from "react-router-dom";
+ 
+ export default function PlatformDirectoryPage() {
   const navigate = useNavigate();
   const { user, loading } = useSession();
   const authz = usePlatformSuperAdmin(user?.id);
@@ -107,13 +109,11 @@ export default function PlatformDirectoryPage() {
   }, [tab, authz.loading, authz.allowed, user?.id]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background p-8">
-        <div className="rounded-3xl bg-surface p-6 shadow-elevated">
-          <p className="text-sm text-muted-foreground">Loading session…</p>
-        </div>
-      </div>
-    );
+    return null;
+  }
+  
+  if (!authz.loading && !authz.allowed) {
+    return <Navigate to="/auth" replace />;
   }
 
   return (
