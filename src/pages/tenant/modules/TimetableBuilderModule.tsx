@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { DndContext, type DragEndEvent, useDraggable, useDroppable } from "@dnd-kit/core";
 import { useParams } from "react-router-dom";
-import { CalendarDays, Pencil, Printer, Trash2, Wrench } from "lucide-react";
+import { CalendarDays, Download, Pencil, Printer, Trash2, Wrench } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
@@ -26,6 +26,11 @@ import { PeriodManagerCard } from "./components/PeriodManagerCard";
 import { PeriodTimetableGrid, type PeriodTimetableEntry } from "@/components/timetable/PeriodTimetableGrid";
 import { PrintPreviewDialog } from "@/components/timetable/PrintPreviewDialog";
 import { TimetableToolsDialog } from "./components/TimetableToolsDialog";
+import { ConflictBadge, type ConflictInfo } from "./components/timetable/ConflictBadge";
+import { useConflictDetection } from "./components/timetable/useConflictDetection";
+import { TeacherTypeahead } from "./components/timetable/TeacherTypeahead";
+import { PublishControls } from "./components/timetable/PublishControls";
+import { useTimetableExport } from "./components/timetable/useTimetableExport";
 
 type PeriodRow = {
   id: string;
@@ -49,7 +54,10 @@ type EntryRow = {
   subject_name: string;
   teacher_user_id: string | null;
   room: string | null;
+  is_published?: boolean;
 };
+
+type AllEntryRow = EntryRow & { class_section_id: string };
 
 const DAYS: Array<{ id: number; label: string }> = [
   { id: 0, label: "Sun" },
@@ -93,6 +101,7 @@ function TimetableCell({
   title,
   subtitle,
   meta,
+  conflicts,
   onClear,
   onEdit,
 }: {
@@ -100,22 +109,28 @@ function TimetableCell({
   title: string | null;
   subtitle: string | null;
   meta: string | null;
+  conflicts: ConflictInfo[];
   onClear: (() => void) | null;
   onEdit: (() => void) | null;
 }) {
   const { isOver, setNodeRef } = useDroppable({ id });
+  const hasConflicts = conflicts.length > 0;
 
   return (
     <div
       ref={setNodeRef}
       className={
         "group relative min-h-[68px] rounded-2xl border bg-surface p-2 transition " +
-        (isOver ? "ring-2 ring-primary/40" : "")
+        (isOver ? "ring-2 ring-primary/40" : "") +
+        (hasConflicts ? " border-destructive/50 bg-destructive/5" : "")
       }
     >
       {title ? (
         <div className="space-y-0.5 pr-8">
-          <p className="text-sm font-medium leading-snug">{title}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-sm font-medium leading-snug">{title}</p>
+            <ConflictBadge conflicts={conflicts} />
+          </div>
           {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
           {meta && <p className="text-xs text-muted-foreground">{meta}</p>}
         </div>
@@ -166,6 +181,7 @@ export function TimetableBuilderModule() {
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
   const [teacherAssignments, setTeacherAssignments] = useState<TeacherSubjectAssignmentRow[]>([]);
   const [entries, setEntries] = useState<EntryRow[]>([]);
+  const [allSchoolEntries, setAllSchoolEntries] = useState<AllEntryRow[]>([]);
   const [busy, setBusy] = useState(false);
 
   const [editEntryId, setEditEntryId] = useState<string | null>(null);
@@ -194,6 +210,15 @@ export function TimetableBuilderModule() {
     setDirectory((dir ?? []) as DirectoryRow[]);
   };
 
+  const refreshAllEntries = async () => {
+    if (!schoolId) return;
+    const { data } = await supabase
+      .from("timetable_entries")
+      .select("id,day_of_week,period_id,subject_name,teacher_user_id,room,class_section_id,is_published")
+      .eq("school_id", schoolId);
+    setAllSchoolEntries((data ?? []) as AllEntryRow[]);
+  };
+
   const refreshSection = async () => {
     if (!schoolId || !sectionId) return;
     const [{ data: css }, { data: subj }, { data: tsa }, { data: tte }] = await Promise.all([
@@ -210,7 +235,7 @@ export function TimetableBuilderModule() {
         .eq("class_section_id", sectionId),
       supabase
         .from("timetable_entries")
-        .select("id,day_of_week,period_id,subject_name,teacher_user_id,room")
+        .select("id,day_of_week,period_id,subject_name,teacher_user_id,room,is_published")
         .eq("school_id", schoolId)
         .eq("class_section_id", sectionId),
     ]);
@@ -219,6 +244,9 @@ export function TimetableBuilderModule() {
     setSubjects(((subj ?? []) as SubjectRow[]).filter((s) => allowedSubjectIds.has(s.id)));
     setTeacherAssignments((tsa ?? []) as TeacherSubjectAssignmentRow[]);
     setEntries((tte ?? []) as EntryRow[]);
+    
+    // Also refresh all entries for conflict detection
+    await refreshAllEntries();
   };
 
   const refreshPeriods = async () => {
@@ -228,6 +256,7 @@ export function TimetableBuilderModule() {
 
   useEffect(() => {
     void refreshStatic();
+    void refreshAllEntries();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [schoolId]);
 
@@ -262,6 +291,13 @@ export function TimetableBuilderModule() {
     return m;
   }, [entries]);
 
+  // Conflict detection
+  const conflictMap = useConflictDetection(allSchoolEntries, sectionId, sectionLabelById);
+
+  // Publish counts
+  const publishedCount = useMemo(() => entries.filter((e) => e.is_published).length, [entries]);
+  const totalCount = entries.length;
+
   const readOnlyEntries = useMemo(() => {
     return entries.map((e) =>
       ({
@@ -274,6 +310,10 @@ export function TimetableBuilderModule() {
       }) satisfies PeriodTimetableEntry
     );
   }, [entries, teacherLabelByUserId]);
+
+  // CSV Export
+  const sectionLabel = sectionId ? sectionLabelById.get(sectionId) ?? "Section" : "Section";
+  const { exportCsv } = useTimetableExport(periods, entries, teacherLabelByUserId, sectionLabel);
 
   const setSlot = async (day: number, periodId: string, subjectId: string) => {
     if (!schoolId || !sectionId) return;
@@ -361,36 +401,54 @@ export function TimetableBuilderModule() {
           <CardTitle className="font-display text-xl">Timetable Builder</CardTitle>
           <p className="text-sm text-muted-foreground">Drag subjects into the grid to build a section timetable.</p>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          <Select value={sectionId} onValueChange={setSectionId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Choose section" />
-            </SelectTrigger>
-            <SelectContent>
-              {sections.map((s) => (
-                <SelectItem key={s.id} value={s.id}>
-                  {sectionLabelById.get(s.id) ?? s.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <Select value={sectionId} onValueChange={setSectionId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choose section" />
+              </SelectTrigger>
+              <SelectContent>
+                {sections.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {sectionLabelById.get(s.id) ?? s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Button variant="soft" onClick={refreshSection} disabled={!sectionId || busy}>
-            <CalendarDays className="mr-2 h-4 w-4" /> Refresh
-          </Button>
+            <Button variant="soft" onClick={refreshSection} disabled={!sectionId || busy}>
+              <CalendarDays className="mr-2 h-4 w-4" /> Refresh
+            </Button>
 
-          <div className="flex gap-2 md:justify-self-end">
-            <Button variant="outline" onClick={() => setToolsOpen(true)} disabled={!sectionId}>
-              <Wrench className="mr-2 h-4 w-4" /> Tools
-            </Button>
-            <Button variant="outline" onClick={() => setPrintPreviewOpen(true)} disabled={!sectionId}>
-              <Printer className="mr-2 h-4 w-4" /> Print
-            </Button>
+            <div className="flex flex-wrap gap-2 md:justify-self-end">
+              <Button variant="outline" onClick={exportCsv} disabled={!sectionId || entries.length === 0}>
+                <Download className="mr-2 h-4 w-4" /> Export CSV
+              </Button>
+              <Button variant="outline" onClick={() => setToolsOpen(true)} disabled={!sectionId}>
+                <Wrench className="mr-2 h-4 w-4" /> Tools
+              </Button>
+              <Button variant="outline" onClick={() => setPrintPreviewOpen(true)} disabled={!sectionId}>
+                <Printer className="mr-2 h-4 w-4" /> Print
+              </Button>
+            </div>
           </div>
 
-          <div className="text-xs text-muted-foreground md:text-right">
-            {periods.length ? `${periods.length} periods` : "Add periods first"}
-          </div>
+          {sectionId && (
+            <div className="flex flex-wrap items-center justify-between gap-4 border-t pt-4">
+              <PublishControls
+                schoolId={schoolId}
+                sectionId={sectionId}
+                entryIds={entries.map((e) => e.id)}
+                publishedCount={publishedCount}
+                totalCount={totalCount}
+                onDone={refreshSection}
+                canEdit={canEdit}
+              />
+              <div className="text-xs text-muted-foreground">
+                {periods.length ? `${periods.length} periods` : "Add periods first"}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -502,6 +560,7 @@ export function TimetableBuilderModule() {
 
                           const roomLabel = e?.room ? `Room: ${e.room}` : null;
                           const subtitle = teacherLabel ? `Teacher: ${teacherLabel}` : null;
+                          const entryConflicts = e ? conflictMap.get(e.id) ?? [] : [];
 
                           return (
                             <TimetableCell
@@ -510,6 +569,7 @@ export function TimetableBuilderModule() {
                               title={e?.subject_name ?? null}
                               subtitle={subtitle}
                               meta={roomLabel}
+                              conflicts={entryConflicts}
                               onClear={e ? () => void clearSlot(d.id, p.id) : null}
                               onEdit={
                                 e
@@ -543,22 +603,12 @@ export function TimetableBuilderModule() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Teacher</Label>
-              <Select
-                value={editTeacherUserId || "__none"}
-                onValueChange={(v) => setEditTeacherUserId(v === "__none" ? "" : v)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose teacher" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none">Unassigned</SelectItem>
-                  {directory.map((d) => (
-                    <SelectItem key={d.user_id} value={d.user_id}>
-                      {d.display_name ?? d.email}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <TeacherTypeahead
+                value={editTeacherUserId}
+                onValueChange={setEditTeacherUserId}
+                directory={directory}
+                placeholder="Search teacher..."
+              />
             </div>
 
             <div className="space-y-2">
