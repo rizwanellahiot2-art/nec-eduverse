@@ -985,21 +985,24 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                             </span>
                           </div>
                         )}
-                        <div className={cn("group flex items-start gap-1", msg.is_mine ? "justify-end" : "justify-start")}>
+                        <div className={cn("group flex items-end gap-1", msg.is_mine ? "justify-end" : "justify-start")}>
                           {/* Reply button for other's messages */}
                           {!msg.is_mine && (
                             <button
                               onClick={() => setReplyingTo(msg)}
-                              className="mt-2 opacity-0 transition-opacity group-hover:opacity-100"
+                              className="mb-2 opacity-0 transition-opacity group-hover:opacity-100"
                               title="Reply"
                             >
                               <Reply className="h-4 w-4 text-muted-foreground hover:text-foreground" />
                             </button>
                           )}
-                          <div className="flex flex-col gap-1">
+                          <div className={cn(
+                            "flex max-w-[85%] flex-col gap-1 sm:max-w-[75%] lg:max-w-[65%]",
+                            msg.is_mine ? "items-end" : "items-start"
+                          )}>
                             <div
                               className={cn(
-                                "max-w-[75%] rounded-2xl px-4 py-2.5",
+                                "rounded-2xl px-3 py-2 sm:px-4 sm:py-2.5",
                                 msg.is_mine
                                   ? "bg-primary text-primary-foreground rounded-br-md"
                                   : "bg-muted rounded-bl-md"
@@ -1022,7 +1025,9 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                                   </span>
                                 </div>
                               )}
-                              <p className="whitespace-pre-wrap break-words text-sm">{msg.content}</p>
+                              <p className="whitespace-pre-wrap text-sm" style={{ wordBreak: "break-word", overflowWrap: "break-word" }}>
+                                {msg.content}
+                              </p>
                               
                               {/* Attachments */}
                               {msg.attachment_urls && msg.attachment_urls.length > 0 && (
@@ -1041,7 +1046,7 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                                         )}
                                       >
                                         <FileText className="h-4 w-4 shrink-0" />
-                                        <span className="truncate">{fileName.substring(fileName.indexOf("-") + 1)}</span>
+                                        <span className="truncate max-w-[120px]">{fileName.substring(fileName.indexOf("-") + 1)}</span>
                                         <Download className="h-3 w-3 shrink-0" />
                                       </button>
                                     );
@@ -1051,7 +1056,7 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                               
                               <div
                                 className={cn(
-                                  "mt-1 flex items-center gap-1",
+                                  "mt-1 flex items-center gap-1.5",
                                   msg.is_mine ? "justify-end" : "justify-start"
                                 )}
                               >
@@ -1093,7 +1098,7 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                           {msg.is_mine && (
                             <button
                               onClick={() => setReplyingTo(msg)}
-                              className="mt-2 opacity-0 transition-opacity group-hover:opacity-100"
+                              className="mb-2 opacity-0 transition-opacity group-hover:opacity-100"
                               title="Reply"
                             >
                               <Reply className="h-4 w-4 text-muted-foreground hover:text-foreground" />
