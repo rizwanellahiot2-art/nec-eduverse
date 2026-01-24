@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import { DndContext, type DragEndEvent, useDraggable, useDroppable } from "@dnd-kit/core";
+import { DndContext, type DragEndEvent, useDraggable, useDroppable, TouchSensor, MouseSensor, useSensor, useSensors, PointerSensor } from "@dnd-kit/core";
 import { useParams } from "react-router-dom";
 import { CalendarDays, Coffee, Download, Pencil, Printer, Trash2, Wrench } from "lucide-react";
 
@@ -79,8 +79,8 @@ function timeLabel(v: string | null) {
 function SubjectTile({ id, label }: { id: string; label: string }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id });
   const style = transform
-    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
-    : undefined;
+    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, touchAction: "none" }
+    : { touchAction: "none" };
 
   return (
     <div
@@ -89,8 +89,8 @@ function SubjectTile({ id, label }: { id: string; label: string }) {
       {...listeners}
       {...attributes}
       className={
-        "cursor-grab select-none rounded-2xl border bg-surface px-3 py-2 text-sm shadow-sm transition active:cursor-grabbing " +
-        (isDragging ? "opacity-70" : "")
+        "cursor-grab select-none rounded-2xl border bg-surface px-3 py-2 text-sm shadow-sm transition active:cursor-grabbing touch-none " +
+        (isDragging ? "opacity-70 z-50" : "")
       }
     >
       {label}
@@ -173,6 +173,18 @@ export function TimetableBuilderModule() {
   const { user } = useSession();
   const perms = useSchoolPermissions(schoolId);
   const canEdit = perms.canManageStudents;
+
+  // Touch and mouse sensors for drag-drop on mobile/tablet
+  const mouseSensor = useSensor(MouseSensor, {
+    activationConstraint: { distance: 5 },
+  });
+  const touchSensor = useSensor(TouchSensor, {
+    activationConstraint: { delay: 150, tolerance: 5 },
+  });
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: { distance: 5 },
+  });
+  const sensors = useSensors(mouseSensor, touchSensor, pointerSensor);
 
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [sections, setSections] = useState<SectionRow[]>([]);
@@ -512,7 +524,7 @@ export function TimetableBuilderModule() {
           )}
         </div>
       ) : (
-        <DndContext onDragEnd={onDragEnd}>
+        <DndContext sensors={sensors} onDragEnd={onDragEnd}>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_1fr]">
             <Card className="shadow-elevated no-print">
               <CardHeader>

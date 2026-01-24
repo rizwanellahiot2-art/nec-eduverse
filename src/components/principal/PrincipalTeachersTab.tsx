@@ -377,13 +377,13 @@ export function PrincipalTeachersTab({ schoolId }: PrincipalTeachersTabProps) {
                     </div>
                     <div className="mt-1.5 flex flex-wrap gap-1 sm:mt-2">
                       <Badge variant="secondary" className="text-[10px] sm:text-xs">
-                        {teacher.totalSections} sec
+                        {teacher.totalSections} {teacher.totalSections === 1 ? "section" : "sections"}
                       </Badge>
                       <Badge variant="secondary" className="text-[10px] sm:text-xs">
-                        {teacher.totalSubjects} subj
+                        {teacher.totalSubjects} {teacher.totalSubjects === 1 ? "subject" : "subjects"}
                       </Badge>
                       <Badge variant="outline" className="text-[10px] sm:text-xs">
-                        {teacher.totalPeriods} per
+                        {teacher.totalPeriods} {teacher.totalPeriods === 1 ? "period" : "periods"}
                       </Badge>
                     </div>
                   </button>
@@ -520,28 +520,32 @@ export function PrincipalTeachersTab({ schoolId }: PrincipalTeachersTabProps) {
                   </div>
 
                   {/* Timetable Display */}
-                  <ScrollArea className="h-[220px] sm:h-[320px]">
-                    {viewMode === "monthly" ? (
-                      <MonthlyCalendarView
-                        days={monthDays}
-                        entries={selectedTeacher.timetable}
-                        periods={periods}
-                        getSectionLabel={getSectionLabel}
-                      />
-                    ) : viewMode === "daily" ? (
-                      <DailyTimetableView
-                        entries={getFilteredTimetable(selectedTeacher.timetable)}
-                        periods={periods}
-                        getSectionLabel={getSectionLabel}
-                      />
-                    ) : (
-                      <WeeklyTimetableView
-                        entries={selectedTeacher.timetable}
-                        periods={periods}
-                        getSectionLabel={getSectionLabel}
-                      />
-                    )}
-                  </ScrollArea>
+                  <div className="overflow-x-auto">
+                    <ScrollArea className="h-[220px] sm:h-[320px]">
+                      <div className="min-w-[600px]">
+                        {viewMode === "monthly" ? (
+                          <MonthlyCalendarView
+                            days={monthDays}
+                            entries={selectedTeacher.timetable}
+                            periods={periods}
+                            getSectionLabel={getSectionLabel}
+                          />
+                        ) : viewMode === "daily" ? (
+                          <DailyTimetableView
+                            entries={getFilteredTimetable(selectedTeacher.timetable)}
+                            periods={periods}
+                            getSectionLabel={getSectionLabel}
+                          />
+                        ) : (
+                          <WeeklyTimetableView
+                            entries={selectedTeacher.timetable}
+                            periods={periods}
+                            getSectionLabel={getSectionLabel}
+                          />
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </div>
                 </TabsContent>
               </Tabs>
             )}
@@ -632,7 +636,7 @@ export function PrincipalTeachersTab({ schoolId }: PrincipalTeachersTabProps) {
                       {/* Mini Weekly Timetable */}
                       <div>
                         <h5 className="mb-1.5 text-xs font-medium text-muted-foreground sm:mb-2 sm:text-sm">
-                          Weekly Schedule ({teacher.totalPeriods} periods)
+                          Weekly Schedule ({teacher.totalPeriods} {teacher.totalPeriods === 1 ? "period" : "periods"})
                         </h5>
                         <MiniWeeklyTimetable
                           entries={teacher.timetable}
