@@ -135,7 +135,7 @@ export function TeacherShell({ title, subtitle, schoolSlug, children }: Props) {
               className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
               activeClassName="bg-accent text-accent-foreground"
             >
-              <Table2 className="h-4 w-4" /> Gradebook
+              <TableIcon className="h-4 w-4" /> Gradebook
             </NavLink>
 
             <NavLink
@@ -151,7 +151,7 @@ export function TeacherShell({ title, subtitle, schoolSlug, children }: Props) {
               className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
               activeClassName="bg-accent text-accent-foreground"
             >
-              <BookOpenCheck className="h-4 w-4" /> Lesson Planner
+              <BookCheck className="h-4 w-4" /> Lesson Planner
             </NavLink>
 
             <NavLink
