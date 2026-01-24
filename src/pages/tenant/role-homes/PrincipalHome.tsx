@@ -17,8 +17,10 @@ import {
 
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
+import { useDashboardAlerts } from "@/hooks/useDashboardAlerts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardAlertsPanel, AlertsSummaryBadge } from "@/components/dashboard/DashboardAlertsPanel";
 
 import {
   ResponsiveContainer,
@@ -53,6 +55,20 @@ export function PrincipalHome() {
     () => (tenant.status === "ready" ? tenant.schoolId : null),
     [tenant.status, tenant.schoolId]
   );
+
+  const basePath = `/${schoolSlug}/${role}`;
+
+  // Real-time alerts hook
+  const {
+    alerts,
+    dismissAlert,
+    criticalCount,
+    warningCount,
+  } = useDashboardAlerts(schoolId);
+
+  const handleAlertNavigate = (path: string) => {
+    navigate(`${basePath}/${path}`);
+  };
   const [kpis, setKpis] = useState<Kpis>({
     students: 0,
     teachers: 0,
@@ -187,14 +203,24 @@ export function PrincipalHome() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [schoolId]);
 
-  const basePath = `/${schoolSlug}/${role}`;
-
   return (
     <div className="space-y-6">
+      {/* Real-time Alerts Panel */}
+      {alerts.length > 0 && (
+        <DashboardAlertsPanel
+          alerts={alerts}
+          onDismiss={dismissAlert}
+          onNavigate={handleAlertNavigate}
+        />
+      )}
+
       {/* Quick Actions - Top for better accessibility */}
       <Card className="shadow-elevated">
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Quick Actions</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Quick Actions</CardTitle>
+            <AlertsSummaryBadge criticalCount={criticalCount} warningCount={warningCount} />
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
