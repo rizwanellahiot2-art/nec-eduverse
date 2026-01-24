@@ -22,8 +22,8 @@ All colors MUST be HSL.
     --popover-foreground: var(--foreground);
 
     /* Default brand (overridden per school at runtime) */
-    --brand: 217 91% 50%;
-    --brand-foreground: 210 40% 98%;
+    --brand: 197 100% 67%;
+    --brand-foreground: 0 0% 0%;
 
     --primary: var(--brand);
     --primary-foreground: var(--brand-foreground);
@@ -34,8 +34,8 @@ All colors MUST be HSL.
     --muted: 220 28% 95%;
     --muted-foreground: 223 12% 44%;
 
-    --accent: 217 91% 96%;
-    --accent-foreground: 217 91% 42%;
+    --accent: 197 100% 94%;
+    --accent-foreground: 0 0% 0%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
@@ -51,38 +51,38 @@ All colors MUST be HSL.
     --font-sans: ui-sans-serif;
 
     /* Signature visuals */
-    --gradient-brand: radial-gradient(1100px circle at 10% 10%, hsl(var(--brand) / 0.22), transparent 55%),
-      linear-gradient(135deg, hsl(var(--brand) / 0.15), transparent 55%);
-    --bg-hero-grid: radial-gradient(1200px circle at 20% 0%, hsl(var(--brand) / 0.10), transparent 52%),
-      radial-gradient(900px circle at 85% 10%, hsl(var(--brand) / 0.08), transparent 52%),
+    --gradient-brand: radial-gradient(1100px circle at 10% 10%, hsl(197 100% 67% / 0.22), transparent 55%),
+      linear-gradient(135deg, hsl(197 100% 67% / 0.15), transparent 55%);
+    --bg-hero-grid: radial-gradient(1200px circle at 20% 0%, hsl(197 100% 67% / 0.10), transparent 52%),
+      radial-gradient(900px circle at 85% 10%, hsl(197 100% 67% / 0.08), transparent 52%),
       linear-gradient(to bottom, hsl(var(--background)), hsl(var(--background)));
 
     --shadow-elevated: 0 18px 60px -24px hsl(226 50% 20% / 0.25);
-    --shadow-glow: 0 18px 70px -28px hsl(var(--brand) / 0.45);
+    --shadow-glow: 0 18px 70px -28px hsl(197 100% 67% / 0.45);
     --shadow-soft: 0 10px 30px -18px hsl(226 50% 20% / 0.18);
 
     /* Button gradients (high-contrast on light surfaces) */
     --gradient-primary-strong: linear-gradient(
       135deg,
-      hsl(var(--brand) / 1) 0%,
-      hsl(var(--brand) / 0.92) 45%,
-      hsl(var(--brand) / 0.82) 100%
+      hsl(197 100% 67% / 1) 0%,
+      hsl(197 100% 62% / 1) 45%,
+      hsl(197 100% 58% / 1) 100%
     );
     --gradient-primary-strong-hover: linear-gradient(
       135deg,
-      hsl(var(--brand) / 1) 0%,
-      hsl(var(--brand) / 0.98) 35%,
-      hsl(var(--brand) / 0.88) 100%
+      hsl(197 100% 70% / 1) 0%,
+      hsl(197 100% 65% / 1) 35%,
+      hsl(197 100% 60% / 1) 100%
     );
 
     --sidebar-background: 220 30% 97%;
     --sidebar-foreground: 226 38% 12%;
-    --sidebar-primary: 217 91% 50%;
-    --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 217 91% 96%;
-    --sidebar-accent-foreground: 217 91% 42%;
+    --sidebar-primary: 197 100% 67%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 197 100% 94%;
+    --sidebar-accent-foreground: 0 0% 0%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217 91% 50%;
+    --sidebar-ring: 197 100% 67%;
   }
 
   .dark {
@@ -107,8 +107,8 @@ All colors MUST be HSL.
     --muted: 224 18% 16%;
     --muted-foreground: 220 12% 70%;
 
-    --accent: 217 50% 20%;
-    --accent-foreground: 217 91% 68%;
+    --accent: 197 60% 25%;
+    --accent-foreground: 197 100% 67%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
@@ -117,36 +117,36 @@ All colors MUST be HSL.
     --input: 224 20% 18%;
     --ring: var(--brand);
 
-    --gradient-brand: radial-gradient(900px circle at 10% 10%, hsl(var(--brand) / 0.18), transparent 55%),
-      linear-gradient(135deg, hsl(var(--brand) / 0.12), transparent 60%);
-    --bg-hero-grid: radial-gradient(1200px circle at 20% 0%, hsl(var(--brand) / 0.12), transparent 52%),
-      radial-gradient(900px circle at 85% 10%, hsl(var(--brand) / 0.10), transparent 52%),
+    --gradient-brand: radial-gradient(900px circle at 10% 10%, hsl(197 100% 67% / 0.18), transparent 55%),
+      linear-gradient(135deg, hsl(197 100% 67% / 0.12), transparent 60%);
+    --bg-hero-grid: radial-gradient(1200px circle at 20% 0%, hsl(197 100% 67% / 0.12), transparent 52%),
+      radial-gradient(900px circle at 85% 10%, hsl(197 100% 67% / 0.10), transparent 52%),
       linear-gradient(to bottom, hsl(var(--background)), hsl(var(--background)));
 
     --shadow-elevated: 0 18px 60px -26px hsl(0 0% 0% / 0.55);
-    --shadow-glow: 0 18px 70px -30px hsl(var(--brand) / 0.35);
+    --shadow-glow: 0 18px 70px -30px hsl(197 100% 67% / 0.35);
     --shadow-soft: 0 12px 36px -22px hsl(0 0% 0% / 0.55);
 
     --gradient-primary-strong: linear-gradient(
       135deg,
-      hsl(var(--brand) / 1) 0%,
-      hsl(var(--brand) / 0.9) 55%,
-      hsl(var(--brand) / 0.82) 100%
+      hsl(197 100% 67% / 1) 0%,
+      hsl(197 100% 60% / 1) 55%,
+      hsl(197 100% 55% / 1) 100%
     );
     --gradient-primary-strong-hover: linear-gradient(
       135deg,
-      hsl(var(--brand) / 1) 0%,
-      hsl(var(--brand) / 0.95) 45%,
-      hsl(var(--brand) / 0.86) 100%
+      hsl(197 100% 70% / 1) 0%,
+      hsl(197 100% 65% / 1) 45%,
+      hsl(197 100% 58% / 1) 100%
     );
     --sidebar-background: 224 30% 9%;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 217 91% 50%;
-    --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 217 50% 20%;
-    --sidebar-accent-foreground: 217 91% 68%;
+    --sidebar-primary: 197 100% 67%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 197 60% 25%;
+    --sidebar-accent-foreground: 197 100% 67%;
     --sidebar-border: 224 20% 18%;
-    --sidebar-ring: 217 91% 50%;
+    --sidebar-ring: 197 100% 67%;
   }
 }
 
