@@ -11,6 +11,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 
+import { SubjectCatalogCard, type SubjectRow } from "@/pages/tenant/modules/components/SubjectCatalogCard";
+import {
+  SectionSubjectsCard,
+  type ClassSectionSubjectRow,
+} from "@/pages/tenant/modules/components/SectionSubjectsCard";
+import {
+  TeacherSubjectAssignmentsCard,
+  type TeacherSubjectAssignmentRow,
+} from "@/pages/tenant/modules/components/TeacherSubjectAssignmentsCard";
+
 type ClassRow = { id: string; name: string; grade_level: number | null };
 type SectionRow = { id: string; name: string; class_id: string; room: string | null };
 type StudentRow = { id: string; first_name: string; last_name: string | null; status: string; profile_id: string | null };
@@ -25,6 +35,9 @@ export function AcademicModule() {
   const [sections, setSections] = useState<SectionRow[]>([]);
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [directoryUsers, setDirectoryUsers] = useState<DirectoryProfileRow[]>([]);
+  const [subjects, setSubjects] = useState<SubjectRow[]>([]);
+  const [classSectionSubjects, setClassSectionSubjects] = useState<ClassSectionSubjectRow[]>([]);
+  const [teacherSubjectAssignments, setTeacherSubjectAssignments] = useState<TeacherSubjectAssignmentRow[]>([]);
 
   const [newClassName, setNewClassName] = useState("");
   const [newSectionName, setNewSectionName] = useState("");
@@ -43,40 +56,37 @@ export function AcademicModule() {
 
   const refresh = async () => {
     if (!schoolId) return;
-    const { data: c } = await supabase.from("academic_classes").select("id,name,grade_level").eq("school_id", schoolId);
-    setClasses((c ?? []) as ClassRow[]);
 
-    const { data: s } = await supabase
-      .from("class_sections")
-      .select("id,name,class_id,room")
-      .eq("school_id", schoolId)
-      .order("name");
-    setSections((s ?? []) as SectionRow[]);
+    const [c, s, st, dirUsers, roleRows, dir, subj, css, tsa] = await Promise.all([
+      supabase.from("academic_classes").select("id,name,grade_level").eq("school_id", schoolId),
+      supabase.from("class_sections").select("id,name,class_id,room").eq("school_id", schoolId).order("name"),
+      supabase
+        .from("students")
+        .select("id,first_name,last_name,status,profile_id")
+        .eq("school_id", schoolId)
+        .order("created_at", { ascending: false })
+        .limit(50),
+      supabase.rpc("list_school_user_profiles", { _school_id: schoolId }),
+      supabase.from("user_roles").select("user_id").eq("school_id", schoolId).eq("role", "teacher"),
+      supabase.from("school_user_directory").select("user_id,email,display_name").eq("school_id", schoolId).order("email"),
+      supabase.from("subjects").select("id,name,code").eq("school_id", schoolId).order("name"),
+      supabase.from("class_section_subjects").select("id,class_section_id,subject_id").eq("school_id", schoolId),
+      supabase
+        .from("teacher_subject_assignments")
+        .select("id,class_section_id,subject_id,teacher_user_id")
+        .eq("school_id", schoolId),
+    ]);
 
-    const { data: st } = await supabase
-      .from("students")
-      .select("id,first_name,last_name,status,profile_id")
-      .eq("school_id", schoolId)
-      .order("created_at", { ascending: false })
-      .limit(50);
-    setStudents((st ?? []) as StudentRow[]);
+    setClasses((c.data ?? []) as ClassRow[]);
+    setSections((s.data ?? []) as SectionRow[]);
+    setStudents((st.data ?? []) as StudentRow[]);
+    setDirectoryUsers((dirUsers.data ?? []) as DirectoryProfileRow[]);
+    setSubjects((subj.data ?? []) as SubjectRow[]);
+    setClassSectionSubjects((css.data ?? []) as ClassSectionSubjectRow[]);
+    setTeacherSubjectAssignments((tsa.data ?? []) as TeacherSubjectAssignmentRow[]);
 
-    const { data: dirUsers } = await supabase.rpc("list_school_user_profiles", { _school_id: schoolId });
-    setDirectoryUsers((dirUsers ?? []) as DirectoryProfileRow[]);
-
-    // Teachers = directory rows that have teacher role
-    const { data: roleRows } = await supabase
-      .from("user_roles")
-      .select("user_id")
-      .eq("school_id", schoolId)
-      .eq("role", "teacher");
-    const ids = new Set((roleRows ?? []).map((r: any) => r.user_id as string));
-    const { data: dir } = await supabase
-      .from("school_user_directory")
-      .select("user_id,email,display_name")
-      .eq("school_id", schoolId)
-      .order("email");
-    setTeachers((dir ?? []).filter((d: any) => ids.has(d.user_id)) as any);
+    const ids = new Set((roleRows.data ?? []).map((r: any) => r.user_id as string));
+    setTeachers(((dir.data ?? []) as any[]).filter((d) => ids.has(d.user_id)) as any);
   };
 
   useEffect(() => {
@@ -402,6 +412,28 @@ export function AcademicModule() {
           </Button>
         </CardContent>
       </Card>
+
+      <SubjectCatalogCard schoolId={schoolId} subjects={subjects} onChanged={refresh} />
+
+      <SectionSubjectsCard
+        schoolId={schoolId}
+        classes={classes}
+        sections={sections}
+        subjects={subjects}
+        classSectionSubjects={classSectionSubjects}
+        onChanged={refresh}
+      />
+
+      <TeacherSubjectAssignmentsCard
+        schoolId={schoolId}
+        classes={classes}
+        sections={sections}
+        subjects={subjects}
+        classSectionSubjects={classSectionSubjects}
+        teachers={teachers}
+        teacherSubjectAssignments={teacherSubjectAssignments}
+        onChanged={refresh}
+      />
     </div>
   );
 }
