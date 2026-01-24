@@ -10,7 +10,8 @@
  import { AccountantPaymentsModule } from "@/pages/tenant/accountant-modules/AccountantPaymentsModule";
  import { AccountantExpensesModule } from "@/pages/tenant/accountant-modules/AccountantExpensesModule";
  import { AccountantPayrollModule } from "@/pages/tenant/accountant-modules/AccountantPayrollModule";
- import { AccountantReportsModule } from "@/pages/tenant/accountant-modules/AccountantReportsModule";
+import { AccountantReportsModule } from "@/pages/tenant/accountant-modules/AccountantReportsModule";
+  import { AccountantMessagesModule } from "@/pages/tenant/accountant-modules/AccountantMessagesModule";
   import { TimetableBuilderModule } from "@/pages/tenant/modules/TimetableBuilderModule";
  
  const AccountantDashboard = () => {
@@ -90,7 +91,8 @@
            <Route path="payments" element={<AccountantPaymentsModule />} />
            <Route path="expenses" element={<AccountantExpensesModule />} />
            <Route path="payroll" element={<AccountantPayrollModule />} />
-           <Route path="reports" element={<AccountantReportsModule />} />
+            <Route path="reports" element={<AccountantReportsModule />} />
+            <Route path="messages" element={<AccountantMessagesModule />} />
             <Route path="timetable" element={<TimetableBuilderModule />} />
            <Route path="*" element={<Navigate to={`/${tenant.slug}/accountant`} replace />} />
          </Routes>

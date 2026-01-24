@@ -198,11 +198,11 @@ export function TeacherShell({ title, subtitle, schoolSlug, children }: Props) {
             </NavLink>
 
             <NavLink
-              to={`${basePath}/admin-inbox`}
+              to={`${basePath}/workspace-messages`}
               className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
               activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
-              <Send className="h-4 w-4" /> Message Admin
+              <Send className="h-4 w-4" /> Admin Messages
             </NavLink>
           </nav>
 

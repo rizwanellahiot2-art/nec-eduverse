@@ -13,6 +13,7 @@ import { StudentTimetableModule } from "@/pages/tenant/student-modules/StudentTi
 import { StudentAssignmentsModule } from "@/pages/tenant/student-modules/StudentAssignmentsModule";
 import { StudentCertificatesModule } from "@/pages/tenant/student-modules/StudentCertificatesModule";
 import { StudentSupportModule } from "@/pages/tenant/student-modules/StudentSupportModule";
+import { StudentMessagesModule } from "@/pages/tenant/student-modules/StudentMessagesModule";
 
 const StudentDashboard = () => {
   const { schoolSlug } = useParams();
@@ -92,6 +93,7 @@ const StudentDashboard = () => {
           <Route path="timetable" element={<StudentTimetableModule myStudent={myStudent} schoolId={tenant.schoolId} />} />
           <Route path="assignments" element={<StudentAssignmentsModule myStudent={myStudent} schoolId={tenant.schoolId} />} />
           <Route path="certificates" element={<StudentCertificatesModule myStudent={myStudent} schoolId={tenant.schoolId} />} />
+          <Route path="messages" element={<StudentMessagesModule />} />
           <Route path="support" element={<StudentSupportModule myStudent={myStudent} schoolId={tenant.schoolId} />} />
           <Route path="*" element={<Navigate to={`/${tenant.slug}/student`} replace />} />
         </Routes>
