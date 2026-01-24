@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
-import { BarChart3, LogOut, UserRound } from "lucide-react";
+import { BarChart3, LogOut, UserRound, Coins, UserPlus, ClipboardList } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
 import { useTenant } from "@/hooks/useTenant";
+import { useRealtimeTable } from "@/hooks/useRealtime";
 import { isEduverseRole, roleLabel, type EduverseRole } from "@/lib/eduverse-roles";
 import { TenantShell } from "@/components/tenant/TenantShell";
 import { Button } from "@/components/ui/button";
@@ -38,6 +40,12 @@ const TenantDashboard = () => {
   const tenant = useTenant(schoolSlug);
   const { user, loading } = useSession();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const schoolId = useMemo(() => 
+    tenant.status === "ready" ? tenant.schoolId : null, 
+    [tenant.status, tenant.schoolId]
+  );
 
   const [authzState, setAuthzState] = useState<"checking" | "ok" | "denied">("checking");
   const [authzMessage, setAuthzMessage] = useState<string | null>(null);
@@ -47,6 +55,111 @@ const TenantDashboard = () => {
     if (tenant.status === "ready") return tenant.school.name;
     return "EDUVERSE";
   }, [tenant.status, tenant.school, role]);
+
+  // Calculate month start for MTD queries
+  const monthStart = useMemo(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  }, []);
+
+  // 7 days ago for attendance
+  const d7Ago = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d;
+  }, []);
+
+  // Realtime invalidation callback
+  const invalidateKpiQueries = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["dashboard_kpi_revenue", schoolId] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard_kpi_leads", schoolId] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard_kpi_attendance", schoolId] });
+  }, [queryClient, schoolId]);
+
+  // Realtime subscriptions for KPIs
+  useRealtimeTable({
+    channel: `dashboard-kpi-payments-${schoolId}`,
+    table: "finance_payments",
+    filter: schoolId ? `school_id=eq.${schoolId}` : undefined,
+    enabled: !!schoolId,
+    onChange: invalidateKpiQueries,
+  });
+
+  useRealtimeTable({
+    channel: `dashboard-kpi-leads-${schoolId}`,
+    table: "crm_leads",
+    filter: schoolId ? `school_id=eq.${schoolId}` : undefined,
+    enabled: !!schoolId,
+    onChange: invalidateKpiQueries,
+  });
+
+  useRealtimeTable({
+    channel: `dashboard-kpi-attendance-${schoolId}`,
+    table: "attendance_entries",
+    filter: schoolId ? `school_id=eq.${schoolId}` : undefined,
+    enabled: !!schoolId,
+    onChange: invalidateKpiQueries,
+  });
+
+  // Fetch Revenue (MTD payments)
+  const { data: revenueMtd = 0 } = useQuery({
+    queryKey: ["dashboard_kpi_revenue", schoolId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("finance_payments")
+        .select("amount")
+        .eq("school_id", schoolId!)
+        .gte("paid_at", monthStart.toISOString())
+        .limit(1000);
+      if (error) throw error;
+      return (data || []).reduce((sum, p) => sum + Number(p.amount ?? 0), 0);
+    },
+    enabled: !!schoolId,
+  });
+
+  // Fetch Admissions (leads count & open leads)
+  const { data: leadsData } = useQuery({
+    queryKey: ["dashboard_kpi_leads", schoolId],
+    queryFn: async () => {
+      const [totalRes, openRes] = await Promise.all([
+        supabase.from("crm_leads").select("id", { count: "exact", head: true }).eq("school_id", schoolId!),
+        supabase.from("crm_leads").select("id", { count: "exact", head: true }).eq("school_id", schoolId!).not("stage_id", "is", null),
+      ]);
+      return {
+        total: totalRes.count ?? 0,
+        open: openRes.count ?? 0,
+      };
+    },
+    enabled: !!schoolId,
+  });
+
+  // Fetch Attendance (7-day rate)
+  const { data: attendanceData } = useQuery({
+    queryKey: ["dashboard_kpi_attendance", schoolId],
+    queryFn: async () => {
+      const [entriesRes, presentRes] = await Promise.all([
+        supabase
+          .from("attendance_entries")
+          .select("id", { count: "exact", head: true })
+          .eq("school_id", schoolId!)
+          .gte("created_at", d7Ago.toISOString()),
+        supabase
+          .from("attendance_entries")
+          .select("id", { count: "exact", head: true })
+          .eq("school_id", schoolId!)
+          .eq("status", "present")
+          .gte("created_at", d7Ago.toISOString()),
+      ]);
+      const total = entriesRes.count ?? 0;
+      const present = presentRes.count ?? 0;
+      return {
+        total,
+        present,
+        rate: total > 0 ? Math.round((present / total) * 100) : 0,
+      };
+    },
+    enabled: !!schoolId,
+  });
 
   useEffect(() => {
     if (!role) return;
@@ -142,16 +255,41 @@ const TenantDashboard = () => {
     <TenantShell title={title} subtitle="Role-isolated workspace" role={role} schoolSlug={tenant.slug}>
       <div className="flex flex-col gap-6">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {["Revenue", "Admissions", "Attendance"].map((kpi) => (
-            <div key={kpi} className="rounded-3xl bg-surface p-5 shadow-elevated">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">{kpi}</p>
-                <BarChart3 className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <p className="mt-3 font-display text-2xl font-semibold tracking-tight">—</p>
-              <p className="mt-1 text-xs text-muted-foreground">Connect module data to activate KPIs.</p>
+          {/* Revenue KPI */}
+          <div className="rounded-3xl bg-surface p-5 shadow-elevated">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">Revenue (MTD)</p>
+              <Coins className="h-4 w-4 text-muted-foreground" />
             </div>
-          ))}
+            <p className="mt-3 font-display text-2xl font-semibold tracking-tight text-primary">
+              {revenueMtd.toLocaleString()}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">This month's collections</p>
+          </div>
+
+          {/* Admissions KPI */}
+          <div className="rounded-3xl bg-surface p-5 shadow-elevated">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">Admissions</p>
+              <UserPlus className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <p className="mt-3 font-display text-2xl font-semibold tracking-tight">
+              {leadsData?.open ?? 0}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">{leadsData?.total ?? 0} total leads</p>
+          </div>
+
+          {/* Attendance KPI */}
+          <div className="rounded-3xl bg-surface p-5 shadow-elevated">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">Attendance (7d)</p>
+              <ClipboardList className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <p className="mt-3 font-display text-2xl font-semibold tracking-tight">
+              {attendanceData?.rate ?? 0}%
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">Present rate</p>
+          </div>
         </div>
 
         <div className="rounded-3xl bg-surface p-6 shadow-elevated">
