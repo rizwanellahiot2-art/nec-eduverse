@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { GlobalCommandPalette } from "@/components/global/GlobalCommandPalette";
 import { NotificationsBell } from "@/components/global/NotificationsBell";
 import { useTeacherBadges } from "@/hooks/useTeacherBadges";
+import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import { useSession } from "@/hooks/useSession";
 
 type Props = PropsWithChildren<{
@@ -34,6 +35,7 @@ export function TeacherShell({ title, subtitle, schoolSlug, children }: Props) {
   const [schoolId, setSchoolId] = useState<string | null>(null);
   const { user } = useSession();
   const badges = useTeacherBadges(schoolId, user?.id ?? null);
+  const { unreadCount: unreadAdminMessages } = useUnreadMessages(schoolId);
 
   // Apply per-school branding to global CSS vars (white-labeling hook point)
   useEffect(() => {
@@ -199,10 +201,17 @@ export function TeacherShell({ title, subtitle, schoolSlug, children }: Props) {
 
             <NavLink
               to={`${basePath}/workspace-messages`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              className="flex items-center justify-between rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
               activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
-              <Send className="h-4 w-4" /> Admin Messages
+              <span className="flex items-center gap-2">
+                <Send className="h-4 w-4" /> Admin Messages
+              </span>
+              {unreadAdminMessages > 0 && (
+                <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs">
+                  {unreadAdminMessages > 99 ? "99+" : unreadAdminMessages}
+                </Badge>
+              )}
             </NavLink>
           </nav>
 

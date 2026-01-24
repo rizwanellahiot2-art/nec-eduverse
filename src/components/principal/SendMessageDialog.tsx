@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { Send, MessageSquare, Search, Users, GraduationCap, Briefcase, UserCheck } from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { Send, MessageSquare, Search, Users, GraduationCap, Briefcase, UserCheck, Paperclip, X, FileText, Image, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
@@ -18,6 +18,15 @@ interface User {
   email?: string;
 }
 
+interface AttachmentFile {
+  file: File;
+  name: string;
+  size: number;
+  type: string;
+  uploading?: boolean;
+  url?: string;
+}
+
 interface SendMessageDialogProps {
   schoolId: string;
   trigger?: React.ReactNode;
@@ -34,6 +43,12 @@ export function SendMessageDialog({ schoolId, trigger, onMessageSent }: SendMess
   const [subject, setSubject] = useState("");
   const [content, setContent] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+  const MAX_ATTACHMENTS = 5;
 
   useEffect(() => {
     if (!open || !schoolId) return;
@@ -95,6 +110,7 @@ export function SendMessageDialog({ schoolId, trigger, onMessageSent }: SendMess
     setContent("");
     setSearch("");
     setRoleFilter("all");
+    setAttachments([]);
   }, [open, schoolId]);
 
   const filteredUsers = useMemo(() => {
@@ -150,6 +166,71 @@ export function SendMessageDialog({ schoolId, trigger, onMessageSent }: SendMess
     setSelectedUsers([]);
   };
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const newFiles: AttachmentFile[] = [];
+    for (const file of Array.from(files)) {
+      if (attachments.length + newFiles.length >= MAX_ATTACHMENTS) {
+        toast({ title: `Maximum ${MAX_ATTACHMENTS} attachments allowed`, variant: "destructive" });
+        break;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        toast({ title: `${file.name} exceeds 10MB limit`, variant: "destructive" });
+        continue;
+      }
+      newFiles.push({
+        file,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+      });
+    }
+
+    setAttachments((prev) => [...prev, ...newFiles]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const uploadAttachments = async (senderId: string): Promise<string[]> => {
+    const urls: string[] = [];
+
+    for (const attachment of attachments) {
+      const fileExt = attachment.name.split(".").pop();
+      const filePath = `${senderId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+      const { error } = await supabase.storage
+        .from("message-attachments")
+        .upload(filePath, attachment.file);
+
+      if (error) {
+        console.error("Upload error:", error);
+        throw new Error(`Failed to upload ${attachment.name}`);
+      }
+
+      urls.push(filePath);
+    }
+
+    return urls;
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const getFileIcon = (type: string) => {
+    if (type.startsWith("image/")) return <Image className="h-4 w-4" />;
+    return <FileText className="h-4 w-4" />;
+  };
+
   const handleSend = async () => {
     if (!content.trim()) {
       toast({ title: "Please enter a message", variant: "destructive" });
@@ -173,7 +254,22 @@ export function SendMessageDialog({ schoolId, trigger, onMessageSent }: SendMess
         return;
       }
 
-      // Create a single admin message
+      // Upload attachments first
+      let attachmentUrls: string[] = [];
+      if (attachments.length > 0) {
+        setUploadingFiles(true);
+        try {
+          attachmentUrls = await uploadAttachments(senderId);
+        } catch (error: any) {
+          toast({ title: "Failed to upload attachments", description: error.message, variant: "destructive" });
+          setSending(false);
+          setUploadingFiles(false);
+          return;
+        }
+        setUploadingFiles(false);
+      }
+
+      // Create a single admin message with attachments
       const { data: messageData, error: messageError } = await supabase
         .from("admin_messages")
         .insert({
@@ -183,6 +279,7 @@ export function SendMessageDialog({ schoolId, trigger, onMessageSent }: SendMess
           content: content.trim(),
           priority: "normal",
           status: "sent",
+          attachment_urls: attachmentUrls,
         })
         .select("id")
         .single();
@@ -212,7 +309,7 @@ export function SendMessageDialog({ schoolId, trigger, onMessageSent }: SendMess
 
       toast({
         title: "Message sent successfully",
-        description: `Sent to ${selectedUsers.length} recipient(s)`,
+        description: `Sent to ${selectedUsers.length} recipient(s)${attachmentUrls.length > 0 ? ` with ${attachmentUrls.length} attachment(s)` : ""}`,
       });
 
       onMessageSent?.();
@@ -413,6 +510,59 @@ export function SendMessageDialog({ schoolId, trigger, onMessageSent }: SendMess
                   className="resize-none"
                 />
               </div>
+
+              {/* Attachments */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Attachments</Label>
+                  <span className="text-xs text-muted-foreground">{attachments.length}/{MAX_ATTACHMENTS}</span>
+                </div>
+                
+                {/* Hidden file input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept="image/*,.pdf,.doc,.docx,.txt"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                
+                {/* Attachment list */}
+                {attachments.length > 0 && (
+                  <div className="space-y-2 rounded-lg border bg-muted/30 p-2">
+                    {attachments.map((att, idx) => (
+                      <div key={idx} className="flex items-center gap-2 rounded-md bg-background px-2 py-1.5 text-sm">
+                        {getFileIcon(att.type)}
+                        <span className="flex-1 truncate">{att.name}</span>
+                        <span className="text-xs text-muted-foreground shrink-0">{formatFileSize(att.size)}</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 shrink-0"
+                          onClick={() => removeAttachment(idx)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add attachment button */}
+                {attachments.length < MAX_ATTACHMENTS && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full gap-2"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Paperclip className="h-4 w-4" />
+                    Add Attachment
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -421,11 +571,15 @@ export function SendMessageDialog({ schoolId, trigger, onMessageSent }: SendMess
         <div className="shrink-0 border-t bg-background px-6 py-4">
           <Button
             onClick={handleSend}
-            disabled={sending || !content.trim() || selectedUsers.length === 0}
+            disabled={sending || uploadingFiles || !content.trim() || selectedUsers.length === 0}
             className="w-full"
           >
-            <Send className="mr-2 h-4 w-4" />
-            {sending ? "Sending..." : `Send to ${selectedUsers.length} recipient(s)`}
+            {uploadingFiles ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="mr-2 h-4 w-4" />
+            )}
+            {uploadingFiles ? "Uploading..." : sending ? "Sending..." : `Send to ${selectedUsers.length} recipient(s)`}
           </Button>
         </div>
       </DialogContent>

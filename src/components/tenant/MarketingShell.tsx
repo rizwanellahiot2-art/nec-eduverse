@@ -1,10 +1,12 @@
 import { PropsWithChildren, useEffect, useState } from "react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { BarChart3, ClipboardList, Megaphone, PhoneCall, Target, Users, CalendarDays, MessageSquare, Sparkles, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GlobalCommandPalette } from "@/components/global/GlobalCommandPalette";
 import { NotificationsBell } from "@/components/global/NotificationsBell";
+import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 
 type Props = PropsWithChildren<{
   title: string;
@@ -14,6 +16,7 @@ type Props = PropsWithChildren<{
 
 export function MarketingShell({ title, subtitle, schoolSlug, children }: Props) {
   const [schoolId, setSchoolId] = useState<string | null>(null);
+  const { unreadCount } = useUnreadMessages(schoolId);
 
   useEffect(() => {
     let cancelled = false;
@@ -117,10 +120,17 @@ export function MarketingShell({ title, subtitle, schoolSlug, children }: Props)
 
             <NavLink
               to={`${basePath}/messages`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              className="flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
               activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
-              <MessageSquare className="h-4 w-4" /> Messages
+              <span className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" /> Messages
+              </span>
+              {unreadCount > 0 && (
+                <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </Badge>
+              )}
             </NavLink>
 
             <NavLink
