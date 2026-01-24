@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { BarChart3, BookOpen, CalendarCheck, ClipboardCheck, FileText, MessageSquare, TableIcon, TrendingUp, Users } from "lucide-react";
+import { BarChart3, BookOpen, CalendarCheck, ClipboardCheck, MessageSquare, TableIcon, TrendingUp, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useSession } from "@/hooks/useSession";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AtRiskStudentsCard } from "@/components/teacher/AtRiskStudentsCard";
 import { ClassPerformanceChart } from "@/components/teacher/ClassPerformanceChart";
+import { TimetablePreviewWidget } from "@/components/teacher/TimetablePreviewWidget";
 
 interface Stats {
   totalStudents: number;
@@ -253,6 +254,11 @@ export function TeacherHome() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Timetable Preview Widget */}
+      {tenant.status === "ready" && schoolSlug && (
+        <TimetablePreviewWidget schoolId={tenant.schoolId} schoolSlug={schoolSlug} />
+      )}
 
       {/* Analytics Cards - At-Risk Students & Class Performance */}
       {tenant.status === "ready" && (

@@ -1,6 +1,7 @@
 import { PropsWithChildren, useEffect, useState } from "react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   BookOpen,
   CalendarDays,
@@ -20,6 +21,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { GlobalCommandPalette } from "@/components/global/GlobalCommandPalette";
 import { NotificationsBell } from "@/components/global/NotificationsBell";
+import { useTeacherBadges } from "@/hooks/useTeacherBadges";
+import { useSession } from "@/hooks/useSession";
 
 type Props = PropsWithChildren<{
   title: string;
@@ -29,6 +32,8 @@ type Props = PropsWithChildren<{
 
 export function TeacherShell({ title, subtitle, schoolSlug, children }: Props) {
   const [schoolId, setSchoolId] = useState<string | null>(null);
+  const { user } = useSession();
+  const badges = useTeacherBadges(schoolId, user?.id ?? null);
 
   // Apply per-school branding to global CSS vars (white-labeling hook point)
   useEffect(() => {
@@ -116,10 +121,17 @@ export function TeacherShell({ title, subtitle, schoolSlug, children }: Props) {
 
             <NavLink
               to={`${basePath}/assignments`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
+              className="flex items-center justify-between rounded-xl px-3 py-2 text-sm text-muted-foreground"
               activeClassName="bg-accent text-accent-foreground"
             >
-              <FileText className="h-4 w-4" /> Assignments & Results
+              <span className="flex items-center gap-2">
+                <FileText className="h-4 w-4" /> Assignments & Results
+              </span>
+              {badges.pendingAssignments > 0 && (
+                <Badge variant="destructive" className="h-5 min-w-[20px] px-1.5 text-xs">
+                  {badges.pendingAssignments > 99 ? "99+" : badges.pendingAssignments}
+                </Badge>
+              )}
             </NavLink>
 
             <NavLink
@@ -172,10 +184,17 @@ export function TeacherShell({ title, subtitle, schoolSlug, children }: Props) {
 
             <NavLink
               to={`${basePath}/messages`}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground"
+              className="flex items-center justify-between rounded-xl px-3 py-2 text-sm text-muted-foreground"
               activeClassName="bg-accent text-accent-foreground"
             >
-              <MessageSquare className="h-4 w-4" /> Parent Messages
+              <span className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" /> Parent Messages
+              </span>
+              {badges.unreadMessages > 0 && (
+                <Badge variant="destructive" className="h-5 min-w-[20px] px-1.5 text-xs">
+                  {badges.unreadMessages > 99 ? "99+" : badges.unreadMessages}
+                </Badge>
+              )}
             </NavLink>
 
             <NavLink
