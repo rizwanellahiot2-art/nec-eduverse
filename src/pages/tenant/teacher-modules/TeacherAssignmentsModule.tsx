@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Plus, Users, CheckCircle, Clock, FileCheck, MessageSquare, Paperclip } from "lucide-react";
+import { Plus, Users, CheckCircle, Clock, FileCheck, MessageSquare, Paperclip, AlertTriangle } from "lucide-react";
 import { AttachmentsList } from "@/components/assignments/AttachmentsList";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 
 interface Section {
   id: string;
@@ -32,6 +33,9 @@ interface Assignment {
   due_date: string | null;
   class_section_id: string;
   section_name: string;
+  late_penalty_percent_per_day: number;
+  max_late_penalty_percent: number;
+  allow_late_submissions: boolean;
 }
 
 interface Submission {
@@ -45,6 +49,9 @@ interface Submission {
   status: string;
   marks_obtained: number | null;
   feedback: string | null;
+  days_late: number;
+  penalty_applied: number;
+  marks_before_penalty: number | null;
 }
 
 interface StudentResult {
@@ -73,6 +80,9 @@ export function TeacherAssignmentsModule() {
     assignment_type: "assignment",
     due_date: "",
     class_section_id: "",
+    late_penalty_percent_per_day: "10",
+    max_late_penalty_percent: "50",
+    allow_late_submissions: true,
   });
 
   // View submissions dialog
@@ -173,6 +183,9 @@ export function TeacherAssignmentsModule() {
       max_marks: parseFloat(newAssignment.max_marks) || 100,
       assignment_type: newAssignment.assignment_type,
       due_date: newAssignment.due_date || null,
+      late_penalty_percent_per_day: parseFloat(newAssignment.late_penalty_percent_per_day) || 0,
+      max_late_penalty_percent: parseFloat(newAssignment.max_late_penalty_percent) || 100,
+      allow_late_submissions: newAssignment.allow_late_submissions,
     });
 
     if (error) {
@@ -189,6 +202,9 @@ export function TeacherAssignmentsModule() {
       assignment_type: "assignment",
       due_date: "",
       class_section_id: "",
+      late_penalty_percent_per_day: "10",
+      max_late_penalty_percent: "50",
+      allow_late_submissions: true,
     });
     fetchData();
   };
@@ -324,6 +340,9 @@ export function TeacherAssignmentsModule() {
         status: sub?.status || "not_submitted",
         marks_obtained: sub?.marks_obtained ?? null,
         feedback: sub?.feedback || null,
+        days_late: sub?.days_late || 0,
+        penalty_applied: sub?.penalty_applied || 0,
+        marks_before_penalty: sub?.marks_before_penalty ?? null,
       };
     });
 
@@ -333,21 +352,57 @@ export function TeacherAssignmentsModule() {
 
   const openGradeDialog = (sub: Submission) => {
     setSelectedSubmission(sub);
+    // Show marks before penalty if graded, otherwise empty
     setGradeForm({
-      marks: sub.marks_obtained?.toString() || "",
+      marks: sub.marks_before_penalty?.toString() || sub.marks_obtained?.toString() || "",
       feedback: sub.feedback || "",
     });
     setGradeOpen(true);
+  };
+
+  // Calculate late penalty
+  const calculatePenalty = (rawMarks: number, daysLate: number, maxMarks: number) => {
+    if (!selectedAssignment || daysLate <= 0) return { finalMarks: rawMarks, penalty: 0 };
+    
+    const penaltyPerDay = selectedAssignment.late_penalty_percent_per_day;
+    const maxPenalty = selectedAssignment.max_late_penalty_percent;
+    
+    // Calculate penalty percentage (capped at max)
+    const totalPenaltyPercent = Math.min(daysLate * penaltyPerDay, maxPenalty);
+    
+    // Calculate deduction based on max marks
+    const deduction = (maxMarks * totalPenaltyPercent) / 100;
+    const finalMarks = Math.max(0, rawMarks - deduction);
+    
+    return { finalMarks: Math.round(finalMarks * 100) / 100, penalty: totalPenaltyPercent };
   };
 
   const saveGrade = async () => {
     if (!selectedSubmission || !selectedAssignment) return;
     
     setSavingGrade(true);
+    
+    const rawMarks = gradeForm.marks ? parseFloat(gradeForm.marks) : null;
+    let finalMarks = rawMarks;
+    let penaltyApplied = 0;
+    
+    // Apply late penalty if submission was late
+    if (rawMarks !== null && selectedSubmission.days_late > 0) {
+      const { finalMarks: calculated, penalty } = calculatePenalty(
+        rawMarks, 
+        selectedSubmission.days_late, 
+        selectedAssignment.max_marks
+      );
+      finalMarks = calculated;
+      penaltyApplied = penalty;
+    }
+    
     const { error } = await supabase
       .from("assignment_submissions")
       .update({
-        marks_obtained: gradeForm.marks ? parseFloat(gradeForm.marks) : null,
+        marks_obtained: finalMarks,
+        marks_before_penalty: rawMarks,
+        penalty_applied: penaltyApplied,
         feedback: gradeForm.feedback || null,
         status: "graded",
         graded_by: user?.id,
@@ -358,7 +413,7 @@ export function TeacherAssignmentsModule() {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success("Grade saved!");
+      toast.success(penaltyApplied > 0 ? `Grade saved with ${penaltyApplied}% late penalty!` : "Grade saved!");
       setGradeOpen(false);
       openSubmissionsDialog(selectedAssignment);
     }
@@ -486,6 +541,48 @@ export function TeacherAssignmentsModule() {
                   />
                 </div>
               </div>
+              
+              {/* Late Penalty Settings */}
+              <div className="rounded-lg border p-3 space-y-3 bg-muted/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Allow Late Submissions</Label>
+                    <p className="text-xs text-muted-foreground">Accept submissions after due date</p>
+                  </div>
+                  <Switch
+                    checked={newAssignment.allow_late_submissions}
+                    onCheckedChange={(v) => setNewAssignment((p) => ({ ...p, allow_late_submissions: v }))}
+                  />
+                </div>
+                
+                {newAssignment.allow_late_submissions && newAssignment.due_date && (
+                  <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+                    <div>
+                      <Label className="text-xs">Penalty % per day late</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={newAssignment.late_penalty_percent_per_day}
+                        onChange={(e) => setNewAssignment((p) => ({ ...p, late_penalty_percent_per_day: e.target.value }))}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Max penalty %</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={newAssignment.max_late_penalty_percent}
+                        onChange={(e) => setNewAssignment((p) => ({ ...p, max_late_penalty_percent: e.target.value }))}
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+              
               <Button onClick={handleAddAssignment} className="w-full">
                 Create Assignment
               </Button>
@@ -518,6 +615,11 @@ export function TeacherAssignmentsModule() {
                       {a.description && <p className="mt-2 text-sm">{a.description}</p>}
                       <p className="mt-2 text-xs text-muted-foreground">
                         Max: {a.max_marks} marks {a.due_date && `• Due: ${a.due_date}`}
+                        {a.late_penalty_percent_per_day > 0 && (
+                          <span className="ml-2 text-amber-600 dark:text-amber-400">
+                            • Late: -{a.late_penalty_percent_per_day}%/day (max {a.max_late_penalty_percent}%)
+                          </span>
+                        )}
                       </p>
                     </div>
                     <div className="flex flex-col gap-2">
@@ -622,6 +724,24 @@ export function TeacherAssignmentsModule() {
           </DialogHeader>
           
           <div className="space-y-4 py-4">
+            {/* Late submission warning */}
+            {selectedSubmission && selectedSubmission.days_late > 0 && selectedAssignment && (
+              <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950">
+                <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-medium text-amber-800 dark:text-amber-200">
+                    Late Submission ({selectedSubmission.days_late} day{selectedSubmission.days_late !== 1 ? "s" : ""} late)
+                  </p>
+                  <p className="text-amber-700 dark:text-amber-300 mt-0.5">
+                    A penalty of {Math.min(
+                      selectedSubmission.days_late * selectedAssignment.late_penalty_percent_per_day,
+                      selectedAssignment.max_late_penalty_percent
+                    )}% will be applied automatically.
+                  </p>
+                </div>
+              </div>
+            )}
+            
             {selectedSubmission?.submission_text && (
               <div>
                 <Label className="text-muted-foreground">Student's Answer</Label>
@@ -646,6 +766,15 @@ export function TeacherAssignmentsModule() {
                   onChange={(e) => setGradeForm((p) => ({ ...p, marks: e.target.value }))}
                   className="mt-1"
                 />
+                {gradeForm.marks && selectedSubmission && selectedSubmission.days_late > 0 && selectedAssignment && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    After penalty: {calculatePenalty(
+                      parseFloat(gradeForm.marks),
+                      selectedSubmission.days_late,
+                      selectedAssignment.max_marks
+                    ).finalMarks} marks
+                  </p>
+                )}
               </div>
               <div className="flex items-end">
                 {gradeForm.marks && selectedAssignment && (
@@ -787,6 +916,11 @@ function SubmissionRow({
             {sub.attachment_urls && sub.attachment_urls.length > 0 && (
               <Paperclip className="h-4 w-4 text-muted-foreground" />
             )}
+            {sub.days_late > 0 && (
+              <Badge variant="outline" className="text-xs text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700">
+                {sub.days_late}d late
+              </Badge>
+            )}
           </div>
           {sub.submitted_at && (
             <p className="text-xs text-muted-foreground">
@@ -799,9 +933,16 @@ function SubmissionRow({
         {sub.status === "graded" && (
           <div className="text-right">
             <p className="font-medium">{sub.marks_obtained}/{maxMarks}</p>
-            <p className="text-xs text-muted-foreground">
-              {((sub.marks_obtained || 0) / maxMarks * 100).toFixed(0)}%
-            </p>
+            {sub.penalty_applied > 0 && sub.marks_before_penalty !== null && (
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                -{sub.penalty_applied}% penalty (was {sub.marks_before_penalty})
+              </p>
+            )}
+            {sub.penalty_applied === 0 && (
+              <p className="text-xs text-muted-foreground">
+                {((sub.marks_obtained || 0) / maxMarks * 100).toFixed(0)}%
+              </p>
+            )}
           </div>
         )}
         {getStatusBadge()}
