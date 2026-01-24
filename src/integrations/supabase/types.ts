@@ -2545,7 +2545,9 @@ export type Database = {
           day_of_week: number
           end_time: string
           id: string
+          is_published: boolean
           period_id: string | null
+          published_at: string | null
           room: string | null
           school_id: string
           start_time: string
@@ -2560,7 +2562,9 @@ export type Database = {
           day_of_week: number
           end_time: string
           id?: string
+          is_published?: boolean
           period_id?: string | null
+          published_at?: string | null
           room?: string | null
           school_id: string
           start_time: string
@@ -2575,7 +2579,9 @@ export type Database = {
           day_of_week?: number
           end_time?: string
           id?: string
+          is_published?: boolean
           period_id?: string | null
+          published_at?: string | null
           room?: string | null
           school_id?: string
           start_time?: string
