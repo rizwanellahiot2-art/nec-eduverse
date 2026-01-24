@@ -29,6 +29,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import { SubjectCatalogCard, type SubjectRow } from "@/pages/tenant/modules/components/SubjectCatalogCard";
 import {
@@ -45,7 +63,7 @@ import { GradeThresholdsCard } from "@/pages/tenant/modules/components/GradeThre
 
 type ClassRow = { id: string; name: string; grade_level: number | null };
 type SectionRow = { id: string; name: string; class_id: string; room: string | null };
-type StudentRow = { id: string; first_name: string; last_name: string | null; status: string; profile_id: string | null; section_label?: string };
+type StudentRow = { id: string; first_name: string; last_name: string | null; parent_name?: string | null; status: string; profile_id: string | null; section_label?: string };
 type DirectoryProfileRow = { user_id: string; profile_id: string | null; email: string; display_name: string | null };
 type EnrollmentRow = { student_id: string; class_section_id: string };
 type TeacherAssignmentRow = { teacher_user_id: string; class_section_id: string };
@@ -81,6 +99,19 @@ export function AcademicModule() {
   const [teacherUserId, setTeacherUserId] = useState<string>("");
   const [assignSectionId, setAssignSectionId] = useState<string>("");
 
+  // Student Edit/Delete states
+  const [showEditStudentDialog, setShowEditStudentDialog] = useState(false);
+  const [showDeleteStudentDialog, setShowDeleteStudentDialog] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<StudentRow | null>(null);
+  const [editStudentForm, setEditStudentForm] = useState({
+    first_name: "",
+    last_name: "",
+    parent_name: "",
+    status: "enrolled",
+    section_id: "",
+  });
+  const [studentSubmitting, setStudentSubmitting] = useState(false);
+
   const refresh = async () => {
     if (!schoolId) return;
 
@@ -89,7 +120,7 @@ export function AcademicModule() {
       supabase.from("class_sections").select("id,name,class_id,room").eq("school_id", schoolId).order("name"),
       supabase
         .from("students")
-        .select("id,first_name,last_name,status,profile_id")
+        .select("id,first_name,last_name,parent_name,status,profile_id")
         .eq("school_id", schoolId)
         .order("first_name"),
       supabase.from("student_enrollments").select("student_id,class_section_id").eq("school_id", schoolId),
@@ -228,6 +259,110 @@ export function AcademicModule() {
     if (error) return toast.error(error.message);
     toast.success("Student linked to user profile");
     await refresh();
+  };
+
+  // Student Edit/Delete handlers
+  const openEditStudent = (student: StudentRow) => {
+    setEditingStudent(student);
+    const enrollment = enrollments.find((e) => e.student_id === student.id);
+    setEditStudentForm({
+      first_name: student.first_name,
+      last_name: student.last_name || "",
+      parent_name: student.parent_name || "",
+      status: student.status,
+      section_id: enrollment?.class_section_id || "",
+    });
+    setShowEditStudentDialog(true);
+  };
+
+  const openDeleteStudent = (student: StudentRow) => {
+    setEditingStudent(student);
+    setShowDeleteStudentDialog(true);
+  };
+
+  const handleEditStudent = async () => {
+    if (!schoolId || !editingStudent) return;
+    if (!editStudentForm.first_name.trim()) return toast.error("First name is required");
+    if (!editStudentForm.parent_name.trim()) return toast.error("Parent name is required");
+
+    setStudentSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from("students")
+        .update({
+          first_name: editStudentForm.first_name.trim(),
+          last_name: editStudentForm.last_name.trim() || null,
+          parent_name: editStudentForm.parent_name.trim(),
+          status: editStudentForm.status,
+        })
+        .eq("school_id", schoolId)
+        .eq("id", editingStudent.id);
+
+      if (error) throw error;
+
+      // Update enrollment if section changed
+      const currentEnrollment = enrollments.find((e) => e.student_id === editingStudent.id);
+      if (editStudentForm.section_id && editStudentForm.section_id !== currentEnrollment?.class_section_id) {
+        if (currentEnrollment) {
+          await supabase
+            .from("student_enrollments")
+            .update({ class_section_id: editStudentForm.section_id })
+            .eq("school_id", schoolId)
+            .eq("student_id", editingStudent.id);
+        } else {
+          await supabase.from("student_enrollments").insert({
+            school_id: schoolId,
+            student_id: editingStudent.id,
+            class_section_id: editStudentForm.section_id,
+          });
+        }
+      }
+
+      toast.success("Student updated successfully");
+      setShowEditStudentDialog(false);
+      setEditingStudent(null);
+      await refresh();
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setStudentSubmitting(false);
+    }
+  };
+
+  const handleDeleteStudent = async () => {
+    if (!schoolId || !editingStudent) return;
+
+    setStudentSubmitting(true);
+    try {
+      // Delete enrollments first
+      const { error: enrollError } = await supabase
+        .from("student_enrollments")
+        .delete()
+        .eq("school_id", schoolId)
+        .eq("student_id", editingStudent.id);
+
+      if (enrollError) {
+        console.error("Enrollment delete error:", enrollError);
+      }
+
+      // Then delete student
+      const { error } = await supabase
+        .from("students")
+        .delete()
+        .eq("school_id", schoolId)
+        .eq("id", editingStudent.id);
+
+      if (error) throw error;
+
+      toast.success("Student deleted successfully");
+      setShowDeleteStudentDialog(false);
+      setEditingStudent(null);
+      await refresh();
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setStudentSubmitting(false);
+    }
   };
 
   // Summary stats
@@ -395,6 +530,8 @@ export function AcademicModule() {
             classes={classes}
             sections={sections}
             enrollments={enrollments}
+            onEdit={openEditStudent}
+            onDelete={openDeleteStudent}
           />
 
           {/* Quick Add Student */}
@@ -641,6 +778,112 @@ export function AcademicModule() {
           {schoolId && <GradeThresholdsCard schoolId={schoolId} />}
         </TabsContent>
       </Tabs>
+
+      {/* Edit Student Dialog */}
+      <Dialog open={showEditStudentDialog} onOpenChange={setShowEditStudentDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Student</DialogTitle>
+            <DialogDescription>
+              Update student information below.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>First Name *</Label>
+              <Input
+                value={editStudentForm.first_name}
+                onChange={(e) => setEditStudentForm({ ...editStudentForm, first_name: e.target.value })}
+                placeholder="First name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Last Name</Label>
+              <Input
+                value={editStudentForm.last_name}
+                onChange={(e) => setEditStudentForm({ ...editStudentForm, last_name: e.target.value })}
+                placeholder="Last name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Parent Name *</Label>
+              <Input
+                value={editStudentForm.parent_name}
+                onChange={(e) => setEditStudentForm({ ...editStudentForm, parent_name: e.target.value })}
+                placeholder="Parent name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Section</Label>
+              <Select
+                value={editStudentForm.section_id}
+                onValueChange={(val) => setEditStudentForm({ ...editStudentForm, section_id: val })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select section" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sections.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {classes.find((c) => c.id === s.class_id)?.name ?? "Class"} • {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select
+                value={editStudentForm.status}
+                onValueChange={(val) => setEditStudentForm({ ...editStudentForm, status: val })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="enrolled">Enrolled</SelectItem>
+                  <SelectItem value="inquiry">Inquiry</SelectItem>
+                  <SelectItem value="withdrawn">Withdrawn</SelectItem>
+                  <SelectItem value="graduated">Graduated</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditStudentDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditStudent} disabled={studentSubmitting}>
+              {studentSubmitting ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Student Dialog */}
+      <AlertDialog open={showDeleteStudentDialog} onOpenChange={setShowDeleteStudentDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Student</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete{" "}
+              <span className="font-semibold">
+                {editingStudent?.first_name} {editingStudent?.last_name || ""}
+              </span>
+              ? This will also remove their enrollment records. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteStudent}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {studentSubmitting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

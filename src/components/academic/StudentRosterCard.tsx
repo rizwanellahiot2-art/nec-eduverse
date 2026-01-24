@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { GraduationCap, Search, Users } from "lucide-react";
+import { Edit, GraduationCap, Search, Trash2, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -19,6 +20,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface ClassRow {
   id: string;
@@ -35,6 +42,7 @@ interface StudentRow {
   id: string;
   first_name: string;
   last_name: string | null;
+  parent_name?: string | null;
   status: string;
   profile_id: string | null;
 }
@@ -49,6 +57,8 @@ interface StudentRosterCardProps {
   classes: ClassRow[];
   sections: SectionRow[];
   enrollments: StudentEnrollment[];
+  onEdit?: (student: StudentRow) => void;
+  onDelete?: (student: StudentRow) => void;
 }
 
 export function StudentRosterCard({
@@ -56,6 +66,8 @@ export function StudentRosterCard({
   classes,
   sections,
   enrollments,
+  onEdit,
+  onDelete,
 }: StudentRosterCardProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterSection, setFilterSection] = useState<string>("all");
@@ -187,9 +199,13 @@ export function StudentRosterCard({
             <TableHeader>
               <TableRow className="bg-muted/50">
                 <TableHead className="font-semibold">Student Name</TableHead>
+                <TableHead className="font-semibold">Parent Name</TableHead>
                 <TableHead className="font-semibold">Class / Section</TableHead>
                 <TableHead className="font-semibold">Status</TableHead>
                 <TableHead className="font-semibold">Portal Access</TableHead>
+                {(onEdit || onDelete) && (
+                  <TableHead className="font-semibold text-right">Actions</TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -207,6 +223,11 @@ export function StudentRosterCard({
                         {student.first_name} {student.last_name || ""}
                       </span>
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm text-muted-foreground">
+                      {student.parent_name || "—"}
+                    </span>
                   </TableCell>
                   <TableCell>
                     {student.sectionLabel ? (
@@ -228,11 +249,49 @@ export function StudentRosterCard({
                       <span className="text-xs text-muted-foreground">Not linked</span>
                     )}
                   </TableCell>
+                  {(onEdit || onDelete) && (
+                    <TableCell className="text-right">
+                      <TooltipProvider>
+                        <div className="flex items-center justify-end gap-1">
+                          {onEdit && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => onEdit(student)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Edit Student</TooltipContent>
+                            </Tooltip>
+                          )}
+                          {onDelete && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                  onClick={() => onDelete(student)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Delete Student</TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
+                      </TooltipProvider>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
               {filteredStudents.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={onEdit || onDelete ? 6 : 5} className="text-center py-8 text-muted-foreground">
                     {searchTerm || filterSection !== "all" || filterStatus !== "all"
                       ? "No students match your filters"
                       : "No students found"}

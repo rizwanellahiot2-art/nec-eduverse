@@ -355,16 +355,22 @@ export function PrincipalStudentsTab({ schoolId }: PrincipalStudentsTabProps) {
 
     setSubmitting(true);
     try {
-      // Delete enrollments first
-      await supabase
+      // Delete enrollments first (with school_id filter for RLS)
+      const { error: enrollError } = await supabase
         .from("student_enrollments")
         .delete()
+        .eq("school_id", schoolId)
         .eq("student_id", editingStudent.id);
 
-      // Then delete student
+      if (enrollError) {
+        console.error("Enrollment delete error:", enrollError);
+      }
+
+      // Then delete student (with school_id filter for RLS)
       const { error } = await supabase
         .from("students")
         .delete()
+        .eq("school_id", schoolId)
         .eq("id", editingStudent.id);
 
       if (error) throw error;
