@@ -38,11 +38,13 @@ export function PeriodTimetableGrid({
   entries,
   stickyDayColumn = true,
   printable = false,
+  density = "normal",
 }: {
   periods: Period[];
   entries: PeriodTimetableEntry[];
   stickyDayColumn?: boolean;
   printable?: boolean;
+  density?: "normal" | "compact";
 }) {
   const entryBySlot = useMemo(() => {
     const m = new Map<string, PeriodTimetableEntry>();
@@ -50,11 +52,13 @@ export function PeriodTimetableGrid({
     return m;
   }, [entries]);
 
+  const colWidth = density === "compact" ? "minmax(150px, 1fr)" : "minmax(200px, 1fr)";
+
   return (
     <div className={printable ? "" : "overflow-auto"}>
       <div
         className="grid gap-2"
-        style={{ gridTemplateColumns: `160px repeat(${Math.max(periods.length, 1)}, minmax(200px, 1fr))` }}
+        style={{ gridTemplateColumns: `160px repeat(${Math.max(periods.length, 1)}, ${colWidth})` }}
       >
         <div
           className={

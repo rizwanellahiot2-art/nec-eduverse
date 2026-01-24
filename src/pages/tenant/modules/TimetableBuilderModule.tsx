@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { DndContext, type DragEndEvent, useDraggable, useDroppable } from "@dnd-kit/core";
 import { useParams } from "react-router-dom";
-import { CalendarDays, Pencil, Printer, Trash2 } from "lucide-react";
+import { CalendarDays, Pencil, Printer, Trash2, Wrench } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
@@ -24,6 +24,8 @@ import { toast } from "sonner";
 
 import { PeriodManagerCard } from "./components/PeriodManagerCard";
 import { PeriodTimetableGrid, type PeriodTimetableEntry } from "@/components/timetable/PeriodTimetableGrid";
+import { PrintPreviewDialog } from "@/components/timetable/PrintPreviewDialog";
+import { TimetableToolsDialog } from "./components/TimetableToolsDialog";
 
 type PeriodRow = {
   id: string;
@@ -169,6 +171,9 @@ export function TimetableBuilderModule() {
   const [editEntryId, setEditEntryId] = useState<string | null>(null);
   const [editTeacherUserId, setEditTeacherUserId] = useState<string>("");
   const [editRoom, setEditRoom] = useState<string>("");
+
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
 
   const refreshStatic = async () => {
     if (!schoolId) return;
@@ -374,13 +379,14 @@ export function TimetableBuilderModule() {
             <CalendarDays className="mr-2 h-4 w-4" /> Refresh
           </Button>
 
-          <Button
-            variant="outline"
-            onClick={() => window.print()}
-            className="md:justify-self-end"
-          >
-            <Printer className="mr-2 h-4 w-4" /> Print
-          </Button>
+          <div className="flex gap-2 md:justify-self-end">
+            <Button variant="outline" onClick={() => setToolsOpen(true)} disabled={!sectionId}>
+              <Wrench className="mr-2 h-4 w-4" /> Tools
+            </Button>
+            <Button variant="outline" onClick={() => setPrintPreviewOpen(true)} disabled={!sectionId}>
+              <Printer className="mr-2 h-4 w-4" /> Print
+            </Button>
+          </div>
 
           <div className="text-xs text-muted-foreground md:text-right">
             {periods.length ? `${periods.length} periods` : "Add periods first"}
@@ -591,6 +597,27 @@ export function TimetableBuilderModule() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <TimetableToolsDialog
+        open={toolsOpen}
+        onOpenChange={setToolsOpen}
+        schoolId={schoolId}
+        canEdit={canEdit}
+        periods={periods}
+        sections={sections}
+        sectionLabelById={sectionLabelById}
+        currentSectionId={sectionId}
+        onDone={refreshSection}
+      />
+
+      <PrintPreviewDialog
+        open={printPreviewOpen}
+        onOpenChange={setPrintPreviewOpen}
+        headerTitle={tenant.school?.name ?? "School"}
+        headerSubtitle={sectionId ? sectionLabelById.get(sectionId) ?? null : null}
+        periods={periods}
+        entries={readOnlyEntries}
+      />
     </div>
   );
 }
