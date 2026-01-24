@@ -43,12 +43,10 @@ type SalaryRecord = {
   id: string;
   user_id: string;
   base_salary: number;
-  allowances: number;
-  deductions: number;
   effective_from: string;
   effective_to: string | null;
-  is_active: boolean;
   currency: string;
+  pay_frequency: string;
   notes: string | null;
 };
 
@@ -56,7 +54,7 @@ type PayRun = {
   id: string;
   period_start: string;
   period_end: string;
-  run_date: string;
+  paid_at: string | null;
   gross_amount: number;
   deductions: number;
   net_amount: number;
@@ -104,7 +102,16 @@ export function HrSalariesModule() {
         .eq("school_id", schoolId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as SalaryRecord[];
+      return (data || []).map((r) => ({
+        id: r.id,
+        user_id: r.user_id,
+        base_salary: r.base_salary,
+        effective_from: r.effective_from,
+        effective_to: r.effective_to,
+        currency: r.currency,
+        pay_frequency: r.pay_frequency,
+        notes: r.notes,
+      })) as SalaryRecord[];
     },
     enabled: !!schoolId,
   });
@@ -116,9 +123,19 @@ export function HrSalariesModule() {
         .from("hr_pay_runs")
         .select("*")
         .eq("school_id", schoolId!)
-        .order("run_date", { ascending: false });
+        .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as PayRun[];
+      return (data || []).map((r) => ({
+        id: r.id,
+        period_start: r.period_start,
+        period_end: r.period_end,
+        paid_at: r.paid_at,
+        gross_amount: r.gross_amount,
+        deductions: r.deductions,
+        net_amount: r.net_amount,
+        status: r.status,
+        notes: r.notes,
+      })) as PayRun[];
     },
     enabled: !!schoolId,
   });
@@ -152,6 +169,9 @@ export function HrSalariesModule() {
     setEditingRecord(null);
   };
 
+  // Helper to check if record is "active" (no effective_to date)
+  const isRecordActive = (r: SalaryRecord) => !r.effective_to;
+
   const openCreate = () => {
     resetForm();
     setDialogOpen(true);
@@ -161,12 +181,12 @@ export function HrSalariesModule() {
     setEditingRecord(record);
     setFormUserId(record.user_id);
     setFormBaseSalary(record.base_salary.toString());
-    setFormAllowances(record.allowances.toString());
-    setFormDeductions(record.deductions.toString());
+    setFormAllowances("0");
+    setFormDeductions("0");
     setFormCurrency(record.currency);
     setFormEffectiveFrom(record.effective_from);
     setFormNotes(record.notes || "");
-    setFormIsActive(record.is_active);
+    setFormIsActive(!record.effective_to);
     setDialogOpen(true);
   };
 
@@ -185,12 +205,10 @@ export function HrSalariesModule() {
     const salaryData = {
       user_id: formUserId,
       base_salary: baseSalary,
-      allowances: Number(formAllowances) || 0,
-      deductions: Number(formDeductions) || 0,
       currency: formCurrency,
       effective_from: formEffectiveFrom,
+      effective_to: formIsActive ? null : new Date().toISOString().split("T")[0],
       notes: formNotes.trim() || null,
-      is_active: formIsActive,
     };
 
     if (editingRecord) {
@@ -204,18 +222,21 @@ export function HrSalariesModule() {
       }
       toast.success("Salary record updated");
     } else {
-      // Deactivate existing active records for this user
+      // End existing records for this user
       await supabase
         .from("hr_salary_records")
-        .update({ is_active: false, effective_to: formEffectiveFrom })
+        .update({ effective_to: formEffectiveFrom })
         .eq("school_id", schoolId)
         .eq("user_id", formUserId)
-        .eq("is_active", true);
+        .is("effective_to", null);
 
-      const { error } = await supabase.from("hr_salary_records").insert({
-        school_id: schoolId,
-        ...salaryData,
-      });
+      const { error } = await supabase.from("hr_salary_records").insert([
+        {
+          school_id: schoolId,
+          ...salaryData,
+          pay_frequency: "monthly",
+        },
+      ]);
       if (error) {
         toast.error(error.message);
         return;
@@ -245,22 +266,24 @@ export function HrSalariesModule() {
       return;
     }
 
-    const activeSalaries = salaryRecords.filter((s) => s.is_active);
-    const grossAmount = activeSalaries.reduce((sum, s) => sum + s.base_salary + s.allowances, 0);
-    const deductions = activeSalaries.reduce((sum, s) => sum + s.deductions, 0);
+    const activeSalaries = salaryRecords.filter((s) => isRecordActive(s));
+    const grossAmount = activeSalaries.reduce((sum, s) => sum + s.base_salary, 0);
+    const deductions = 0;
     const netAmount = grossAmount - deductions;
 
-    const { error } = await supabase.from("hr_pay_runs").insert({
-      school_id: schoolId,
-      period_start: prPeriodStart,
-      period_end: prPeriodEnd,
-      run_date: new Date().toISOString().split("T")[0],
-      gross_amount: grossAmount,
-      deductions,
-      net_amount: netAmount,
-      status: "draft",
-      notes: prNotes.trim() || null,
-    });
+    const { error } = await supabase.from("hr_pay_runs").insert([
+      {
+        school_id: schoolId,
+        user_id: activeSalaries[0]?.user_id || null, // Required field
+        period_start: prPeriodStart,
+        period_end: prPeriodEnd,
+        gross_amount: grossAmount,
+        deductions,
+        net_amount: netAmount,
+        status: "draft",
+        notes: prNotes.trim() || null,
+      },
+    ]);
 
     if (error) {
       toast.error(error.message);
@@ -290,12 +313,12 @@ export function HrSalariesModule() {
     return staff?.full_name || "Unknown";
   };
 
-  const activeSalaries = salaryRecords.filter((s) => s.is_active);
+  const activeSalaries = salaryRecords.filter((s) => isRecordActive(s));
   const stats = {
     totalStaff: activeSalaries.length,
-    totalPayroll: activeSalaries.reduce((sum, s) => sum + s.base_salary + s.allowances - s.deductions, 0),
-    totalAllowances: activeSalaries.reduce((sum, s) => sum + s.allowances, 0),
-    totalDeductions: activeSalaries.reduce((sum, s) => sum + s.deductions, 0),
+    totalPayroll: activeSalaries.reduce((sum, s) => sum + s.base_salary, 0),
+    totalAllowances: 0, // Not in schema
+    totalDeductions: 0, // Not in schema
   };
 
   if (loadingSalaries || loadingPayRuns) {
@@ -476,14 +499,14 @@ export function HrSalariesModule() {
                       <TableRow key={record.id}>
                         <TableCell className="font-medium">{getStaffName(record.user_id)}</TableCell>
                         <TableCell>{record.currency} {record.base_salary.toLocaleString()}</TableCell>
-                        <TableCell className="text-primary">+{record.allowances.toLocaleString()}</TableCell>
-                        <TableCell className="text-destructive">-{record.deductions.toLocaleString()}</TableCell>
+                        <TableCell className="text-primary">—</TableCell>
+                        <TableCell className="text-destructive">—</TableCell>
                         <TableCell className="font-semibold">
-                          {record.currency} {(record.base_salary + record.allowances - record.deductions).toLocaleString()}
+                          {record.currency} {record.base_salary.toLocaleString()}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={record.is_active ? "default" : "secondary"}>
-                            {record.is_active ? "Active" : "Inactive"}
+                          <Badge variant={isRecordActive(record) ? "default" : "secondary"}>
+                            {isRecordActive(record) ? "Active" : "Inactive"}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
@@ -570,14 +593,12 @@ export function HrSalariesModule() {
                         <div>
                           <p className="text-muted-foreground">Gross</p>
                           <p className="font-semibold">
-                            {activeSalaries.reduce((s, r) => s + r.base_salary + r.allowances, 0).toLocaleString()}
+                            {activeSalaries.reduce((s, r) => s + r.base_salary, 0).toLocaleString()}
                           </p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Deductions</p>
-                          <p className="font-semibold">
-                            {activeSalaries.reduce((s, r) => s + r.deductions, 0).toLocaleString()}
-                          </p>
+                          <p className="font-semibold">0</p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Net</p>
