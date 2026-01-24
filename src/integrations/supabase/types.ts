@@ -200,11 +200,14 @@ export type Database = {
           assignment_id: string
           attachment_urls: string[] | null
           created_at: string
+          days_late: number | null
           feedback: string | null
           graded_at: string | null
           graded_by: string | null
           id: string
+          marks_before_penalty: number | null
           marks_obtained: number | null
+          penalty_applied: number | null
           school_id: string
           status: string
           student_id: string
@@ -216,11 +219,14 @@ export type Database = {
           assignment_id: string
           attachment_urls?: string[] | null
           created_at?: string
+          days_late?: number | null
           feedback?: string | null
           graded_at?: string | null
           graded_by?: string | null
           id?: string
+          marks_before_penalty?: number | null
           marks_obtained?: number | null
+          penalty_applied?: number | null
           school_id: string
           status?: string
           student_id: string
@@ -232,11 +238,14 @@ export type Database = {
           assignment_id?: string
           attachment_urls?: string[] | null
           created_at?: string
+          days_late?: number | null
           feedback?: string | null
           graded_at?: string | null
           graded_by?: string | null
           id?: string
+          marks_before_penalty?: number | null
           marks_obtained?: number | null
+          penalty_applied?: number | null
           school_id?: string
           status?: string
           student_id?: string
@@ -270,6 +279,7 @@ export type Database = {
       }
       assignments: {
         Row: {
+          allow_late_submissions: boolean | null
           assignment_type: string
           attachment_urls: string[] | null
           class_section_id: string
@@ -278,6 +288,8 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          late_penalty_percent_per_day: number | null
+          max_late_penalty_percent: number | null
           max_marks: number
           school_id: string
           status: string
@@ -287,6 +299,7 @@ export type Database = {
           weightage: number
         }
         Insert: {
+          allow_late_submissions?: boolean | null
           assignment_type?: string
           attachment_urls?: string[] | null
           class_section_id: string
@@ -295,6 +308,8 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          late_penalty_percent_per_day?: number | null
+          max_late_penalty_percent?: number | null
           max_marks?: number
           school_id: string
           status?: string
@@ -304,6 +319,7 @@ export type Database = {
           weightage?: number
         }
         Update: {
+          allow_late_submissions?: boolean | null
           assignment_type?: string
           attachment_urls?: string[] | null
           class_section_id?: string
@@ -312,6 +328,8 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          late_penalty_percent_per_day?: number | null
+          max_late_penalty_percent?: number | null
           max_marks?: number
           school_id?: string
           status?: string
