@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { DndContext, type DragEndEvent, useDraggable, useDroppable, TouchSensor, MouseSensor, useSensor, useSensors, PointerSensor } from "@dnd-kit/core";
 import { useParams } from "react-router-dom";
-import { CalendarDays, Coffee, Download, Pencil, Printer, Trash2, Wrench } from "lucide-react";
+import { CalendarDays, Coffee, Download, Pencil, Plus, Printer, Trash2, Wrench } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
@@ -106,6 +106,7 @@ function TimetableCell({
   conflicts,
   onClear,
   onEdit,
+  onAdd,
 }: {
   id: string;
   title: string | null;
@@ -114,6 +115,7 @@ function TimetableCell({
   conflicts: ConflictInfo[];
   onClear: (() => void) | null;
   onEdit: (() => void) | null;
+  onAdd: (() => void) | null;
 }) {
   const { isOver, setNodeRef } = useDroppable({ id });
   const hasConflicts = conflicts.length > 0;
@@ -137,15 +139,30 @@ function TimetableCell({
           {meta && <p className="text-xs text-muted-foreground">{meta}</p>}
         </div>
       ) : (
-        <p className="text-xs text-muted-foreground">Drop subject</p>
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground hidden sm:block">Drop subject</p>
+          <p className="text-xs text-muted-foreground sm:hidden">Tap + to add</p>
+          {/* Add button for touch screens - always visible on mobile, hover on desktop */}
+          {onAdd && (
+            <button
+              type="button"
+              onClick={onAdd}
+              className="inline-flex items-center justify-center rounded-lg bg-primary/10 p-2 text-primary hover:bg-primary/20 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+              aria-label="Add subject"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       )}
 
-      <div className="absolute right-2 top-2 hidden items-center gap-1 group-hover:flex">
+      {/* Action buttons - visible on hover for desktop, always visible on mobile when has content */}
+      <div className={`absolute right-2 top-2 items-center gap-1 ${title ? "flex sm:hidden sm:group-hover:flex" : "hidden"}`}>
         {onEdit && title && (
           <button
             type="button"
             onClick={onEdit}
-            className="inline-flex rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            className="inline-flex rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground bg-background/80 backdrop-blur-sm"
             aria-label="Edit"
           >
             <Pencil className="h-4 w-4" />
@@ -155,7 +172,7 @@ function TimetableCell({
           <button
             type="button"
             onClick={onClear}
-            className="inline-flex rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            className="inline-flex rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground bg-background/80 backdrop-blur-sm"
             aria-label="Clear"
           >
             <Trash2 className="h-4 w-4" />
@@ -204,6 +221,10 @@ export function TimetableBuilderModule() {
 
   const [toolsOpen, setToolsOpen] = useState(false);
   const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
+
+  // State for touch-friendly "Add Subject" dialog
+  const [addSlot, setAddSlot] = useState<{ day: number; periodId: string } | null>(null);
+  const [addSubjectId, setAddSubjectId] = useState<string>("");
 
   const refreshStatic = useCallback(async () => {
     if (!schoolId) return;
@@ -627,6 +648,14 @@ export function TimetableBuilderModule() {
                                     }
                                   : null
                               }
+                              onAdd={
+                                !e && canEdit
+                                  ? () => {
+                                      setAddSlot({ day: d.id, periodId: p.id });
+                                      setAddSubjectId("");
+                                    }
+                                  : null
+                              }
                             />
                           );
                         })}
@@ -690,6 +719,66 @@ export function TimetableBuilderModule() {
               }}
             >
               Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Subject Dialog - Touch-friendly alternative to drag-drop */}
+      <Dialog open={!!addSlot} onOpenChange={(open) => !open && setAddSlot(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Subject to Slot</DialogTitle>
+            <DialogDescription>
+              Select a subject to add to {addSlot ? DAYS.find((d) => d.id === addSlot.day)?.label : ""} - {addSlot ? periods.find((p) => p.id === addSlot.periodId)?.label : ""}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2 max-h-[300px] overflow-y-auto">
+            {subjects.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                No subjects assigned to this section yet.
+              </p>
+            ) : (
+              subjects.map((s) => {
+                const teacherId = teacherBySubjectId.get(s.id);
+                const teacherLabel = teacherId ? teacherLabelByUserId.get(teacherId) ?? null : null;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setAddSubjectId(s.id)}
+                    className={`w-full rounded-xl border p-3 text-left transition-colors ${
+                      addSubjectId === s.id
+                        ? "border-primary bg-primary/10"
+                        : "border-border hover:bg-muted/50"
+                    }`}
+                  >
+                    <p className="font-medium text-sm">{s.name}</p>
+                    {teacherLabel && (
+                      <p className="text-xs text-muted-foreground mt-0.5">Teacher: {teacherLabel}</p>
+                    )}
+                  </button>
+                );
+              })
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setAddSlot(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="hero"
+              disabled={!addSubjectId}
+              onClick={async () => {
+                if (!addSlot || !addSubjectId) return;
+                await setSlot(addSlot.day, addSlot.periodId, addSubjectId);
+                setAddSlot(null);
+                setAddSubjectId("");
+              }}
+            >
+              Add Subject
             </Button>
           </DialogFooter>
         </DialogContent>
