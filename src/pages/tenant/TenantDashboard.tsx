@@ -24,6 +24,7 @@ import { VicePrincipalHome } from "@/pages/tenant/role-homes/VicePrincipalHome";
 import { SupportModule } from "@/pages/tenant/modules/SupportModule";
 import { DirectoryModule } from "@/pages/tenant/modules/DirectoryModule";
 import { TimetableBuilderModule } from "@/pages/tenant/modules/TimetableBuilderModule";
+import { MessagesModule } from "@/pages/tenant/modules/MessagesModule";
 
 const TenantDashboard = () => {
   const { schoolSlug, role: roleParam } = useParams();
@@ -459,6 +460,7 @@ const TenantDashboard = () => {
             } />
             <Route path="admin" element={<AdminConsole />} />
             <Route path="schools" element={<PlatformSchoolsModule />} />
+            <Route path="messages" element={<MessagesModule schoolId={tenant.schoolId} />} />
             <Route path="users" element={<UsersModule />} />
             <Route path="directory" element={<DirectoryModule />} />
             <Route path="crm" element={<CrmModule />} />
