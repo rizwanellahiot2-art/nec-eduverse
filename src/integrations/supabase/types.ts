@@ -2582,6 +2582,25 @@ export type Database = {
       can_manage_staff: { Args: { _school_id: string }; Returns: boolean }
       can_manage_students: { Args: { _school_id: string }; Returns: boolean }
       can_work_crm: { Args: { _school_id: string }; Returns: boolean }
+      directory_search: {
+        Args: {
+          _entity?: string
+          _limit?: number
+          _offset?: number
+          _q?: string
+          _school_id: string
+          _status?: string
+        }
+        Returns: {
+          created_at: string
+          entity: string
+          id: string
+          status: string
+          subtitle: string
+          title: string
+          total_count: number
+        }[]
+      }
       ensure_default_crm_pipeline: {
         Args: { _school_id: string }
         Returns: undefined
