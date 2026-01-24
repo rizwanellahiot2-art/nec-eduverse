@@ -409,6 +409,33 @@ export type Database = {
         }
         Relationships: []
       }
+      class_section_subjects: {
+        Row: {
+          class_section_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          school_id: string
+          subject_id: string
+        }
+        Insert: {
+          class_section_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          school_id: string
+          subject_id: string
+        }
+        Update: {
+          class_section_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          school_id?: string
+          subject_id?: string
+        }
+        Relationships: []
+      }
       class_sections: {
         Row: {
           class_id: string
@@ -2319,6 +2346,36 @@ export type Database = {
           },
         ]
       }
+      subjects: {
+        Row: {
+          code: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          school_id: string
+          updated_at: string
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          school_id: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          school_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       support_conversations: {
         Row: {
           created_at: string
@@ -2423,6 +2480,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      teacher_subject_assignments: {
+        Row: {
+          class_section_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          school_id: string
+          subject_id: string
+          teacher_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          class_section_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          school_id: string
+          subject_id: string
+          teacher_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          class_section_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          school_id?: string
+          subject_id?: string
+          teacher_user_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       timetable_entries: {
         Row: {
