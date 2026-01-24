@@ -245,9 +245,10 @@ export function TeacherGradebookModule() {
           .eq("school_id", schoolId!)
           .in("assessment_id", assessmentIds);
 
+        const MARK_KEY_DELIMITER = "::";
         const marksMap = new Map<string, Mark>();
         marksData?.forEach((m) => {
-          marksMap.set(`${m.student_id}-${m.assessment_id}`, m as Mark);
+          marksMap.set(`${m.student_id}${MARK_KEY_DELIMITER}${m.assessment_id}`, m as Mark);
         });
         setMarks(marksMap);
       }
@@ -324,8 +325,11 @@ export function TeacherGradebookModule() {
     }
   };
 
+  // Use a delimiter that won't appear in UUIDs
+  const MARK_KEY_DELIMITER = "::";
+
   const getMark = (studentId: string, assessmentId: string): number | null => {
-    const key = `${studentId}-${assessmentId}`;
+    const key = `${studentId}${MARK_KEY_DELIMITER}${assessmentId}`;
     if (editedMarks.has(key)) {
       return editedMarks.get(key) ?? null;
     }
@@ -333,11 +337,11 @@ export function TeacherGradebookModule() {
   };
 
   const getGrade = (studentId: string, assessmentId: string): string | null => {
-    return marks.get(`${studentId}-${assessmentId}`)?.computed_grade ?? null;
+    return marks.get(`${studentId}${MARK_KEY_DELIMITER}${assessmentId}`)?.computed_grade ?? null;
   };
 
   const updateMark = (studentId: string, assessmentId: string, value: string) => {
-    const key = `${studentId}-${assessmentId}`;
+    const key = `${studentId}${MARK_KEY_DELIMITER}${assessmentId}`;
     const numValue = value === "" ? null : parseFloat(value);
     setEditedMarks((prev) => new Map(prev).set(key, numValue));
   };
@@ -352,7 +356,7 @@ export function TeacherGradebookModule() {
     const updates: { school_id: string; student_id: string; assessment_id: string; marks: number | null }[] = [];
 
     editedMarks.forEach((value, key) => {
-      const [student_id, assessment_id] = key.split("-");
+      const [student_id, assessment_id] = key.split(MARK_KEY_DELIMITER);
       updates.push({
         school_id: schoolId!,
         student_id,
