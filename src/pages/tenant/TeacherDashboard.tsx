@@ -19,6 +19,7 @@ import { TeacherReportsModule } from "@/pages/tenant/teacher-modules/TeacherRepo
 import { TeacherTimetableModule } from "@/pages/tenant/teacher-modules/TeacherTimetableModule";
 import { TeacherMessagesModule } from "@/pages/tenant/teacher-modules/TeacherMessagesModule";
 import { TeacherAdminInboxModule } from "@/pages/tenant/teacher-modules/TeacherAdminInboxModule";
+import { TeacherWorkspaceMessagesModule } from "@/pages/tenant/teacher-modules/TeacherWorkspaceMessagesModule";
 import { TeacherGradebookModule } from "@/pages/tenant/teacher-modules/TeacherGradebookModule";
 import { TeacherProgressModule } from "@/pages/tenant/teacher-modules/TeacherProgressModule";
 import { TeacherLessonPlannerModule } from "@/pages/tenant/teacher-modules/TeacherLessonPlannerModule";
@@ -167,6 +168,7 @@ const TeacherDashboard = () => {
             <Route path="reports" element={<TeacherReportsModule />} />
             <Route path="timetable" element={<TeacherTimetableModule />} />
             <Route path="messages" element={<TeacherMessagesModule />} />
+            <Route path="workspace-messages" element={<TeacherWorkspaceMessagesModule />} />
             <Route path="admin-inbox" element={<TeacherAdminInboxModule />} />
             <Route path="*" element={<Navigate to={`/${tenant.slug}/teacher`} replace />} />
           </Routes>

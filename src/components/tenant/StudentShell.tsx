@@ -1,7 +1,10 @@
-import { PropsWithChildren } from "react";
+import { PropsWithChildren, useEffect, useState } from "react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
-import { BookOpen, CalendarDays, GraduationCap, Headphones, LayoutGrid, ScrollText } from "lucide-react";
+import { BookOpen, CalendarDays, GraduationCap, Headphones, LayoutGrid, ScrollText, MessageSquare, Sparkles } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { GlobalCommandPalette } from "@/components/global/GlobalCommandPalette";
+import { NotificationsBell } from "@/components/global/NotificationsBell";
 
 type Props = PropsWithChildren<{
   title: string;
@@ -10,23 +13,48 @@ type Props = PropsWithChildren<{
 }>;
 
 export function StudentShell({ title, subtitle, schoolSlug, children }: Props) {
+  const [schoolId, setSchoolId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: school } = await supabase.from("schools").select("id").eq("slug", schoolSlug).maybeSingle();
+      if (cancelled || !school?.id) return;
+      setSchoolId(school.id);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [schoolSlug]);
+
+  const basePath = `/${schoolSlug}/student`;
+
   return (
     <div className="min-h-screen bg-background">
+      <GlobalCommandPalette basePath={basePath} />
       <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-6 px-6 py-6 lg:grid-cols-[280px_1fr]">
         <aside className="sticky top-6 self-start max-h-[calc(100vh-3rem)] overflow-y-auto rounded-3xl bg-surface p-4 shadow-elevated">
           <div className="flex items-center justify-between">
             <div>
               <p className="font-display text-lg font-semibold tracking-tight">EDUVERSE</p>
-              <p className="text-xs text-muted-foreground">/{schoolSlug} • student</p>
+              <p className="text-xs text-muted-foreground">/{schoolSlug} • Student</p>
             </div>
-            <Button variant="soft" size="icon" aria-label="Student">
-              <GraduationCap className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <NotificationsBell schoolId={schoolId} />
+              <Button
+                variant="soft"
+                size="icon"
+                aria-label="Search"
+                onClick={() => window.dispatchEvent(new Event("eduverse:open-search"))}
+              >
+                <Sparkles />
+              </Button>
+            </div>
           </div>
 
           <nav className="mt-6 space-y-1">
             <NavLink
-              to={`/${schoolSlug}/student`}
+              to={basePath}
               end
               className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
               activeClassName="bg-primary text-primary-foreground shadow-sm"
@@ -35,7 +63,7 @@ export function StudentShell({ title, subtitle, schoolSlug, children }: Props) {
             </NavLink>
 
             <NavLink
-              to={`/${schoolSlug}/student/attendance`}
+              to={`${basePath}/attendance`}
               className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
               activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
@@ -43,7 +71,7 @@ export function StudentShell({ title, subtitle, schoolSlug, children }: Props) {
             </NavLink>
 
             <NavLink
-              to={`/${schoolSlug}/student/grades`}
+              to={`${basePath}/grades`}
               className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
               activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
@@ -51,7 +79,7 @@ export function StudentShell({ title, subtitle, schoolSlug, children }: Props) {
             </NavLink>
 
             <NavLink
-              to={`/${schoolSlug}/student/timetable`}
+              to={`${basePath}/timetable`}
               className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
               activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
@@ -59,7 +87,7 @@ export function StudentShell({ title, subtitle, schoolSlug, children }: Props) {
             </NavLink>
 
             <NavLink
-              to={`/${schoolSlug}/student/assignments`}
+              to={`${basePath}/assignments`}
               className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
               activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
@@ -67,21 +95,36 @@ export function StudentShell({ title, subtitle, schoolSlug, children }: Props) {
             </NavLink>
 
             <NavLink
-              to={`/${schoolSlug}/student/certificates`}
+              to={`${basePath}/certificates`}
               className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
               activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
-              <ScrollText className="h-4 w-4" /> Certificates
+              <GraduationCap className="h-4 w-4" /> Certificates
             </NavLink>
 
             <NavLink
-              to={`/${schoolSlug}/student/support`}
+              to={`${basePath}/messages`}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
+            >
+              <MessageSquare className="h-4 w-4" /> Messages
+            </NavLink>
+
+            <NavLink
+              to={`${basePath}/support`}
               className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
               activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <Headphones className="h-4 w-4" /> Support
             </NavLink>
           </nav>
+
+          <div className="mt-6 rounded-2xl bg-accent p-4">
+            <p className="text-sm font-medium text-accent-foreground">Student Portal</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              View your classes, assignments, and academic progress.
+            </p>
+          </div>
         </aside>
 
         <section className="rounded-3xl bg-surface p-6 shadow-elevated">

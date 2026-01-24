@@ -13,6 +13,7 @@
  import { HrReviewsModule } from "@/pages/tenant/hr-modules/HrReviewsModule";
  import { HrDocumentsModule } from "@/pages/tenant/hr-modules/HrDocumentsModule";
   import { HrSupportModule } from "@/pages/tenant/hr-modules/HrSupportModule";
+  import { HrMessagesModule } from "@/pages/tenant/hr-modules/HrMessagesModule";
   import { TimetableBuilderModule } from "@/pages/tenant/modules/TimetableBuilderModule";
  
  const HrDashboard = () => {
@@ -95,6 +96,7 @@
            <Route path="reviews" element={<HrReviewsModule />} />
            <Route path="documents" element={<HrDocumentsModule />} />
             <Route path="support" element={<HrSupportModule />} />
+            <Route path="messages" element={<HrMessagesModule />} />
             <Route path="timetable" element={<TimetableBuilderModule />} />
            <Route path="*" element={<Navigate to={`/${tenant.slug}/hr`} replace />} />
          </Routes>

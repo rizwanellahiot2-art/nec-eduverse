@@ -1,7 +1,7 @@
   import { PropsWithChildren, useEffect, useState } from "react";
  import { NavLink } from "@/components/NavLink";
  import { Button } from "@/components/ui/button";
-  import { Coins, FileText, CreditCard, TrendingUp, BarChart3, LayoutGrid, DollarSign, CalendarDays, LogOut, Sparkles } from "lucide-react";
+  import { Coins, FileText, CreditCard, TrendingUp, BarChart3, LayoutGrid, DollarSign, CalendarDays, LogOut, Sparkles, MessageSquare } from "lucide-react";
  import { supabase } from "@/integrations/supabase/client";
  import { GlobalCommandPalette } from "@/components/global/GlobalCommandPalette";
  import { NotificationsBell } from "@/components/global/NotificationsBell";
@@ -123,6 +123,14 @@
               activeClassName="bg-primary text-primary-foreground shadow-sm"
             >
               <BarChart3 className="h-4 w-4" /> Reports
+            </NavLink>
+
+            <NavLink
+              to={`/${schoolSlug}/accountant/messages`}
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              activeClassName="bg-primary text-primary-foreground shadow-sm"
+            >
+              <MessageSquare className="h-4 w-4" /> Messages
             </NavLink>
 
             <NavLink
