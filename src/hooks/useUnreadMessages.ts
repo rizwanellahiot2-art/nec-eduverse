@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useRealtimeTable } from "@/hooks/useRealtime";
 
 interface UnreadMessagesResult {
   unreadCount: number;
@@ -46,13 +45,30 @@ export function useUnreadMessages(schoolId: string | null): UnreadMessagesResult
     void fetchUnreadCount();
   }, [fetchUnreadCount]);
 
-  // Realtime subscription for new messages
-  useRealtimeTable({
-    channel: `unread-messages-${schoolId}`,
-    table: "admin_message_recipients",
-    enabled: !!schoolId && !!userId,
-    onChange: () => void fetchUnreadCount(),
-  });
+  // Realtime subscription for message recipient changes (new messages and read status updates)
+  useEffect(() => {
+    if (!schoolId || !userId) return;
+
+    const channel = supabase
+      .channel(`unread-messages-rt-${schoolId}-${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "admin_message_recipients",
+          filter: `recipient_user_id=eq.${userId}`,
+        },
+        () => {
+          void fetchUnreadCount();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [schoolId, userId, fetchUnreadCount]);
 
   return { unreadCount, loading };
 }
