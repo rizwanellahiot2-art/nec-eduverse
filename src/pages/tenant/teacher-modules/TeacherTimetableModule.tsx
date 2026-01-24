@@ -113,8 +113,11 @@ export function TeacherTimetableModule() {
 
     setCurrentUserId(userId);
 
-    // Fetch periods, directory, and all school entries for conflict detection
-    const [{ data: p }, { data: dir }, { data: allEntries }] = await Promise.all([
+    // Fetch periods, directory, and timetable entries.
+    // IMPORTANT: we intentionally fetch base rows only (no embedded joins) because
+    // some roles may not have SELECT access on embedded tables, which can cause
+    // the entire query to fail and show an empty timetable.
+    const [{ data: p, error: pErr }, { data: dir, error: dirErr }, { data: allEntries, error: entriesErr }] = await Promise.all([
       supabase
         .from("timetable_periods")
         .select("id,label,sort_order,start_time,end_time,is_break")
@@ -126,6 +129,10 @@ export function TeacherTimetableModule() {
         .select("id,subject_name,day_of_week,period_id,room,teacher_user_id,class_section_id")
         .eq("school_id", tenant.schoolId),
     ]);
+
+    if (pErr) console.error("TeacherTimetableModule: Error fetching periods", pErr);
+    if (dirErr) console.error("TeacherTimetableModule: Error fetching directory", dirErr);
+    if (entriesErr) console.error("TeacherTimetableModule: Error fetching timetable_entries", entriesErr);
 
     setPeriods((p ?? []) as Period[]);
     setDirectory((dir ?? []) as any);
@@ -145,50 +152,54 @@ export function TeacherTimetableModule() {
       .eq("teacher_user_id", userId);
     const sectionIds = (assignments ?? []).map((a) => a.class_section_id).filter(Boolean) as string[];
 
-    // Get section labels
-    if (sectionIds.length > 0) {
-      const { data: secs } = await supabase
+    // Build section labels map (best-effort; don't block timetable rendering)
+    const entrySectionIds = new Set<string>();
+    for (const e of allEntries ?? []) {
+      if (e.class_section_id) entrySectionIds.add(e.class_section_id);
+    }
+
+    const sectionIdsToLabel = Array.from(new Set([...sectionIds, ...Array.from(entrySectionIds)]));
+    const sectionLabelById = new Map<string, string>();
+
+    if (sectionIdsToLabel.length > 0) {
+      const { data: secs, error: secsErr } = await supabase
         .from("class_sections")
         .select("id, name, academic_classes(name)")
-        .in("id", sectionIds);
-      setMySections((secs ?? []).map((s: any) => ({
-        id: s.id,
-        label: `${s.academic_classes?.name || ""} • ${s.name}`.trim(),
-      })));
+        .in("id", sectionIdsToLabel);
+
+      if (secsErr) {
+        console.error("TeacherTimetableModule: Error fetching class_sections (labels)", secsErr);
+      } else {
+        for (const s of secs ?? []) {
+          sectionLabelById.set(s.id, `${(s as any).academic_classes?.name || ""} • ${(s as any).name}`.trim());
+        }
+      }
+    }
+
+    // Assigned sections list (best-effort)
+    if (sectionIds.length > 0) {
+      setMySections(
+        sectionIds
+          .map((id) => ({ id, label: sectionLabelById.get(id) ?? id }))
+          .filter((s) => !!s.label),
+      );
     } else {
       setMySections([]);
     }
 
-    // Fetch ALL timetable entries with section info
-    const { data: entriesWithSections, error: entriesError } = await supabase
-      .from("timetable_entries")
-      .select("id,subject_name,day_of_week,period_id,room,teacher_user_id,class_section_id, class_sections(name, academic_classes(name))")
-      .eq("school_id", tenant.schoolId)
-      .order("day_of_week")
-      .order("period_id");
-
-    if (entriesError) {
-      console.error("TeacherTimetableModule: Error fetching entries", entriesError);
-    }
-
-    const enrich = (rows: any[] | null | undefined) =>
-      (rows ?? []).map((e: any) => {
-        const sectionLabel = e.class_sections
-          ? `${e.class_sections.academic_classes?.name || ""} • ${e.class_sections.name}`.trim()
-          : null;
-        return {
-          id: e.id,
-          subject_name: e.subject_name,
-          day_of_week: e.day_of_week,
-          period_id: e.period_id,
-          room: e.room,
-          teacher_user_id: e.teacher_user_id,
-          section_label: sectionLabel,
-          class_section_id: e.class_section_id,
-        } satisfies TimetableEntry;
-      });
-
-    const enrichedAll = enrich(entriesWithSections);
+    // Enrich entries for grid rendering
+    const enrichedAll: TimetableEntry[] = (allEntries ?? []).map((e: any) => {
+      return {
+        id: e.id,
+        subject_name: e.subject_name,
+        day_of_week: e.day_of_week,
+        period_id: e.period_id,
+        room: e.room,
+        teacher_user_id: e.teacher_user_id,
+        class_section_id: e.class_section_id,
+        section_label: e.class_section_id ? sectionLabelById.get(e.class_section_id) ?? null : null,
+      } satisfies TimetableEntry;
+    });
 
     // Filter: "My periods" = entries where I am the teacher
     const mineEnriched = enrichedAll.filter((e) => e.teacher_user_id === userId);
