@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, CreditCard, Trash2, Receipt } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
+import { useRealtimeTable } from "@/hooks/useRealtime";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -87,6 +88,32 @@ export function AccountantPaymentsModule() {
   const [methodType, setMethodType] = useState("cash");
   const [methodInstructions, setMethodInstructions] = useState("");
 
+  // Invalidate all finance queries on realtime changes
+  const invalidateFinanceQueries = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["finance_payments"] });
+    queryClient.invalidateQueries({ queryKey: ["finance_invoices"] });
+    queryClient.invalidateQueries({ queryKey: ["finance_payments_home"] });
+    queryClient.invalidateQueries({ queryKey: ["finance_invoices_home"] });
+    queryClient.invalidateQueries({ queryKey: ["finance_expenses_home"] });
+  }, [queryClient]);
+
+  // Real-time subscriptions
+  useRealtimeTable({
+    channel: `payments-${schoolId}`,
+    table: "finance_payments",
+    filter: schoolId ? `school_id=eq.${schoolId}` : undefined,
+    enabled: !!schoolId,
+    onChange: invalidateFinanceQueries,
+  });
+
+  useRealtimeTable({
+    channel: `invoices-${schoolId}`,
+    table: "finance_invoices",
+    filter: schoolId ? `school_id=eq.${schoolId}` : undefined,
+    enabled: !!schoolId,
+    onChange: invalidateFinanceQueries,
+  });
+
   const { data: payments = [], isLoading } = useQuery({
     queryKey: ["finance_payments", schoolId],
     queryFn: async () => {
@@ -101,7 +128,8 @@ export function AccountantPaymentsModule() {
     enabled: !!schoolId,
   });
 
-  const { data: invoices = [] } = useQuery({
+  // Fetch ALL invoices, not just unpaid - we filter later in the UI
+  const { data: invoices = [], isLoading: invoicesLoading } = useQuery({
     queryKey: ["finance_invoices", schoolId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -110,7 +138,7 @@ export function AccountantPaymentsModule() {
         .eq("school_id", schoolId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as Invoice[];
+      return (data || []) as Invoice[];
     },
     enabled: !!schoolId,
   });
@@ -198,8 +226,7 @@ export function AccountantPaymentsModule() {
     toast.success("Payment recorded");
     setDialogOpen(false);
     resetForm();
-    queryClient.invalidateQueries({ queryKey: ["finance_payments", schoolId] });
-    queryClient.invalidateQueries({ queryKey: ["finance_invoices", schoolId] });
+    invalidateFinanceQueries();
   };
 
   const handleAddPaymentMethod = async () => {
@@ -237,7 +264,7 @@ export function AccountantPaymentsModule() {
       return;
     }
     toast.success("Payment deleted");
-    queryClient.invalidateQueries({ queryKey: ["finance_payments", schoolId] });
+    invalidateFinanceQueries();
   };
 
   const handleDeleteMethod = async (id: string) => {
@@ -277,7 +304,7 @@ export function AccountantPaymentsModule() {
       .reduce((sum, p) => sum + p.amount, 0),
   };
 
-  if (isLoading) {
+  if (isLoading || invoicesLoading) {
     return <p className="text-sm text-muted-foreground">Loading payments...</p>;
   }
 
