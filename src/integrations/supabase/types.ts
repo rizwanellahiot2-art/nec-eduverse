@@ -108,6 +108,57 @@ export type Database = {
           },
         ]
       }
+      admin_message_pins: {
+        Row: {
+          created_at: string
+          id: string
+          message_id: string
+          school_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message_id: string
+          school_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message_id?: string
+          school_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      admin_message_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          message_id: string
+          school_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          id?: string
+          message_id: string
+          school_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          message_id?: string
+          school_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       admin_message_recipients: {
         Row: {
           created_at: string
@@ -3260,6 +3311,10 @@ export type Database = {
           grade_label: string
           grade_points: number
         }[]
+      }
+      can_access_admin_message: {
+        Args: { _message_id: string }
+        Returns: boolean
       }
       can_manage_finance: { Args: { _school_id: string }; Returns: boolean }
       can_manage_hr: { Args: { _school_id: string }; Returns: boolean }
