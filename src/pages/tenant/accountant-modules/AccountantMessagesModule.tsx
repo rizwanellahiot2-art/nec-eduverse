@@ -1,31 +1,14 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { useTenant } from "@/hooks/useTenant";
 import { MessagesModule } from "@/pages/tenant/modules/MessagesModule";
 
 export function AccountantMessagesModule() {
   const { schoolSlug } = useParams();
-  const [schoolId, setSchoolId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const tenant = useTenant(schoolSlug);
+  const schoolId = useMemo(() => (tenant.status === "ready" ? tenant.schoolId : null), [tenant.status, tenant.schoolId]);
 
-  useEffect(() => {
-    if (!schoolSlug) return;
-
-    const fetchSchool = async () => {
-      const { data: school } = await supabase
-        .from("schools")
-        .select("id")
-        .eq("slug", schoolSlug)
-        .maybeSingle();
-
-      setSchoolId(school?.id ?? null);
-      setLoading(false);
-    };
-
-    fetchSchool();
-  }, [schoolSlug]);
-
-  if (loading) {
+  if (tenant.status === "loading") {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -33,7 +16,7 @@ export function AccountantMessagesModule() {
     );
   }
 
-  if (!schoolId) {
+  if (tenant.status === "error" || !schoolId) {
     return <p className="text-sm text-muted-foreground">School not found.</p>;
   }
 

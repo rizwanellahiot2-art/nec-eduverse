@@ -19,6 +19,7 @@ import {
   CornerDownRight,
   AlertCircle,
   ShieldAlert,
+  Pin,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -70,6 +71,7 @@ import { MessageSearchDialog } from "@/components/messages/MessageSearchDialog";
 import { ReadReceiptIndicator } from "@/components/messages/ReadReceiptIndicator";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { PushNotificationBanner } from "@/components/messages/PushNotificationBanner";
+import { MessageReactions, PinnedMessagesCount } from "@/components/messages/MessageReactions";
 
 interface Conversation {
   id: string;
@@ -930,88 +932,98 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                               <Reply className="h-4 w-4 text-muted-foreground hover:text-foreground" />
                             </button>
                           )}
-                          <div
-                            className={cn(
-                              "max-w-[75%] rounded-2xl px-4 py-2.5",
-                              msg.is_mine
-                                ? "bg-primary text-primary-foreground rounded-br-md"
-                                : "bg-muted rounded-bl-md"
-                            )}
-                          >
-                            {/* Reply indicator */}
-                            {parentMessage && (
-                              <div
-                                className={cn(
-                                  "mb-2 flex items-center gap-1.5 rounded-lg border-l-2 px-2 py-1 text-xs",
-                                  msg.is_mine
-                                    ? "border-primary-foreground/50 bg-primary-foreground/10 text-primary-foreground/80"
-                                    : "border-muted-foreground/30 bg-background/50 text-muted-foreground"
-                                )}
-                              >
-                                <CornerDownRight className="h-3 w-3 shrink-0" />
-                                <span className="truncate">
-                                  {parentMessage.content.substring(0, 40)}
-                                  {parentMessage.content.length > 40 ? "..." : ""}
-                                </span>
-                              </div>
-                            )}
-                            <p className="whitespace-pre-wrap break-words text-sm">{msg.content}</p>
-                            
-                            {/* Attachments */}
-                            {msg.attachment_urls && msg.attachment_urls.length > 0 && (
-                              <div className="mt-2 space-y-1">
-                                {msg.attachment_urls.map((url, i) => {
-                                  const fileName = url.split("/").pop() || "File";
-                                  return (
-                                    <button
-                                      key={i}
-                                      onClick={() => downloadAttachment(url)}
-                                      className={cn(
-                                        "flex items-center gap-2 rounded-lg p-2 text-xs transition-colors",
-                                        msg.is_mine
-                                          ? "bg-primary-foreground/10 hover:bg-primary-foreground/20"
-                                          : "bg-background hover:bg-accent"
-                                      )}
-                                    >
-                                      <FileText className="h-4 w-4 shrink-0" />
-                                      <span className="truncate">{fileName.substring(fileName.indexOf("-") + 1)}</span>
-                                      <Download className="h-3 w-3 shrink-0" />
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            )}
-                            
+                          <div className="flex flex-col gap-1">
                             <div
                               className={cn(
-                                "mt-1 flex items-center gap-1",
-                                msg.is_mine ? "justify-end" : "justify-start"
+                                "max-w-[75%] rounded-2xl px-4 py-2.5",
+                                msg.is_mine
+                                  ? "bg-primary text-primary-foreground rounded-br-md"
+                                  : "bg-muted rounded-bl-md"
                               )}
                             >
-                              <span className={cn(
-                                "text-[10px]",
-                                msg.is_mine ? "text-primary-foreground/70" : "text-muted-foreground"
-                              )}>
-                                {formatMessageTime(msg.created_at)}
-                              </span>
-                              {msg.is_mine && (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    {msg.is_read ? (
-                                      <CheckCheck className="h-3 w-3 text-primary-foreground/70 cursor-help" />
-                                    ) : (
-                                      <Check className="h-3 w-3 text-primary-foreground/50 cursor-help" />
-                                    )}
-                                  </TooltipTrigger>
-                                  <TooltipContent side="top" className="text-xs">
-                                    {msg.is_read
-                                      ? `Read ${messageReadStatus[msg.id]?.read_at ? format(parseISO(messageReadStatus[msg.id].read_at!), "MMM d, h:mm a") : ""}`
-                                      : "Delivered"
-                                    }
-                                  </TooltipContent>
-                                </Tooltip>
+                              {/* Reply indicator */}
+                              {parentMessage && (
+                                <div
+                                  className={cn(
+                                    "mb-2 flex items-center gap-1.5 rounded-lg border-l-2 px-2 py-1 text-xs",
+                                    msg.is_mine
+                                      ? "border-primary-foreground/50 bg-primary-foreground/10 text-primary-foreground/80"
+                                      : "border-muted-foreground/30 bg-background/50 text-muted-foreground"
+                                  )}
+                                >
+                                  <CornerDownRight className="h-3 w-3 shrink-0" />
+                                  <span className="truncate">
+                                    {parentMessage.content.substring(0, 40)}
+                                    {parentMessage.content.length > 40 ? "..." : ""}
+                                  </span>
+                                </div>
                               )}
+                              <p className="whitespace-pre-wrap break-words text-sm">{msg.content}</p>
+                              
+                              {/* Attachments */}
+                              {msg.attachment_urls && msg.attachment_urls.length > 0 && (
+                                <div className="mt-2 space-y-1">
+                                  {msg.attachment_urls.map((url, i) => {
+                                    const fileName = url.split("/").pop() || "File";
+                                    return (
+                                      <button
+                                        key={i}
+                                        onClick={() => downloadAttachment(url)}
+                                        className={cn(
+                                          "flex items-center gap-2 rounded-lg p-2 text-xs transition-colors",
+                                          msg.is_mine
+                                            ? "bg-primary-foreground/10 hover:bg-primary-foreground/20"
+                                            : "bg-background hover:bg-accent"
+                                        )}
+                                      >
+                                        <FileText className="h-4 w-4 shrink-0" />
+                                        <span className="truncate">{fileName.substring(fileName.indexOf("-") + 1)}</span>
+                                        <Download className="h-3 w-3 shrink-0" />
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                              
+                              <div
+                                className={cn(
+                                  "mt-1 flex items-center gap-1",
+                                  msg.is_mine ? "justify-end" : "justify-start"
+                                )}
+                              >
+                                <span className={cn(
+                                  "text-[10px]",
+                                  msg.is_mine ? "text-primary-foreground/70" : "text-muted-foreground"
+                                )}>
+                                  {formatMessageTime(msg.created_at)}
+                                </span>
+                                {msg.is_mine && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      {msg.is_read ? (
+                                        <CheckCheck className="h-3 w-3 text-primary-foreground/70 cursor-help" />
+                                      ) : (
+                                        <Check className="h-3 w-3 text-primary-foreground/50 cursor-help" />
+                                      )}
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="text-xs">
+                                      {msg.is_read
+                                        ? `Read ${messageReadStatus[msg.id]?.read_at ? format(parseISO(messageReadStatus[msg.id].read_at!), "MMM d, h:mm a") : ""}`
+                                        : "Delivered"
+                                      }
+                                    </TooltipContent>
+                                  </Tooltip>
+                                )}
+                              </div>
                             </div>
+                            
+                            {/* Reactions */}
+                            <MessageReactions
+                              messageId={msg.id}
+                              schoolId={schoolId}
+                              currentUserId={currentUserId || ""}
+                              isMine={msg.is_mine}
+                            />
                           </div>
                           {/* Reply button for own messages */}
                           {msg.is_mine && (
