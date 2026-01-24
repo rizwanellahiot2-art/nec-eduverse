@@ -68,6 +68,7 @@ import { SalaryComparisonChart } from "@/components/accountant/SalaryComparisonC
 import { SalaryBudgetForecast } from "@/components/accountant/SalaryBudgetForecast";
 import { StudentFeeTracker } from "@/components/accountant/StudentFeeTracker";
 import { FinancialReportGenerator } from "@/components/accountant/FinancialReportGenerator";
+import { FeeDefaultersReport } from "@/components/accountant/FeeDefaultersReport";
 
 const COLORS = ["hsl(var(--primary))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
 
@@ -543,6 +544,9 @@ export function AccountantHomeModule() {
           </TabsTrigger>
           <TabsTrigger value="fees" className="gap-2">
             <GraduationCap className="h-4 w-4" /> Student Fees
+          </TabsTrigger>
+          <TabsTrigger value="defaulters" className="gap-2">
+            <AlertTriangle className="h-4 w-4" /> Defaulters
           </TabsTrigger>
           <TabsTrigger value="reports" className="gap-2">
             <Download className="h-4 w-4" /> Reports
@@ -1120,6 +1124,10 @@ export function AccountantHomeModule() {
 
         <TabsContent value="fees">
           {schoolId && <StudentFeeTracker schoolId={schoolId} />}
+        </TabsContent>
+
+        <TabsContent value="defaulters">
+          {schoolId && <FeeDefaultersReport schoolId={schoolId} />}
         </TabsContent>
 
         <TabsContent value="reports">
