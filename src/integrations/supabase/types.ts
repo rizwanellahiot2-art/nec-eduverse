@@ -3265,6 +3265,10 @@ export type Database = {
       can_manage_hr: { Args: { _school_id: string }; Returns: boolean }
       can_manage_staff: { Args: { _school_id: string }; Returns: boolean }
       can_manage_students: { Args: { _school_id: string }; Returns: boolean }
+      can_message_user: {
+        Args: { _recipient_id: string; _school_id: string; _sender_id: string }
+        Returns: boolean
+      }
       can_work_crm: { Args: { _school_id: string }; Returns: boolean }
       directory_search: {
         Args: {
@@ -3347,6 +3351,23 @@ export type Database = {
       }
       my_children: { Args: { _school_id: string }; Returns: string[] }
       my_student_id: { Args: { _school_id: string }; Returns: string }
+      search_messages: {
+        Args: {
+          _limit?: number
+          _query: string
+          _school_id: string
+          _user_id: string
+        }
+        Returns: {
+          content: string
+          created_at: string
+          id: string
+          is_sent: boolean
+          relevance: number
+          sender_user_id: string
+          subject: string
+        }[]
+      }
     }
     Enums: {
       app_role:
