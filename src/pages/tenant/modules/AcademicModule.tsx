@@ -71,6 +71,7 @@ export function AcademicModule() {
 
   const [studentFirst, setStudentFirst] = useState("");
   const [studentLast, setStudentLast] = useState("");
+  const [studentParentName, setStudentParentName] = useState("");
   const [selectedSectionId, setSelectedSectionId] = useState<string>("");
 
   const [linkStudentId, setLinkStudentId] = useState<string>("");
@@ -172,6 +173,7 @@ export function AcademicModule() {
   const createStudentAndEnroll = async () => {
     if (!schoolId) return;
     if (!studentFirst.trim()) return toast.error("First name required");
+    if (!studentParentName.trim()) return toast.error("Parent name required for identification");
     if (!selectedSectionId) return toast.error("Pick a section");
 
     const { data: student, error } = await supabase
@@ -180,6 +182,7 @@ export function AcademicModule() {
         school_id: schoolId, 
         first_name: studentFirst.trim(), 
         last_name: studentLast.trim() || null,
+        parent_name: studentParentName.trim(),
         status: "enrolled"
       })
       .select("id")
@@ -193,6 +196,7 @@ export function AcademicModule() {
 
     setStudentFirst("");
     setStudentLast("");
+    setStudentParentName("");
     toast.success("Student created + enrolled");
     await refresh();
   };
@@ -403,7 +407,7 @@ export function AcademicModule() {
             </CardHeader>
             <CardContent>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-                <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-4">
+                <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-5">
                   <div className="space-y-1.5">
                     <Label className="text-xs">First Name *</Label>
                     <Input value={studentFirst} onChange={(e) => setStudentFirst(e.target.value)} placeholder="First name" />
@@ -411,6 +415,10 @@ export function AcademicModule() {
                   <div className="space-y-1.5">
                     <Label className="text-xs">Last Name</Label>
                     <Input value={studentLast} onChange={(e) => setStudentLast(e.target.value)} placeholder="Last name" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Parent Name *</Label>
+                    <Input value={studentParentName} onChange={(e) => setStudentParentName(e.target.value)} placeholder="Parent name" />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Enroll in Section *</Label>

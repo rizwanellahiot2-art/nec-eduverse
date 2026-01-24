@@ -24,7 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DashboardAlertsPanel, AlertsSummaryBadge } from "@/components/dashboard/DashboardAlertsPanel";
 import { AlertSettingsDialog } from "@/components/dashboard/AlertSettingsDialog";
 import { PrincipalTeachersTab } from "@/components/principal/PrincipalTeachersTab";
-
+import { PrincipalStudentsTab } from "@/components/principal/PrincipalStudentsTab";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -209,9 +209,10 @@ export function PrincipalHome() {
 
   return (
     <Tabs defaultValue="overview" className="space-y-6">
-      <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:grid-cols-none lg:inline-flex">
+      <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-none lg:inline-flex">
         <TabsTrigger value="overview">Overview</TabsTrigger>
         <TabsTrigger value="teachers">Teachers</TabsTrigger>
+        <TabsTrigger value="students">Students</TabsTrigger>
       </TabsList>
 
       <TabsContent value="overview" className="space-y-6">
@@ -575,6 +576,11 @@ export function PrincipalHome() {
       {/* Teachers Tab */}
       <TabsContent value="teachers">
         {schoolId && <PrincipalTeachersTab schoolId={schoolId} />}
+      </TabsContent>
+
+      {/* Students Tab */}
+      <TabsContent value="students">
+        {schoolId && <PrincipalStudentsTab schoolId={schoolId} />}
       </TabsContent>
     </Tabs>
   );
