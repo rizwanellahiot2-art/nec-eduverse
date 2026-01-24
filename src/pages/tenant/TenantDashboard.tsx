@@ -20,6 +20,7 @@ import { FinanceModule } from "@/pages/tenant/modules/FinanceModule";
 import { PrincipalHome } from "@/pages/tenant/role-homes/PrincipalHome";
 import { SupportModule } from "@/pages/tenant/modules/SupportModule";
 import { DirectoryModule } from "@/pages/tenant/modules/DirectoryModule";
+import { TimetableBuilderModule } from "@/pages/tenant/modules/TimetableBuilderModule";
 
 const TenantDashboard = () => {
   const { schoolSlug, role: roleParam } = useParams();
@@ -210,6 +211,7 @@ const TenantDashboard = () => {
             <Route path="directory" element={<DirectoryModule />} />
             <Route path="crm" element={<CrmModule />} />
             <Route path="academic" element={<AcademicModule />} />
+            <Route path="timetable" element={<TimetableBuilderModule />} />
             <Route path="attendance" element={<AttendanceModule />} />
             <Route path="finance" element={<FinanceModule />} />
             <Route path="reports" element={<AttendanceReportsModule />} />

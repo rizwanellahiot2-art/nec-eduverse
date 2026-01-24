@@ -4,17 +4,23 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 
 type Enrollment = { class_section_id: string };
-type Period = { id: string; label: string; sort_order: number };
-type Entry = { id: string; weekday: number; period_id: string; subject: string; room: string | null };
+type Period = { id: string; label: string; sort_order: number; start_time: string | null; end_time: string | null };
+type Entry = {
+  id: string;
+  day_of_week: number;
+  period_id: string;
+  subject_name: string;
+  room: string | null;
+};
 
-const weekdayLabel: Record<number, string> = {
+const dayLabel: Record<number, string> = {
+  0: "Sun",
   1: "Mon",
   2: "Tue",
   3: "Wed",
   4: "Thu",
   5: "Fri",
   6: "Sat",
-  7: "Sun",
 };
 
 export function StudentTimetableModule({ myStudent, schoolId }: { myStudent: any; schoolId: string }) {
@@ -35,14 +41,18 @@ export function StudentTimetableModule({ myStudent, schoolId }: { myStudent: any
     setSectionIds(secIds);
 
     const [{ data: p }, { data: t }] = await Promise.all([
-      supabase.from("timetable_periods").select("id,label,sort_order").eq("school_id", schoolId).order("sort_order", { ascending: true }),
+      supabase
+        .from("timetable_periods")
+        .select("id,label,sort_order,start_time,end_time")
+        .eq("school_id", schoolId)
+        .order("sort_order", { ascending: true }),
       secIds.length
         ? supabase
             .from("timetable_entries")
-            .select("id,weekday,period_id,subject,room")
+            .select("id,day_of_week,period_id,subject_name,room")
             .eq("school_id", schoolId)
             .in("class_section_id", secIds)
-            .order("weekday", { ascending: true })
+            .order("day_of_week", { ascending: true })
         : Promise.resolve({ data: [] as any[] }),
     ]);
     setPeriods((p ?? []) as Period[]);
@@ -56,7 +66,10 @@ export function StudentTimetableModule({ myStudent, schoolId }: { myStudent: any
 
   const periodLabelById = useMemo(() => {
     const m = new Map<string, string>();
-    for (const p of periods) m.set(p.id, p.label);
+    for (const p of periods) {
+      const time = p.start_time && p.end_time ? ` (${String(p.start_time).slice(0, 5)}–${String(p.end_time).slice(0, 5)})` : "";
+      m.set(p.id, `${p.label}${time}`);
+    }
     return m;
   }, [periods]);
 
@@ -81,9 +94,9 @@ export function StudentTimetableModule({ myStudent, schoolId }: { myStudent: any
         <TableBody>
           {entries.map((e) => (
             <TableRow key={e.id}>
-              <TableCell className="font-medium">{weekdayLabel[e.weekday] ?? String(e.weekday)}</TableCell>
+                <TableCell className="font-medium">{dayLabel[e.day_of_week] ?? String(e.day_of_week)}</TableCell>
               <TableCell className="text-muted-foreground">{periodLabelById.get(e.period_id) ?? e.period_id}</TableCell>
-              <TableCell className="text-muted-foreground">{e.subject}</TableCell>
+                <TableCell className="text-muted-foreground">{e.subject_name}</TableCell>
               <TableCell className="text-muted-foreground">{e.room ?? "—"}</TableCell>
             </TableRow>
           ))}
