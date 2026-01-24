@@ -21,9 +21,10 @@ interface User {
 interface SendMessageDialogProps {
   schoolId: string;
   trigger?: React.ReactNode;
+  onMessageSent?: () => void;
 }
 
-export function SendMessageDialog({ schoolId, trigger }: SendMessageDialogProps) {
+export function SendMessageDialog({ schoolId, trigger, onMessageSent }: SendMessageDialogProps) {
   const [open, setOpen] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
@@ -172,21 +173,31 @@ export function SendMessageDialog({ schoolId, trigger }: SendMessageDialogProps)
         return;
       }
 
-      // Create admin messages for each recipient
-      const messages = selectedUsers.map((user) => ({
-        school_id: schoolId,
-        sender_user_id: senderId,
-        subject: subject.trim() || "Message from Principal",
-        content: content.trim(),
-        priority: "normal",
-        status: "pending",
+      // Create a single admin message
+      const { data: messageData, error: messageError } = await supabase
+        .from("admin_messages")
+        .insert({
+          school_id: schoolId,
+          sender_user_id: senderId,
+          subject: subject.trim() || "Message from Principal",
+          content: content.trim(),
+          priority: "normal",
+          status: "sent",
+        })
+        .select("id")
+        .single();
+
+      if (messageError) {
+        throw messageError;
+      }
+
+      // Create recipient records for tracking
+      const recipientRecords = selectedUsers.map((user) => ({
+        message_id: messageData.id,
+        recipient_user_id: user.user_id,
       }));
 
-      const { error } = await supabase.from("admin_messages").insert(messages);
-
-      if (error) {
-        throw error;
-      }
+      await supabase.from("admin_message_recipients").insert(recipientRecords);
 
       // Also create notifications for each recipient
       const notifications = selectedUsers.map((user) => ({
@@ -203,6 +214,8 @@ export function SendMessageDialog({ schoolId, trigger }: SendMessageDialogProps)
         title: "Message sent successfully",
         description: `Sent to ${selectedUsers.length} recipient(s)`,
       });
+
+      onMessageSent?.();
 
       setOpen(false);
     } catch (error: any) {

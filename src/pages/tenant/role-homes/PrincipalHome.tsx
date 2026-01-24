@@ -26,6 +26,7 @@ import { DashboardAlertsPanel, AlertsSummaryBadge } from "@/components/dashboard
 import { AlertSettingsDialog } from "@/components/dashboard/AlertSettingsDialog";
 import { PrincipalTeachersTab } from "@/components/principal/PrincipalTeachersTab";
 import { PrincipalStudentsTab } from "@/components/principal/PrincipalStudentsTab";
+import { PrincipalMessagesTab } from "@/components/principal/PrincipalMessagesTab";
 import { SendMessageDialog } from "@/components/principal/SendMessageDialog";
 import {
   ResponsiveContainer,
@@ -214,6 +215,9 @@ export function PrincipalHome() {
       <TabsList className="flex w-full gap-1 p-1 sm:gap-2">
         <TabsTrigger value="overview" className="flex-1 px-2 py-2 text-xs sm:px-4 sm:text-sm">
           Overview
+        </TabsTrigger>
+        <TabsTrigger value="messages" className="flex-1 px-2 py-2 text-xs sm:px-4 sm:text-sm">
+          Messages
         </TabsTrigger>
         <TabsTrigger value="teachers" className="flex-1 px-2 py-2 text-xs sm:px-4 sm:text-sm">
           Teachers
@@ -591,6 +595,11 @@ export function PrincipalHome() {
         <span className="hidden sm:inline">Refresh Dashboard</span>
         <span className="sm:hidden">Refresh</span>
       </Button>
+      </TabsContent>
+
+      {/* Messages Tab */}
+      <TabsContent value="messages">
+        {schoolId && <PrincipalMessagesTab schoolId={schoolId} />}
       </TabsContent>
 
       {/* Teachers Tab */}
