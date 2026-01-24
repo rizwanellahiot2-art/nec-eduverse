@@ -1,9 +1,10 @@
 import { PropsWithChildren, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { BarChart3, CalendarDays, Coins, GraduationCap, Headphones, KanbanSquare, LayoutGrid, Menu, MessageSquare, Settings, ShieldCheck, Sparkles, Users, X } from "lucide-react";
+import { BarChart3, CalendarDays, Coins, GraduationCap, Headphones, KanbanSquare, LayoutGrid, LogOut, Menu, MessageSquare, Settings, ShieldCheck, Sparkles, Users } from "lucide-react";
 import type { EduverseRole } from "@/lib/eduverse-roles";
 import { supabase } from "@/integrations/supabase/client";
 import { GlobalCommandPalette } from "@/components/global/GlobalCommandPalette";
@@ -19,9 +20,15 @@ type Props = PropsWithChildren<{
 }>;
 
 export function TenantShell({ title, subtitle, role, schoolSlug, children }: Props) {
+  const navigate = useNavigate();
   const [schoolId, setSchoolId] = useState<string | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const isMobile = useIsMobile();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate(`/${schoolSlug}/auth`);
+  };
 
   // Apply per-school branding to global CSS vars (white-labeling hook point)
   useEffect(() => {
@@ -122,6 +129,17 @@ export function TenantShell({ title, subtitle, role, schoolSlug, children }: Pro
         <p className="mt-1 text-xs text-muted-foreground">
           Modules will light up as we add CRM, academics, finance, HR, comms, and BI.
         </p>
+      </div>
+
+      <div className="mt-6">
+        <Button
+          variant="ghost"
+          className="w-full justify-start gap-2 text-muted-foreground hover:text-destructive"
+          onClick={handleLogout}
+        >
+          <LogOut className="h-4 w-4" />
+          Sign Out
+        </Button>
       </div>
     </>
   );

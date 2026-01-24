@@ -1,4 +1,5 @@
 import { PropsWithChildren, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +11,7 @@ import {
   FileText,
   GraduationCap,
   LayoutGrid,
+  LogOut,
   Menu,
   MessageSquare,
   NotebookPen,
@@ -35,12 +37,18 @@ type Props = PropsWithChildren<{
 }>;
 
 export function TeacherShell({ title, subtitle, schoolSlug, children }: Props) {
+  const navigate = useNavigate();
   const [schoolId, setSchoolId] = useState<string | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { user } = useSession();
   const badges = useTeacherBadges(schoolId, user?.id ?? null);
   const { unreadCount: unreadAdminMessages } = useUnreadMessages(schoolId);
   const isMobile = useIsMobile();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate(`/${schoolSlug}/auth`);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -138,6 +146,17 @@ export function TeacherShell({ title, subtitle, schoolSlug, children }: Props) {
         <p className="mt-1 text-xs text-muted-foreground">
           Manage your classes, students, and daily tasks.
         </p>
+      </div>
+
+      <div className="mt-6">
+        <Button
+          variant="ghost"
+          className="w-full justify-start gap-2 text-muted-foreground hover:text-destructive"
+          onClick={handleLogout}
+        >
+          <LogOut className="h-4 w-4" />
+          Sign Out
+        </Button>
       </div>
     </>
   );
