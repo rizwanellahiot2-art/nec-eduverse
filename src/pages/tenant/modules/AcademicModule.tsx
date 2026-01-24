@@ -27,8 +27,9 @@ import { GradeThresholdsCard } from "@/pages/tenant/modules/components/GradeThre
 
 type ClassRow = { id: string; name: string; grade_level: number | null };
 type SectionRow = { id: string; name: string; class_id: string; room: string | null };
-type StudentRow = { id: string; first_name: string; last_name: string | null; status: string; profile_id: string | null };
+type StudentRow = { id: string; first_name: string; last_name: string | null; status: string; profile_id: string | null; section_label?: string };
 type DirectoryProfileRow = { user_id: string; profile_id: string | null; email: string; display_name: string | null };
+type EnrollmentRow = { student_id: string; class_section_id: string };
 
 export function AcademicModule() {
   const { schoolSlug } = useParams();
@@ -61,7 +62,7 @@ export function AcademicModule() {
   const refresh = async () => {
     if (!schoolId) return;
 
-    const [c, s, st, dirUsers, roleRows, dir, subj, css, tsa] = await Promise.all([
+    const [c, s, st, enr, dirUsers, roleRows, dir, subj, css, tsa] = await Promise.all([
       supabase.from("academic_classes").select("id,name,grade_level").eq("school_id", schoolId),
       supabase.from("class_sections").select("id,name,class_id,room").eq("school_id", schoolId).order("name"),
       supabase
@@ -70,6 +71,7 @@ export function AcademicModule() {
         .eq("school_id", schoolId)
         .order("created_at", { ascending: false })
         .limit(50),
+      supabase.from("student_enrollments").select("student_id,class_section_id").eq("school_id", schoolId),
       supabase.rpc("list_school_user_profiles", { _school_id: schoolId }),
       supabase.from("user_roles").select("user_id").eq("school_id", schoolId).eq("role", "teacher"),
       supabase.from("school_user_directory").select("user_id,email,display_name").eq("school_id", schoolId).order("email"),
@@ -81,9 +83,32 @@ export function AcademicModule() {
         .eq("school_id", schoolId),
     ]);
 
-    setClasses((c.data ?? []) as ClassRow[]);
-    setSections((s.data ?? []) as SectionRow[]);
-    setStudents((st.data ?? []) as StudentRow[]);
+    const classesData = (c.data ?? []) as ClassRow[];
+    const sectionsData = (s.data ?? []) as SectionRow[];
+    const enrollmentsData = (enr.data ?? []) as EnrollmentRow[];
+
+    // Build section label map
+    const sectionLabelMap = new Map<string, string>();
+    sectionsData.forEach((sec) => {
+      const cls = classesData.find((cl) => cl.id === sec.class_id);
+      sectionLabelMap.set(sec.id, `${cls?.name ?? "Class"} • ${sec.name}`);
+    });
+
+    // Build student -> section map
+    const studentSectionMap = new Map<string, string>();
+    enrollmentsData.forEach((e) => {
+      studentSectionMap.set(e.student_id, sectionLabelMap.get(e.class_section_id) ?? "");
+    });
+
+    // Enrich students with section labels
+    const studentsData = (st.data ?? []).map((s: any) => ({
+      ...s,
+      section_label: studentSectionMap.get(s.id) || "",
+    })) as StudentRow[];
+
+    setClasses(classesData);
+    setSections(sectionsData);
+    setStudents(studentsData);
     setDirectoryUsers((dirUsers.data ?? []) as DirectoryProfileRow[]);
     setSubjects((subj.data ?? []) as SubjectRow[]);
     setClassSectionSubjects((css.data ?? []) as ClassSectionSubjectRow[]);
@@ -128,7 +153,12 @@ export function AcademicModule() {
 
     const { data: student, error } = await supabase
       .from("students")
-      .insert({ school_id: schoolId, first_name: studentFirst.trim(), last_name: studentLast.trim() || null })
+      .insert({ 
+        school_id: schoolId, 
+        first_name: studentFirst.trim(), 
+        last_name: studentLast.trim() || null,
+        status: "enrolled" // Explicitly set as enrolled when adding from Academic module
+      })
       .select("id")
       .single();
     if (error) return toast.error(error.message);
@@ -312,6 +342,7 @@ export function AcademicModule() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
+                  <TableHead>Class / Section</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Linked profile</TableHead>
                   <TableHead className="text-right">Action</TableHead>
@@ -321,7 +352,18 @@ export function AcademicModule() {
                 {students.map((s) => (
                   <TableRow key={s.id}>
                     <TableCell className="font-medium">{s.first_name} {s.last_name ?? ""}</TableCell>
-                    <TableCell>{s.status}</TableCell>
+                    <TableCell className="text-muted-foreground">{s.section_label || "—"}</TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                        s.status === "enrolled" 
+                          ? "bg-primary/10 text-primary" 
+                          : s.status === "inquiry" 
+                            ? "bg-muted text-muted-foreground"
+                            : "bg-destructive/10 text-destructive"
+                      }`}>
+                        {s.status}
+                      </span>
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{s.profile_id ?? "—"}</TableCell>
                     <TableCell className="text-right">
                       {s.profile_id ? (
@@ -336,7 +378,7 @@ export function AcademicModule() {
                 ))}
                 {students.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-muted-foreground">
+                    <TableCell colSpan={5} className="text-muted-foreground">
                       No students yet.
                     </TableCell>
                   </TableRow>
