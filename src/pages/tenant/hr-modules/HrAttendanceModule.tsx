@@ -31,13 +31,13 @@
  
    const markMutation = useMutation({
      mutationFn: async ({ userId, status }: { userId: string; status: string }) => {
-       const { error } = await supabase.from("hr_staff_attendance").upsert({
-         school_id: tenant.schoolId,
-         user_id: userId,
-         attendance_date: selectedDate,
-         status,
-         recorded_by: (await supabase.auth.getUser()).data.user?.id
-       });
+        const { error } = await supabase.from("hr_staff_attendance").upsert({
+          school_id: tenant.schoolId,
+          user_id: userId,
+          attendance_date: selectedDate,
+          status,
+          recorded_by: (await supabase.auth.getUser()).data.user?.id
+        }, { onConflict: "school_id,user_id,attendance_date" });
        if (error) throw error;
      },
      onSuccess: () => {
