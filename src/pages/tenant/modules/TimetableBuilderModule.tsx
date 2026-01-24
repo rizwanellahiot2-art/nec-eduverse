@@ -1,17 +1,29 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { DndContext, type DragEndEvent, useDraggable, useDroppable } from "@dnd-kit/core";
 import { useParams } from "react-router-dom";
-import { CalendarDays, Trash2 } from "lucide-react";
+import { CalendarDays, Pencil, Printer, Trash2 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useSession } from "@/hooks/useSession";
+import { useSchoolPermissions } from "@/hooks/useSchoolPermissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 import { PeriodManagerCard } from "./components/PeriodManagerCard";
+import { PeriodTimetableGrid, type PeriodTimetableEntry } from "@/components/timetable/PeriodTimetableGrid";
 
 type PeriodRow = {
   id: string;
@@ -78,12 +90,16 @@ function TimetableCell({
   id,
   title,
   subtitle,
+  meta,
   onClear,
+  onEdit,
 }: {
   id: string;
   title: string | null;
   subtitle: string | null;
+  meta: string | null;
   onClear: (() => void) | null;
+  onEdit: (() => void) | null;
 }) {
   const { isOver, setNodeRef } = useDroppable({ id });
 
@@ -99,21 +115,34 @@ function TimetableCell({
         <div className="space-y-0.5 pr-8">
           <p className="text-sm font-medium leading-snug">{title}</p>
           {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+          {meta && <p className="text-xs text-muted-foreground">{meta}</p>}
         </div>
       ) : (
         <p className="text-xs text-muted-foreground">Drop subject</p>
       )}
 
-      {onClear && title && (
-        <button
-          type="button"
-          onClick={onClear}
-          className="absolute right-2 top-2 hidden rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground group-hover:inline-flex"
-          aria-label="Clear"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
-      )}
+      <div className="absolute right-2 top-2 hidden items-center gap-1 group-hover:flex">
+        {onEdit && title && (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="inline-flex rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            aria-label="Edit"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+        )}
+        {onClear && title && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="inline-flex rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            aria-label="Clear"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -123,6 +152,8 @@ export function TimetableBuilderModule() {
   const tenant = useTenant(schoolSlug);
   const schoolId = useMemo(() => (tenant.status === "ready" ? tenant.schoolId : null), [tenant.status, tenant.schoolId]);
   const { user } = useSession();
+  const perms = useSchoolPermissions(schoolId);
+  const canEdit = perms.canManageStudents;
 
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [sections, setSections] = useState<SectionRow[]>([]);
@@ -134,6 +165,10 @@ export function TimetableBuilderModule() {
   const [teacherAssignments, setTeacherAssignments] = useState<TeacherSubjectAssignmentRow[]>([]);
   const [entries, setEntries] = useState<EntryRow[]>([]);
   const [busy, setBusy] = useState(false);
+
+  const [editEntryId, setEditEntryId] = useState<string | null>(null);
+  const [editTeacherUserId, setEditTeacherUserId] = useState<string>("");
+  const [editRoom, setEditRoom] = useState<string>("");
 
   const refreshStatic = async () => {
     if (!schoolId) return;
@@ -222,15 +257,31 @@ export function TimetableBuilderModule() {
     return m;
   }, [entries]);
 
+  const readOnlyEntries = useMemo(() => {
+    return entries.map((e) =>
+      ({
+        id: e.id,
+        day_of_week: e.day_of_week,
+        period_id: e.period_id,
+        subject_name: e.subject_name,
+        room: e.room,
+        teacher_name: e.teacher_user_id ? teacherLabelByUserId.get(e.teacher_user_id) ?? null : null,
+      }) satisfies PeriodTimetableEntry
+    );
+  }, [entries, teacherLabelByUserId]);
+
   const setSlot = async (day: number, periodId: string, subjectId: string) => {
     if (!schoolId || !sectionId) return;
+    if (!canEdit) return toast.error("Read-only: you don't have permission to edit timetables.");
     const subjectName = subjectNameById.get(subjectId);
     if (!subjectName) return;
 
     const period = periods.find((p) => p.id === periodId);
     if (!period) return;
 
-    const teacherUserId = teacherBySubjectId.get(subjectId) ?? null;
+    const existing = entries.find((e) => e.day_of_week === day && e.period_id === periodId) ?? null;
+    const teacherUserId = existing?.teacher_user_id ?? teacherBySubjectId.get(subjectId) ?? null;
+    const room = existing?.room ?? null;
 
     setBusy(true);
     try {
@@ -252,7 +303,7 @@ export function TimetableBuilderModule() {
         teacher_user_id: teacherUserId,
         start_time: period.start_time,
         end_time: period.end_time,
-        room: null,
+        room,
       });
       if (insErr) return toast.error(insErr.message);
 
@@ -264,6 +315,7 @@ export function TimetableBuilderModule() {
 
   const clearSlot = async (day: number, periodId: string) => {
     if (!schoolId || !sectionId) return;
+    if (!canEdit) return toast.error("Read-only: you don't have permission to edit timetables.");
     setBusy(true);
     try {
       const { error } = await supabase
@@ -281,6 +333,7 @@ export function TimetableBuilderModule() {
   };
 
   const onDragEnd = async (evt: DragEndEvent) => {
+    if (!canEdit) return;
     const activeId = String(evt.active.id);
     const overId = evt.over?.id ? String(evt.over.id) : null;
     if (!overId) return;
@@ -298,7 +351,7 @@ export function TimetableBuilderModule() {
 
   return (
     <div className="space-y-4">
-      <Card className="shadow-elevated">
+      <Card className="shadow-elevated no-print">
         <CardHeader>
           <CardTitle className="font-display text-xl">Timetable Builder</CardTitle>
           <p className="text-sm text-muted-foreground">Drag subjects into the grid to build a section timetable.</p>
@@ -321,22 +374,68 @@ export function TimetableBuilderModule() {
             <CalendarDays className="mr-2 h-4 w-4" /> Refresh
           </Button>
 
+          <Button
+            variant="outline"
+            onClick={() => window.print()}
+            className="md:justify-self-end"
+          >
+            <Printer className="mr-2 h-4 w-4" /> Print
+          </Button>
+
           <div className="text-xs text-muted-foreground md:text-right">
             {periods.length ? `${periods.length} periods` : "Add periods first"}
           </div>
         </CardContent>
       </Card>
 
-      <PeriodManagerCard schoolId={schoolId} userId={user?.id ?? null} periods={periods} onChanged={refreshPeriods} />
+      {!perms.loading && perms.error && (
+        <div className="rounded-3xl bg-surface p-5 shadow-elevated no-print">
+          <p className="text-sm font-medium">Permissions</p>
+          <p className="mt-1 text-sm text-muted-foreground">{perms.error}</p>
+        </div>
+      )}
+
+      {!perms.loading && !canEdit && (
+        <div className="rounded-3xl bg-accent p-5 shadow-elevated no-print">
+          <p className="text-sm font-medium text-accent-foreground">Read-only mode</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            You can view timetables, but only academic admins can edit periods and grid slots.
+          </p>
+        </div>
+      )}
+
+      {canEdit && (
+        <div className="no-print">
+          <PeriodManagerCard schoolId={schoolId} userId={user?.id ?? null} periods={periods} onChanged={refreshPeriods} />
+        </div>
+      )}
 
       {!sectionId ? (
         <div className="rounded-3xl bg-surface p-6 shadow-elevated">
           <p className="text-sm text-muted-foreground">Select a section to start building its timetable.</p>
         </div>
+      ) : !canEdit ? (
+        <div className="print-area">
+          {entries.length === 0 ? (
+            <div className="rounded-3xl bg-surface p-6 shadow-elevated">
+              <p className="text-sm text-muted-foreground">No timetable entries yet.</p>
+            </div>
+          ) : (
+            <Card className="shadow-elevated">
+              <CardHeader className="no-print">
+                <CardTitle className="font-display text-lg">Preview</CardTitle>
+                <p className="text-sm text-muted-foreground">Read-only timetable grid.</p>
+              </CardHeader>
+              <CardContent>
+                <PeriodTimetableGrid periods={periods} entries={readOnlyEntries} printable={false} />
+              </CardContent>
+            </Card>
+          )}
+        </div>
       ) : (
         <DndContext onDragEnd={onDragEnd}>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_1fr]">
-            <Card className="shadow-elevated">
+            <Card className="shadow-elevated no-print">
               <CardHeader>
                 <CardTitle className="font-display text-lg">Subjects</CardTitle>
                 <p className="text-sm text-muted-foreground">Only subjects enabled for this section appear here.</p>
@@ -360,8 +459,8 @@ export function TimetableBuilderModule() {
               </CardContent>
             </Card>
 
-            <Card className="shadow-elevated">
-              <CardHeader>
+            <Card className="shadow-elevated print-area">
+              <CardHeader className="no-print">
                 <CardTitle className="font-display text-lg">Grid</CardTitle>
                 <p className="text-sm text-muted-foreground">Drop subject tiles into day × period slots.</p>
               </CardHeader>
@@ -394,13 +493,27 @@ export function TimetableBuilderModule() {
                           const teacherLabel = e?.teacher_user_id
                             ? teacherLabelByUserId.get(e.teacher_user_id) ?? e.teacher_user_id
                             : null;
+
+                          const roomLabel = e?.room ? `Room: ${e.room}` : null;
+                          const subtitle = teacherLabel ? `Teacher: ${teacherLabel}` : null;
+
                           return (
                             <TimetableCell
                               key={`cell:${slotKey}`}
                               id={`cell:${d.id}:${p.id}`}
                               title={e?.subject_name ?? null}
-                              subtitle={teacherLabel ? `Teacher: ${teacherLabel}` : null}
+                              subtitle={subtitle}
+                              meta={roomLabel}
                               onClear={e ? () => void clearSlot(d.id, p.id) : null}
+                              onEdit={
+                                e
+                                  ? () => {
+                                      setEditEntryId(e.id);
+                                      setEditTeacherUserId(e.teacher_user_id ?? "");
+                                      setEditRoom(e.room ?? "");
+                                    }
+                                  : null
+                              }
                             />
                           );
                         })}
@@ -413,6 +526,71 @@ export function TimetableBuilderModule() {
           </div>
         </DndContext>
       )}
+
+      <Dialog open={!!editEntryId} onOpenChange={(open) => !open && setEditEntryId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit slot</DialogTitle>
+            <DialogDescription>Override teacher and room for this timetable slot.</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Teacher</Label>
+              <Select
+                value={editTeacherUserId || "__none"}
+                onValueChange={(v) => setEditTeacherUserId(v === "__none" ? "" : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose teacher" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">Unassigned</SelectItem>
+                  {directory.map((d) => (
+                    <SelectItem key={d.user_id} value={d.user_id}>
+                      {d.display_name ?? d.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Room</Label>
+              <Input value={editRoom} onChange={(e) => setEditRoom(e.target.value)} placeholder="e.g. Lab 2" />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditEntryId(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="hero"
+              onClick={async () => {
+                if (!schoolId || !sectionId || !editEntryId) return;
+                if (!canEdit) return toast.error("Read-only: you don't have permission to edit timetables.");
+                const { error } = await supabase
+                  .from("timetable_entries")
+                  .update({
+                    teacher_user_id: editTeacherUserId || null,
+                    room: editRoom.trim() || null,
+                  })
+                  .eq("school_id", schoolId)
+                  .eq("class_section_id", sectionId)
+                  .eq("id", editEntryId);
+
+                if (error) return toast.error(error.message);
+                toast.success("Slot updated");
+                setEditEntryId(null);
+                await refreshSection();
+              }}
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
