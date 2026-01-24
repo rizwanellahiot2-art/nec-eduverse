@@ -56,6 +56,18 @@ interface Mark {
   computed_grade: string | null;
 }
 
+// Pre-configured assessment templates
+const ASSESSMENT_TEMPLATES = [
+  { label: "Quiz", title: "Quiz", max_marks: 20 },
+  { label: "Class Test", title: "Class Test", max_marks: 50 },
+  { label: "Midterm Exam", title: "Midterm Exam", max_marks: 100 },
+  { label: "Final Exam", title: "Final Exam", max_marks: 100 },
+  { label: "Assignment", title: "Assignment", max_marks: 25 },
+  { label: "Project", title: "Project", max_marks: 50 },
+  { label: "Practical", title: "Practical", max_marks: 30 },
+  { label: "Presentation", title: "Presentation", max_marks: 20 },
+];
+
 export function TeacherGradebookModule() {
   const { schoolSlug } = useParams();
   const tenant = useTenant(schoolSlug);
@@ -82,6 +94,14 @@ export function TeacherGradebookModule() {
     subject_id: "",
   });
   const [creatingAssessment, setCreatingAssessment] = useState(false);
+
+  const applyTemplate = (template: typeof ASSESSMENT_TEMPLATES[0]) => {
+    setNewAssessment((p) => ({
+      ...p,
+      title: template.title,
+      max_marks: template.max_marks,
+    }));
+  };
 
   useEffect(() => {
     if (schoolId && user?.id) {
@@ -397,6 +417,23 @@ export function TeacherGradebookModule() {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
+                {/* Template quick-select */}
+                <div className="space-y-2">
+                  <Label>Quick Templates</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {ASSESSMENT_TEMPLATES.map((t) => (
+                      <Badge
+                        key={t.label}
+                        variant="outline"
+                        className="cursor-pointer hover:bg-accent transition-colors px-3 py-1"
+                        onClick={() => applyTemplate(t)}
+                      >
+                        {t.label} ({t.max_marks})
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+                
                 <div className="space-y-2">
                   <Label htmlFor="title">Title</Label>
                   <Input
