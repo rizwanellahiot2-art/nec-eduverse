@@ -139,15 +139,15 @@ function TimetableCell({
           {meta && <p className="text-xs text-muted-foreground">{meta}</p>}
         </div>
       ) : (
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between h-full">
           <p className="text-xs text-muted-foreground hidden sm:block">Drop subject</p>
-          <p className="text-xs text-muted-foreground sm:hidden">Tap + to add</p>
-          {/* Add button for touch screens - always visible on mobile, hover on desktop */}
+          <p className="text-xs text-muted-foreground sm:hidden">Tap +</p>
+          {/* Add button - always visible on mobile/tablet, hover on desktop */}
           {onAdd && (
             <button
               type="button"
               onClick={onAdd}
-              className="inline-flex items-center justify-center rounded-lg bg-primary/10 p-2 text-primary hover:bg-primary/20 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+              className="inline-flex items-center justify-center rounded-lg bg-primary/10 p-2 text-primary hover:bg-primary/20 transition-opacity opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
               aria-label="Add subject"
             >
               <Plus className="h-4 w-4" />
@@ -747,12 +747,13 @@ export function TimetableBuilderModule() {
                   <button
                     key={s.id}
                     type="button"
-                    onClick={() => setAddSubjectId(s.id)}
-                    className={`w-full rounded-xl border p-3 text-left transition-colors ${
-                      addSubjectId === s.id
-                        ? "border-primary bg-primary/10"
-                        : "border-border hover:bg-muted/50"
-                    }`}
+                    onClick={async () => {
+                      if (!addSlot) return;
+                      await setSlot(addSlot.day, addSlot.periodId, s.id);
+                      setAddSlot(null);
+                      setAddSubjectId("");
+                    }}
+                    className="w-full rounded-xl border border-border p-3 text-left transition-colors hover:bg-primary/10 hover:border-primary active:bg-primary/20"
                   >
                     <p className="font-medium text-sm">{s.name}</p>
                     {teacherLabel && (
@@ -764,21 +765,9 @@ export function TimetableBuilderModule() {
             )}
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setAddSlot(null)}>
+          <DialogFooter>
+            <Button variant="outline" className="w-full" onClick={() => setAddSlot(null)}>
               Cancel
-            </Button>
-            <Button
-              variant="hero"
-              disabled={!addSubjectId}
-              onClick={async () => {
-                if (!addSlot || !addSubjectId) return;
-                await setSlot(addSlot.day, addSlot.periodId, addSubjectId);
-                setAddSlot(null);
-                setAddSubjectId("");
-              }}
-            >
-              Add Subject
             </Button>
           </DialogFooter>
         </DialogContent>
