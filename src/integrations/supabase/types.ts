@@ -1750,13 +1750,16 @@ export type Database = {
       }
       hr_salary_records: {
         Row: {
+          allowances: number | null
           base_salary: number
           created_at: string
           created_by: string | null
           currency: string
+          deductions: number | null
           effective_from: string
           effective_to: string | null
           id: string
+          is_active: boolean | null
           notes: string | null
           pay_frequency: string
           school_id: string
@@ -1764,13 +1767,16 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          allowances?: number | null
           base_salary?: number
           created_at?: string
           created_by?: string | null
           currency?: string
+          deductions?: number | null
           effective_from: string
           effective_to?: string | null
           id?: string
+          is_active?: boolean | null
           notes?: string | null
           pay_frequency?: string
           school_id: string
@@ -1778,13 +1784,16 @@ export type Database = {
           user_id: string
         }
         Update: {
+          allowances?: number | null
           base_salary?: number
           created_at?: string
           created_by?: string | null
           currency?: string
+          deductions?: number | null
           effective_from?: string
           effective_to?: string | null
           id?: string
+          is_active?: boolean | null
           notes?: string | null
           pay_frequency?: string
           school_id?: string

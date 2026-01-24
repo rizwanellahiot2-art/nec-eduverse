@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Play, CheckCircle, Clock, Trash2, Users, Coins } from "lucide-react";
+import { Plus, Play, CheckCircle, Clock, Trash2, Users, Coins, FileText } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
+import { openPayslipPDF, PayslipData } from "@/lib/payslip-pdf";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,6 +53,9 @@ type SalaryRecord = {
   id: string;
   user_id: string;
   base_salary: number;
+  allowances: number;
+  deductions: number;
+  is_active: boolean;
   effective_from: string;
   effective_to: string | null;
   currency: string;
@@ -124,6 +128,9 @@ export function AccountantPayrollModule() {
         id: r.id,
         user_id: r.user_id,
         base_salary: r.base_salary,
+        allowances: r.allowances || 0,
+        deductions: r.deductions || 0,
+        is_active: r.is_active ?? true,
         effective_from: r.effective_from,
         effective_to: r.effective_to,
         currency: r.currency,
@@ -172,15 +179,16 @@ export function AccountantPayrollModule() {
       return;
     }
 
-    // Calculate totals from salary records
-    const grossAmount = salaryRecords.reduce((sum, s) => sum + s.base_salary, 0);
-    const deductions = 0; // No deductions column in salary_records
+    // Calculate totals from active salary records
+    const activeSalaries = salaryRecords.filter((s) => s.is_active);
+    const grossAmount = activeSalaries.reduce((sum, s) => sum + s.base_salary + s.allowances, 0);
+    const deductions = activeSalaries.reduce((sum, s) => sum + s.deductions, 0);
     const netAmount = grossAmount - deductions;
 
     const { error } = await supabase.from("hr_pay_runs").insert([
       {
         school_id: schoolId,
-        user_id: salaryRecords[0]?.user_id || null, // Required field
+        user_id: activeSalaries[0]?.user_id || null,
         period_start: formPeriodStart,
         period_end: formPeriodEnd,
         gross_amount: grossAmount,
@@ -214,19 +222,22 @@ export function AccountantPayrollModule() {
       return;
     }
 
-    // Mark previous records as ended
+    // Mark previous records as inactive
     await supabase
       .from("hr_salary_records")
-      .update({ effective_to: formEffectiveFrom })
+      .update({ is_active: false, effective_to: formEffectiveFrom })
       .eq("school_id", schoolId)
       .eq("user_id", formUserId)
-      .is("effective_to", null);
+      .eq("is_active", true);
 
     const { error } = await supabase.from("hr_salary_records").insert([
       {
         school_id: schoolId,
         user_id: formUserId,
         base_salary: baseSalary,
+        allowances: Number(formAllowances) || 0,
+        deductions: Number(formDeductions) || 0,
+        is_active: true,
         effective_from: formEffectiveFrom,
         currency: "PKR",
         pay_frequency: "monthly",
@@ -279,9 +290,41 @@ export function AccountantPayrollModule() {
     queryClient.invalidateQueries({ queryKey: ["hr_salary_records", schoolId] });
   };
 
-  const getStaffName = (userId: string) => {
-    const staff = staffMembers.find((s) => s.id === userId);
-    return staff?.full_name || "Unknown";
+  const getStaffMember = (userId: string) => staffMembers.find((s) => s.id === userId);
+  const getStaffName = (userId: string) => getStaffMember(userId)?.full_name || "Unknown";
+  const getStaffEmail = (userId: string) => getStaffMember(userId)?.email || "";
+
+  const handleGeneratePayslips = (run: PayRun) => {
+    const activeSalaries = salaryRecords.filter((s) => s.is_active);
+    if (activeSalaries.length === 0) {
+      toast.error("No active salary records to generate payslips");
+      return;
+    }
+
+    // Generate payslip for first employee as example (in production, loop through all)
+    const salary = activeSalaries[0];
+    const staff = getStaffMember(salary.user_id);
+    
+    const payslipData: PayslipData = {
+      employeeName: staff?.full_name || "Unknown",
+      employeeEmail: staff?.email || "",
+      employeeId: salary.user_id,
+      periodStart: run.period_start,
+      periodEnd: run.period_end,
+      paidAt: run.paid_at,
+      baseSalary: salary.base_salary,
+      allowances: salary.allowances,
+      deductions: salary.deductions,
+      grossAmount: salary.base_salary + salary.allowances,
+      netAmount: salary.base_salary + salary.allowances - salary.deductions,
+      currency: salary.currency,
+      schoolName: tenant.status === "ready" ? tenant.school?.name || "School" : "School",
+      payRunId: run.id,
+      status: run.status,
+    };
+
+    openPayslipPDF(payslipData);
+    toast.success("Payslip generated! Print dialog will open.");
   };
 
   const getStatusBadge = (status: string) => {
@@ -311,12 +354,12 @@ export function AccountantPayrollModule() {
     ? payRuns
     : payRuns.filter((pr) => pr.status === statusFilter);
 
-  // Use all salary records (no is_active column)
+  const activeSalaries = salaryRecords.filter((s) => s.is_active);
   const stats = {
     totalPayRuns: payRuns.length,
     completedPayRuns: payRuns.filter((p) => p.status === "completed").length,
-    totalPayroll: salaryRecords.reduce((sum, s) => sum + s.base_salary, 0),
-    activeEmployees: salaryRecords.length,
+    totalPayroll: activeSalaries.reduce((sum, s) => sum + s.base_salary + s.allowances - s.deductions, 0),
+    activeEmployees: activeSalaries.length,
   };
 
   if (loadingPayRuns || loadingSalaries) {
@@ -409,12 +452,14 @@ export function AccountantPayrollModule() {
                         <div>
                           <p className="text-muted-foreground">Gross</p>
                           <p className="font-semibold">
-                            {salaryRecords.reduce((s, r) => s + r.base_salary, 0).toLocaleString()}
+                            {activeSalaries.reduce((s, r) => s + r.base_salary + r.allowances, 0).toLocaleString()}
                           </p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Deductions</p>
-                          <p className="font-semibold">0</p>
+                          <p className="font-semibold">
+                            {activeSalaries.reduce((s, r) => s + r.deductions, 0).toLocaleString()}
+                          </p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Net</p>
@@ -471,6 +516,14 @@ export function AccountantPayrollModule() {
                       </div>
                       <div className="flex items-center gap-2">
                         {getStatusBadge(run.status)}
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => handleGeneratePayslips(run)}
+                          title="Generate Payslips"
+                        >
+                          <FileText className="h-4 w-4" />
+                        </Button>
                         {run.status === "draft" && (
                           <Button
                             variant="ghost"
@@ -624,11 +677,11 @@ export function AccountantPayrollModule() {
                       <TableCell className="font-medium">{getStaffName(record.user_id)}</TableCell>
                       <TableCell>{record.base_salary.toLocaleString()}</TableCell>
                       <TableCell className="text-primary">
-                        {record.base_salary.toLocaleString()}
+                        {(record.base_salary + record.allowances - record.deductions).toLocaleString()}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={!record.effective_to ? "default" : "secondary"}>
-                          {!record.effective_to ? "Active" : "Inactive"}
+                        <Badge variant={record.is_active ? "default" : "secondary"}>
+                          {record.is_active ? "Active" : "Inactive"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
