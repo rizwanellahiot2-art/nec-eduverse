@@ -2128,6 +2128,53 @@ export type Database = {
         }
         Relationships: []
       }
+      salary_budget_targets: {
+        Row: {
+          budget_amount: number
+          created_at: string
+          created_by: string | null
+          department: string | null
+          fiscal_year: number
+          id: string
+          notes: string | null
+          role: string | null
+          school_id: string
+          updated_at: string
+        }
+        Insert: {
+          budget_amount?: number
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          fiscal_year: number
+          id?: string
+          notes?: string | null
+          role?: string | null
+          school_id: string
+          updated_at?: string
+        }
+        Update: {
+          budget_amount?: number
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          fiscal_year?: number
+          id?: string
+          notes?: string | null
+          role?: string | null
+          school_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_budget_targets_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       school_alert_settings: {
         Row: {
           attendance_critical_threshold: number
