@@ -15,14 +15,19 @@ export type DashboardAlert = {
   dismissed: boolean;
 };
 
-type SupportConversation = {
-  id: string;
-  student_id: string;
-  status: string;
-  created_at: string;
+type AlertThresholds = {
+  attendanceWarning: number;
+  attendanceCritical: number;
+  pendingInvoices: number;
+  ticketHours: number;
 };
 
-const ATTENDANCE_THRESHOLD = 75; // Alert if attendance rate drops below 75%
+const DEFAULT_THRESHOLDS: AlertThresholds = {
+  attendanceWarning: 75,
+  attendanceCritical: 60,
+  pendingInvoices: 10,
+  ticketHours: 24,
+};
 
 export function useDashboardAlerts(schoolId: string | null) {
   const qc = useQueryClient();
@@ -30,18 +35,42 @@ export function useDashboardAlerts(schoolId: string | null) {
   const [newTicketsCount, setNewTicketsCount] = useState(0);
   const [attendanceRate, setAttendanceRate] = useState<number | null>(null);
   const [initialized, setInitialized] = useState(false);
+  const [thresholds, setThresholds] = useState<AlertThresholds>(DEFAULT_THRESHOLDS);
 
   const enabled = !!schoolId;
 
-  // Fetch initial data
-  const fetchData = useCallback(async () => {
+  // Fetch alert settings
+  const fetchSettings = useCallback(async () => {
+    if (!schoolId) return DEFAULT_THRESHOLDS;
+
+    const { data } = await supabase
+      .from("school_alert_settings")
+      .select("*")
+      .eq("school_id", schoolId)
+      .maybeSingle();
+
+    if (data) {
+      const newThresholds = {
+        attendanceWarning: data.attendance_warning_threshold ?? 75,
+        attendanceCritical: data.attendance_critical_threshold ?? 60,
+        pendingInvoices: data.pending_invoices_threshold ?? 10,
+        ticketHours: data.support_ticket_hours ?? 24,
+      };
+      setThresholds(newThresholds);
+      return newThresholds;
+    }
+
+    return DEFAULT_THRESHOLDS;
+  }, [schoolId]);
+
+  // Fetch initial data with thresholds
+  const fetchData = useCallback(async (currentThresholds?: AlertThresholds) => {
     if (!schoolId) return;
 
+    const useThresholds = currentThresholds ?? thresholds;
     const now = new Date();
     const d7 = new Date(now);
     d7.setDate(now.getDate() - 7);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
 
     try {
       const [
@@ -56,7 +85,7 @@ export function useDashboardAlerts(schoolId: string | null) {
           .eq("school_id", schoolId)
           .eq("status", "open")
           .order("created_at", { ascending: false })
-          .limit(10),
+          .limit(20),
         supabase
           .from("attendance_entries")
           .select("id", { count: "exact", head: true })
@@ -77,16 +106,15 @@ export function useDashboardAlerts(schoolId: string | null) {
 
       const newAlerts: DashboardAlert[] = [];
 
-      // Support ticket alerts
+      // Support ticket alerts - use configurable hours
       const tickets = openTickets.data ?? [];
       setNewTicketsCount(tickets.length);
       
       if (tickets.length > 0) {
-        // Only show alert for tickets from last 24 hours
         const recentTickets = tickets.filter(t => {
           const createdAt = new Date(t.created_at);
           const hoursAgo = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
-          return hoursAgo < 24;
+          return hoursAgo < useThresholds.ticketHours;
         });
         
         if (recentTickets.length > 0) {
@@ -94,7 +122,7 @@ export function useDashboardAlerts(schoolId: string | null) {
             id: `support-${Date.now()}`,
             type: "support_ticket",
             title: "New Support Tickets",
-            message: `${recentTickets.length} new support ticket${recentTickets.length > 1 ? "s" : ""} in the last 24 hours`,
+            message: `${recentTickets.length} new ticket${recentTickets.length > 1 ? "s" : ""} in the last ${useThresholds.ticketHours}h`,
             severity: recentTickets.length >= 5 ? "critical" : "warning",
             timestamp: new Date().toISOString(),
             dismissed: false,
@@ -102,33 +130,33 @@ export function useDashboardAlerts(schoolId: string | null) {
         }
       }
 
-      // Attendance alerts
+      // Attendance alerts - use configurable thresholds
       const totalEntries = entries7d.count ?? 0;
       const presentEntries = present7d.count ?? 0;
       const rate = totalEntries > 0 ? Math.round((presentEntries / totalEntries) * 100) : 100;
       setAttendanceRate(rate);
 
-      if (rate < ATTENDANCE_THRESHOLD && totalEntries > 0) {
+      if (rate < useThresholds.attendanceWarning && totalEntries > 0) {
         newAlerts.push({
           id: `attendance-${Date.now()}`,
           type: "low_attendance",
           title: "Low Attendance Alert",
-          message: `Weekly attendance is at ${rate}%, below the ${ATTENDANCE_THRESHOLD}% threshold`,
-          severity: rate < 60 ? "critical" : "warning",
+          message: `Weekly attendance is at ${rate}%, below the ${useThresholds.attendanceWarning}% threshold`,
+          severity: rate < useThresholds.attendanceCritical ? "critical" : "warning",
           timestamp: new Date().toISOString(),
           dismissed: false,
         });
       }
 
-      // Pending invoices alert
+      // Pending invoices alert - use configurable threshold
       const invoiceCount = pendingInvoices.count ?? 0;
-      if (invoiceCount >= 10) {
+      if (invoiceCount >= useThresholds.pendingInvoices) {
         newAlerts.push({
           id: `invoices-${Date.now()}`,
           type: "pending_invoice",
           title: "Pending Invoices",
           message: `${invoiceCount} invoices pending payment`,
-          severity: invoiceCount >= 20 ? "critical" : "info",
+          severity: invoiceCount >= useThresholds.pendingInvoices * 2 ? "critical" : "info",
           timestamp: new Date().toISOString(),
           dismissed: false,
         });
@@ -139,11 +167,22 @@ export function useDashboardAlerts(schoolId: string | null) {
     } catch (error) {
       console.error("Failed to fetch dashboard alerts:", error);
     }
-  }, [schoolId]);
+  }, [schoolId, thresholds]);
 
+  // Initialize: fetch settings then data
   useEffect(() => {
-    void fetchData();
-  }, [fetchData]);
+    const init = async () => {
+      const loadedThresholds = await fetchSettings();
+      await fetchData(loadedThresholds);
+    };
+    void init();
+  }, [fetchSettings, fetchData]);
+
+  // Combined refresh that reloads settings + data
+  const refresh = useCallback(async () => {
+    const loadedThresholds = await fetchSettings();
+    await fetchData(loadedThresholds);
+  }, [fetchSettings, fetchData]);
 
   // Real-time subscription for support tickets
   useRealtimeTable({
@@ -227,9 +266,10 @@ export function useDashboardAlerts(schoolId: string | null) {
     newTicketsCount,
     attendanceRate,
     dismissAlert,
-    refresh: fetchData,
+    refresh,
     criticalCount,
     warningCount,
     initialized,
+    thresholds,
   };
 }

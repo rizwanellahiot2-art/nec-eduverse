@@ -22,6 +22,7 @@ import { useDashboardAlerts } from "@/hooks/useDashboardAlerts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardAlertsPanel, AlertsSummaryBadge } from "@/components/dashboard/DashboardAlertsPanel";
+import { AlertSettingsDialog } from "@/components/dashboard/AlertSettingsDialog";
 
 import {
   ResponsiveContainer,
@@ -73,6 +74,7 @@ export function VicePrincipalHome() {
     dismissAlert,
     criticalCount,
     warningCount,
+    refresh: refreshAlerts,
   } = useDashboardAlerts(schoolId);
 
   const handleAlertNavigate = (path: string) => {
@@ -259,7 +261,10 @@ export function VicePrincipalHome() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">Quick Actions</CardTitle>
-            <AlertsSummaryBadge criticalCount={criticalCount} warningCount={warningCount} />
+            <div className="flex items-center gap-2">
+              <AlertSettingsDialog schoolId={schoolId} onSettingsChanged={refreshAlerts} />
+              <AlertsSummaryBadge criticalCount={criticalCount} warningCount={warningCount} />
+            </div>
           </div>
         </CardHeader>
         <CardContent>
