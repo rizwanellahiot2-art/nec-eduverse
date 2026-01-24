@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
-import { Award, TrendingDown, TrendingUp, Users } from "lucide-react";
+import { Award, MessageSquare, TrendingDown, TrendingUp, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { QuickMessageDialog } from "./QuickMessageDialog";
 
 interface StudentPerformance {
   student_id: string;
@@ -31,6 +34,10 @@ export function StudentPerformanceWidget({ schoolId, sectionIds }: StudentPerfor
   const [topStudents, setTopStudents] = useState<StudentPerformance[]>([]);
   const [strugglingStudents, setStrugglingStudents] = useState<StudentPerformance[]>([]);
   const [overallStats, setOverallStats] = useState({ totalStudents: 0, overallAverage: 0 });
+  const [messageDialog, setMessageDialog] = useState<{ open: boolean; student: StudentPerformance | null }>({
+    open: false,
+    student: null,
+  });
 
   useEffect(() => {
     if (!schoolId || sectionIds.length === 0) {
@@ -292,18 +299,54 @@ export function StudentPerformanceWidget({ schoolId, sectionIds }: StudentPerfor
             <p className="text-sm font-medium mb-2 flex items-center gap-1">
               <TrendingDown className="h-4 w-4 text-destructive" />
               Need Attention
+              <span className="text-xs text-muted-foreground font-normal ml-1">(click to message parent)</span>
             </p>
             <div className="space-y-1.5">
               {strugglingStudents.slice(0, 3).map((student) => (
-                <div key={student.student_id} className="flex items-center justify-between text-sm">
-                  <span className="truncate text-muted-foreground">{student.student_name}</span>
-                  <Badge variant="outline" className="text-xs text-destructive border-destructive/50">
-                    {student.average_score.toFixed(1)}%
-                  </Badge>
+                <div
+                  key={student.student_id}
+                  className="flex items-center justify-between text-sm group rounded-md px-2 py-1.5 -mx-2 hover:bg-muted/50 cursor-pointer transition-colors"
+                  onClick={() => setMessageDialog({ open: true, student })}
+                >
+                  <span className="truncate text-muted-foreground group-hover:text-foreground">
+                    {student.student_name}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs text-destructive border-destructive/50">
+                      {student.average_score.toFixed(1)}%
+                    </Badge>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMessageDialog({ open: true, student });
+                          }}
+                        >
+                          <MessageSquare className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Message parent</TooltipContent>
+                    </Tooltip>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
+        )}
+
+        {/* Quick Message Dialog */}
+        {messageDialog.student && (
+          <QuickMessageDialog
+            open={messageDialog.open}
+            onOpenChange={(open) => setMessageDialog({ open, student: open ? messageDialog.student : null })}
+            studentId={messageDialog.student.student_id}
+            studentName={messageDialog.student.student_name}
+            schoolId={schoolId}
+          />
         )}
       </CardContent>
     </Card>
