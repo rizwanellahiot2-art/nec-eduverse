@@ -1,16 +1,31 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { GraduationCap, Plus, UserCog } from "lucide-react";
+import {
+  BookOpen,
+  Building2,
+  GraduationCap,
+  Plus,
+  Settings,
+  User,
+  UserCog,
+  Users,
+} from "lucide-react";
 import { StudentTransferDialog } from "@/components/academic/StudentTransferDialog";
+import { TeacherDetailsCard } from "@/components/academic/TeacherDetailsCard";
+import { ClassStructureCard } from "@/components/academic/ClassStructureCard";
+import { StudentRosterCard } from "@/components/academic/StudentRosterCard";
+import { SubjectsOverviewCard } from "@/components/academic/SubjectsOverviewCard";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
 import { SubjectCatalogCard, type SubjectRow } from "@/pages/tenant/modules/components/SubjectCatalogCard";
@@ -31,6 +46,7 @@ type SectionRow = { id: string; name: string; class_id: string; room: string | n
 type StudentRow = { id: string; first_name: string; last_name: string | null; status: string; profile_id: string | null; section_label?: string };
 type DirectoryProfileRow = { user_id: string; profile_id: string | null; email: string; display_name: string | null };
 type EnrollmentRow = { student_id: string; class_section_id: string };
+type TeacherAssignmentRow = { teacher_user_id: string; class_section_id: string };
 
 export function AcademicModule() {
   const { schoolSlug } = useParams();
@@ -40,10 +56,12 @@ export function AcademicModule() {
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [sections, setSections] = useState<SectionRow[]>([]);
   const [students, setStudents] = useState<StudentRow[]>([]);
+  const [enrollments, setEnrollments] = useState<EnrollmentRow[]>([]);
   const [directoryUsers, setDirectoryUsers] = useState<DirectoryProfileRow[]>([]);
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
   const [classSectionSubjects, setClassSectionSubjects] = useState<ClassSectionSubjectRow[]>([]);
   const [teacherSubjectAssignments, setTeacherSubjectAssignments] = useState<TeacherSubjectAssignmentRow[]>([]);
+  const [teacherAssignments, setTeacherAssignments] = useState<TeacherAssignmentRow[]>([]);
 
   const [newClassName, setNewClassName] = useState("");
   const [newSectionName, setNewSectionName] = useState("");
@@ -63,16 +81,16 @@ export function AcademicModule() {
   const refresh = async () => {
     if (!schoolId) return;
 
-    const [c, s, st, enr, dirUsers, roleRows, dir, subj, css, tsa] = await Promise.all([
-      supabase.from("academic_classes").select("id,name,grade_level").eq("school_id", schoolId),
+    const [c, s, st, enr, ta, dirUsers, roleRows, dir, subj, css, tsa] = await Promise.all([
+      supabase.from("academic_classes").select("id,name,grade_level").eq("school_id", schoolId).order("name"),
       supabase.from("class_sections").select("id,name,class_id,room").eq("school_id", schoolId).order("name"),
       supabase
         .from("students")
         .select("id,first_name,last_name,status,profile_id")
         .eq("school_id", schoolId)
-        .order("created_at", { ascending: false })
-        .limit(50),
+        .order("first_name"),
       supabase.from("student_enrollments").select("student_id,class_section_id").eq("school_id", schoolId),
+      supabase.from("teacher_assignments").select("teacher_user_id,class_section_id").eq("school_id", schoolId),
       supabase.rpc("list_school_user_profiles", { _school_id: schoolId }),
       supabase.from("user_roles").select("user_id").eq("school_id", schoolId).eq("role", "teacher"),
       supabase.from("school_user_directory").select("user_id,email,display_name").eq("school_id", schoolId).order("email"),
@@ -110,6 +128,8 @@ export function AcademicModule() {
     setClasses(classesData);
     setSections(sectionsData);
     setStudents(studentsData);
+    setEnrollments(enrollmentsData);
+    setTeacherAssignments((ta.data ?? []) as TeacherAssignmentRow[]);
     setDirectoryUsers((dirUsers.data ?? []) as DirectoryProfileRow[]);
     setSubjects((subj.data ?? []) as SubjectRow[]);
     setClassSectionSubjects((css.data ?? []) as ClassSectionSubjectRow[]);
@@ -158,7 +178,7 @@ export function AcademicModule() {
         school_id: schoolId, 
         first_name: studentFirst.trim(), 
         last_name: studentLast.trim() || null,
-        status: "enrolled" // Explicitly set as enrolled when adding from Academic module
+        status: "enrolled"
       })
       .select("id")
       .single();
@@ -184,6 +204,7 @@ export function AcademicModule() {
       .upsert({ school_id: schoolId, teacher_user_id: teacherUserId, class_section_id: assignSectionId }, { onConflict: "school_id,teacher_user_id,class_section_id" });
     if (error) return toast.error(error.message);
     toast.success("Teacher assigned");
+    await refresh();
   };
 
   const linkStudentToProfile = async () => {
@@ -203,299 +224,387 @@ export function AcademicModule() {
     await refresh();
   };
 
-  const unlinkStudentProfile = async (studentId: string) => {
-    if (!schoolId) return;
-    const { error } = await supabase.from("students").update({ profile_id: null }).eq("school_id", schoolId).eq("id", studentId);
-    if (error) return toast.error(error.message);
-    toast.success("Student unlinked");
-    await refresh();
-  };
+  // Summary stats
+  const stats = useMemo(() => ({
+    classes: classes.length,
+    sections: sections.length,
+    students: students.filter(s => s.status === "enrolled").length,
+    teachers: teachers.length,
+    subjects: subjects.length,
+  }), [classes, sections, students, teachers, subjects]);
 
   return (
-    <div className="space-y-4">
-      <Card className="shadow-elevated">
-        <CardHeader>
-          <CardTitle className="font-display text-xl">Academic Core</CardTitle>
-          <p className="text-sm text-muted-foreground">Classes, sections, students, assignments</p>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="rounded-2xl bg-surface-2 p-4">
-            <div className="flex items-center justify-between">
-              <p className="font-medium">Classes</p>
-              <GraduationCap className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="mt-3 flex gap-2">
-              <Input value={newClassName} onChange={(e) => setNewClassName(e.target.value)} placeholder="e.g. Grade 5" />
-              <Button variant="hero" onClick={createClass}>
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-            <ScrollArea className="h-[250px] mt-4 rounded-2xl border bg-surface">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Grade</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {classes.map((c) => (
-                    <TableRow key={c.id}>
-                      <TableCell className="font-medium">{c.name}</TableCell>
-                      <TableCell>{c.grade_level ?? "—"}</TableCell>
-                    </TableRow>
-                  ))}
-                  {classes.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={2} className="text-muted-foreground">
-                        No classes yet.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </ScrollArea>
-          </div>
+    <div className="space-y-6">
+      {/* Header Stats */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+        <div className="rounded-2xl border bg-surface p-4 text-center">
+          <Building2 className="mx-auto h-5 w-5 text-muted-foreground" />
+          <p className="mt-2 text-2xl font-bold">{stats.classes}</p>
+          <p className="text-xs text-muted-foreground">Classes</p>
+        </div>
+        <div className="rounded-2xl border bg-surface p-4 text-center">
+          <GraduationCap className="mx-auto h-5 w-5 text-muted-foreground" />
+          <p className="mt-2 text-2xl font-bold">{stats.sections}</p>
+          <p className="text-xs text-muted-foreground">Sections</p>
+        </div>
+        <div className="rounded-2xl border bg-surface p-4 text-center">
+          <Users className="mx-auto h-5 w-5 text-muted-foreground" />
+          <p className="mt-2 text-2xl font-bold">{stats.students}</p>
+          <p className="text-xs text-muted-foreground">Students</p>
+        </div>
+        <div className="rounded-2xl border bg-surface p-4 text-center">
+          <User className="mx-auto h-5 w-5 text-muted-foreground" />
+          <p className="mt-2 text-2xl font-bold">{stats.teachers}</p>
+          <p className="text-xs text-muted-foreground">Teachers</p>
+        </div>
+        <div className="rounded-2xl border bg-surface p-4 text-center">
+          <BookOpen className="mx-auto h-5 w-5 text-muted-foreground" />
+          <p className="mt-2 text-2xl font-bold">{stats.subjects}</p>
+          <p className="text-xs text-muted-foreground">Subjects</p>
+        </div>
+      </div>
 
-          <div className="rounded-2xl bg-surface-2 p-4">
-            <div className="flex items-center justify-between">
-              <p className="font-medium">Sections</p>
-              <GraduationCap className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <Select value={selectedClassId} onValueChange={setSelectedClassId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose class" />
-                </SelectTrigger>
-                <SelectContent>
-                  {classes.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="flex gap-2">
-                <Input value={newSectionName} onChange={(e) => setNewSectionName(e.target.value)} placeholder="e.g. A" />
-                <Button variant="hero" onClick={createSection}>
-                  <Plus className="h-4 w-4" />
-                </Button>
+      {/* Main Tabs */}
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+          <TabsTrigger value="overview" className="gap-2">
+            <Building2 className="h-4 w-4 hidden sm:block" />
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="teachers" className="gap-2">
+            <User className="h-4 w-4 hidden sm:block" />
+            Teachers
+          </TabsTrigger>
+          <TabsTrigger value="students" className="gap-2">
+            <Users className="h-4 w-4 hidden sm:block" />
+            Students
+          </TabsTrigger>
+          <TabsTrigger value="subjects" className="gap-2">
+            <BookOpen className="h-4 w-4 hidden sm:block" />
+            Subjects
+          </TabsTrigger>
+          <TabsTrigger value="manage" className="gap-2">
+            <Settings className="h-4 w-4 hidden sm:block" />
+            Manage
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-4">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <ClassStructureCard
+              classes={classes}
+              sections={sections}
+              subjects={subjects}
+              classSectionSubjects={classSectionSubjects}
+              enrollments={enrollments}
+            />
+            <TeacherDetailsCard
+              teachers={teachers}
+              classes={classes}
+              sections={sections}
+              subjects={subjects}
+              teacherAssignments={teacherAssignments}
+              teacherSubjectAssignments={teacherSubjectAssignments}
+            />
+          </div>
+        </TabsContent>
+
+        {/* Teachers Tab */}
+        <TabsContent value="teachers" className="space-y-4">
+          <TeacherDetailsCard
+            teachers={teachers}
+            classes={classes}
+            sections={sections}
+            subjects={subjects}
+            teacherAssignments={teacherAssignments}
+            teacherSubjectAssignments={teacherSubjectAssignments}
+          />
+
+          {/* Assign Teacher to Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <UserCog className="h-5 w-5" />
+                Assign Teacher to Section
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Teacher</Label>
+                  <Select value={teacherUserId} onValueChange={setTeacherUserId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select teacher" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {teachers.map((t) => (
+                        <SelectItem key={t.user_id} value={t.user_id}>
+                          {t.display_name ?? t.email}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Section</Label>
+                  <Select value={assignSectionId} onValueChange={setAssignSectionId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select section" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sections.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {classes.find((c) => c.id === s.class_id)?.name ?? "Class"} • {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-end">
+                  <Button onClick={assignTeacher} className="w-full">
+                    <UserCog className="mr-2 h-4 w-4" /> Assign
+                  </Button>
+                </div>
               </div>
-            </div>
+            </CardContent>
+          </Card>
 
-            <ScrollArea className="h-[250px] mt-4 rounded-2xl border bg-surface">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Section</TableHead>
-                    <TableHead>Class</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sections.map((s) => (
-                    <TableRow key={s.id}>
-                      <TableCell className="font-medium">{s.name}</TableCell>
-                      <TableCell>{classes.find((c) => c.id === s.class_id)?.name ?? "—"}</TableCell>
-                    </TableRow>
-                  ))}
-                  {sections.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={2} className="text-muted-foreground">
-                        No sections yet.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </ScrollArea>
-          </div>
-        </CardContent>
-      </Card>
+          <TeacherSubjectAssignmentsCard
+            schoolId={schoolId}
+            classes={classes}
+            sections={sections}
+            subjects={subjects}
+            classSectionSubjects={classSectionSubjects}
+            teachers={teachers}
+            teacherSubjectAssignments={teacherSubjectAssignments}
+            onChanged={refresh}
+          />
+        </TabsContent>
 
-      <Card className="shadow-elevated">
-        <CardHeader>
-          <CardTitle className="font-display text-xl">Students</CardTitle>
-          <p className="text-sm text-muted-foreground">Create and enroll students into sections</p>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <div className="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-4">
-              <Input value={studentFirst} onChange={(e) => setStudentFirst(e.target.value)} placeholder="First name" />
-              <Input value={studentLast} onChange={(e) => setStudentLast(e.target.value)} placeholder="Last name" />
-              <Select value={selectedSectionId} onValueChange={setSelectedSectionId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Enroll to section" />
-                </SelectTrigger>
-                <SelectContent>
-                  {sections.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {classes.find((c) => c.id === s.class_id)?.name ?? "Class"} • {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button variant="hero" onClick={createStudentAndEnroll}>
-                <Plus className="mr-2 h-4 w-4" /> Add student
-              </Button>
-            </div>
-            {schoolId && (
-              <StudentTransferDialog
-                schoolId={schoolId}
-                students={students}
-                classes={classes}
-                sections={sections}
-                onTransferComplete={refresh}
-              />
-            )}
-          </div>
+        {/* Students Tab */}
+        <TabsContent value="students" className="space-y-4">
+          <StudentRosterCard
+            students={students}
+            classes={classes}
+            sections={sections}
+            enrollments={enrollments}
+          />
 
-          <ScrollArea className="h-[300px] rounded-2xl border bg-surface">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Class / Section</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Linked profile</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {students.map((s) => (
-                  <TableRow key={s.id}>
-                    <TableCell className="font-medium">{s.first_name} {s.last_name ?? ""}</TableCell>
-                    <TableCell className="text-muted-foreground">{s.section_label || "—"}</TableCell>
-                    <TableCell>
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                        s.status === "enrolled" 
-                          ? "bg-primary/10 text-primary" 
-                          : s.status === "inquiry" 
-                            ? "bg-muted text-muted-foreground"
-                            : "bg-destructive/10 text-destructive"
-                      }`}>
-                        {s.status}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{s.profile_id ?? "—"}</TableCell>
-                    <TableCell className="text-right">
-                      {s.profile_id ? (
-                        <Button variant="outline" size="sm" onClick={() => unlinkStudentProfile(s.id)}>
-                          Unlink
-                        </Button>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {students.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-muted-foreground">
-                      No students yet.
-                    </TableCell>
-                  </TableRow>
+          {/* Quick Add Student */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Plus className="h-5 w-5" />
+                Add New Student
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+                <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">First Name *</Label>
+                    <Input value={studentFirst} onChange={(e) => setStudentFirst(e.target.value)} placeholder="First name" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Last Name</Label>
+                    <Input value={studentLast} onChange={(e) => setStudentLast(e.target.value)} placeholder="Last name" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Enroll in Section *</Label>
+                    <Select value={selectedSectionId} onValueChange={setSelectedSectionId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select section" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sections.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {classes.find((c) => c.id === s.class_id)?.name ?? "Class"} • {s.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-end">
+                    <Button onClick={createStudentAndEnroll} className="w-full">
+                      <Plus className="mr-2 h-4 w-4" /> Add Student
+                    </Button>
+                  </div>
+                </div>
+                {schoolId && (
+                  <StudentTransferDialog
+                    schoolId={schoolId}
+                    students={students}
+                    classes={classes}
+                    sections={sections}
+                    onTransferComplete={refresh}
+                  />
                 )}
-              </TableBody>
-            </Table>
-          </ScrollArea>
+              </div>
+            </CardContent>
+          </Card>
 
-          <div className="rounded-2xl bg-surface-2 p-4">
-            <p className="font-medium">Link student to portal user</p>
-            <p className="mt-1 text-xs text-muted-foreground">This enables the Student panel to show the correct data for that login.</p>
-            <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
-              <Select value={linkStudentId} onValueChange={setLinkStudentId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pick student" />
-                </SelectTrigger>
-                <SelectContent>
-                  {students.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.first_name} {s.last_name ?? ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={linkUserId} onValueChange={setLinkUserId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pick user" />
-                </SelectTrigger>
-                <SelectContent>
-                  {directoryUsers.map((u) => (
-                    <SelectItem key={u.user_id} value={u.user_id}>
-                      {u.display_name ?? u.email}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button variant="hero" onClick={linkStudentToProfile}>
-                Link
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          {/* Link Student to Portal */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Link Student to Portal Account</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Connect a student record to a user account for student portal access.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Student</Label>
+                  <Select value={linkStudentId} onValueChange={setLinkStudentId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select student" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {students.filter(s => !s.profile_id).map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.first_name} {s.last_name ?? ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">User Account</Label>
+                  <Select value={linkUserId} onValueChange={setLinkUserId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select user" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {directoryUsers.map((u) => (
+                        <SelectItem key={u.user_id} value={u.user_id}>
+                          {u.display_name ?? u.email}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-end">
+                  <Button onClick={linkStudentToProfile} variant="outline" className="w-full">
+                    Link Account
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      <Card className="shadow-elevated">
-        <CardHeader>
-          <CardTitle className="font-display text-xl">Teacher Assignments</CardTitle>
-          <p className="text-sm text-muted-foreground">Teachers only see their assigned sections & students</p>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-2 md:grid-cols-3">
-          <Select value={teacherUserId} onValueChange={setTeacherUserId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Pick teacher" />
-            </SelectTrigger>
-            <SelectContent>
-              {teachers.map((t) => (
-                <SelectItem key={t.user_id} value={t.user_id}>
-                  {t.display_name ?? t.email}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={assignSectionId} onValueChange={setAssignSectionId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Pick section" />
-            </SelectTrigger>
-            <SelectContent>
-              {sections.map((s) => (
-                <SelectItem key={s.id} value={s.id}>
-                  {classes.find((c) => c.id === s.class_id)?.name ?? "Class"} • {s.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button variant="hero" onClick={assignTeacher}>
-            <UserCog className="mr-2 h-4 w-4" /> Assign
-          </Button>
-        </CardContent>
-      </Card>
+        {/* Subjects Tab */}
+        <TabsContent value="subjects" className="space-y-4">
+          <SubjectsOverviewCard
+            subjects={subjects}
+            classes={classes}
+            sections={sections}
+            teachers={teachers}
+            classSectionSubjects={classSectionSubjects}
+            teacherSubjectAssignments={teacherSubjectAssignments}
+          />
 
-      <SubjectCatalogCard schoolId={schoolId} subjects={subjects} onChanged={refresh} />
+          <SubjectCatalogCard schoolId={schoolId} subjects={subjects} onChanged={refresh} />
 
-      <SectionSubjectsCard
-        schoolId={schoolId}
-        classes={classes}
-        sections={sections}
-        subjects={subjects}
-        classSectionSubjects={classSectionSubjects}
-        onChanged={refresh}
-      />
+          <SectionSubjectsCard
+            schoolId={schoolId}
+            classes={classes}
+            sections={sections}
+            subjects={subjects}
+            classSectionSubjects={classSectionSubjects}
+            onChanged={refresh}
+          />
+        </TabsContent>
 
-      <TeacherSubjectAssignmentsCard
-        schoolId={schoolId}
-        classes={classes}
-        sections={sections}
-        subjects={subjects}
-        classSectionSubjects={classSectionSubjects}
-        teachers={teachers}
-        teacherSubjectAssignments={teacherSubjectAssignments}
-        onChanged={refresh}
-      />
+        {/* Manage Tab */}
+        <TabsContent value="manage" className="space-y-4">
+          {/* Create Class/Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Building2 className="h-5 w-5" />
+                Class & Section Management
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              {/* Create Class */}
+              <div className="space-y-3">
+                <p className="font-medium">Create New Class</p>
+                <div className="flex gap-2">
+                  <Input 
+                    value={newClassName} 
+                    onChange={(e) => setNewClassName(e.target.value)} 
+                    placeholder="e.g. Grade 5, Class 10" 
+                  />
+                  <Button onClick={createClass}>
+                    <Plus className="mr-2 h-4 w-4" /> Create
+                  </Button>
+                </div>
+                <ScrollArea className="h-[200px] rounded-xl border">
+                  <div className="p-3 space-y-2">
+                    {classes.map((c) => (
+                      <div key={c.id} className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
+                        <span className="font-medium">{c.name}</span>
+                        <Badge variant="outline">{c.grade_level ? `Grade ${c.grade_level}` : "No grade"}</Badge>
+                      </div>
+                    ))}
+                    {classes.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-4">No classes yet</p>
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
 
-      <AssessmentManagerCard schoolId={schoolId} />
+              {/* Create Section */}
+              <div className="space-y-3">
+                <p className="font-medium">Create New Section</p>
+                <div className="space-y-2">
+                  <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select class" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {classes.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex gap-2">
+                    <Input 
+                      value={newSectionName} 
+                      onChange={(e) => setNewSectionName(e.target.value)} 
+                      placeholder="e.g. A, B, Science" 
+                    />
+                    <Button onClick={createSection}>
+                      <Plus className="mr-2 h-4 w-4" /> Create
+                    </Button>
+                  </div>
+                </div>
+                <ScrollArea className="h-[200px] rounded-xl border">
+                  <div className="p-3 space-y-2">
+                    {sections.map((s) => (
+                      <div key={s.id} className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
+                        <span className="font-medium">{s.name}</span>
+                        <Badge variant="secondary">{classes.find((c) => c.id === s.class_id)?.name ?? "—"}</Badge>
+                      </div>
+                    ))}
+                    {sections.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-4">No sections yet</p>
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
+            </CardContent>
+          </Card>
 
-      {schoolId && <GradeThresholdsCard schoolId={schoolId} />}
+          <AssessmentManagerCard schoolId={schoolId} />
+
+          {schoolId && <GradeThresholdsCard schoolId={schoolId} />}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
