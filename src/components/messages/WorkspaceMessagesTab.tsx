@@ -211,6 +211,85 @@ export function WorkspaceMessagesTab({ schoolId, canCompose = true }: Props) {
     fetchMessages();
   }, [fetchMessages]);
 
+  // Realtime subscription for read status updates
+  useEffect(() => {
+    if (!schoolId || !currentUserId) return;
+
+    const channel = supabase
+      .channel(`workspace-read-status-${schoolId}-${currentUserId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "admin_message_recipients",
+        },
+        (payload) => {
+          const newRow = payload.new as { message_id: string; is_read: boolean; read_at: string | null; recipient_user_id: string };
+          
+          // Update messages list to reflect read status
+          setMessages((prev) =>
+            prev.map((m) => {
+              if (m.id === newRow.message_id) {
+                // For sent messages, update recipients
+                if (m.is_sent && m.recipients) {
+                  return {
+                    ...m,
+                    recipients: m.recipients.map((r) =>
+                      r.user_id === newRow.recipient_user_id
+                        ? { ...r, is_read: newRow.is_read, read_at: newRow.read_at || undefined }
+                        : r
+                    ),
+                  };
+                }
+                // For received messages, update is_read
+                if (!m.is_sent && newRow.recipient_user_id === currentUserId) {
+                  return { ...m, is_read: newRow.is_read };
+                }
+              }
+              return m;
+            })
+          );
+
+          // Also update selected message if viewing it
+          setSelectedMessage((prev) => {
+            if (!prev || prev.id !== newRow.message_id) return prev;
+            
+            if (prev.is_sent && prev.recipients) {
+              return {
+                ...prev,
+                recipients: prev.recipients.map((r) =>
+                  r.user_id === newRow.recipient_user_id
+                    ? { ...r, is_read: newRow.is_read, read_at: newRow.read_at || undefined }
+                    : r
+                ),
+              };
+            }
+            
+            return prev;
+          });
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "admin_message_recipients",
+          filter: `recipient_user_id=eq.${currentUserId}`,
+        },
+        () => {
+          // New message received - refresh messages list
+          fetchMessages();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [schoolId, currentUserId, fetchMessages]);
+
   const markAsRead = async (message: Message) => {
     if (message.is_sent || message.is_read) return;
 

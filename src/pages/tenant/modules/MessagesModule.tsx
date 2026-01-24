@@ -342,6 +342,70 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
     if (currentUserId) fetchAllUsers();
   }, [fetchAllUsers, currentUserId]);
 
+  // Realtime subscription for read status updates
+  useEffect(() => {
+    if (!schoolId || !currentUserId) return;
+
+    const channel = supabase
+      .channel(`read-status-${schoolId}-${currentUserId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "admin_message_recipients",
+        },
+        (payload) => {
+          const newRow = payload.new as { message_id: string; is_read: boolean; read_at: string | null; recipient_user_id: string };
+          
+          // Update read status in current messages if viewing this message
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === newRow.message_id && m.is_mine
+                ? { ...m, is_read: newRow.is_read }
+                : m
+            )
+          );
+
+          // Update read status map for read receipts
+          setMessageReadStatus((prev) => ({
+            ...prev,
+            [newRow.message_id]: {
+              is_read: newRow.is_read,
+              read_at: newRow.read_at,
+            },
+          }));
+
+          // Update unread counts in conversations list
+          if (newRow.recipient_user_id === currentUserId && newRow.is_read) {
+            fetchConversations();
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "admin_message_recipients",
+          filter: `recipient_user_id=eq.${currentUserId}`,
+        },
+        () => {
+          // New message received - refresh conversations
+          fetchConversations();
+          // If in a conversation, also reload messages
+          if (selectedConversation) {
+            loadConversationMessages(selectedConversation.recipientId);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [schoolId, currentUserId, fetchConversations, selectedConversation]);
+
   const loadConversationMessages = async (partnerId: string) => {
     if (!currentUserId) return;
     setMessagesLoading(true);
