@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AtRiskStudentsCard } from "@/components/teacher/AtRiskStudentsCard";
 import { ClassPerformanceChart } from "@/components/teacher/ClassPerformanceChart";
 import { TimetablePreviewWidget } from "@/components/teacher/TimetablePreviewWidget";
+import { StudentPerformanceWidget } from "@/components/teacher/StudentPerformanceWidget";
 
 interface Stats {
   totalStudents: number;
@@ -255,9 +256,12 @@ export function TeacherHome() {
         </Card>
       </div>
 
-      {/* Timetable Preview Widget */}
+      {/* Timetable Preview & Performance Widget */}
       {tenant.status === "ready" && schoolSlug && (
-        <TimetablePreviewWidget schoolId={tenant.schoolId} schoolSlug={schoolSlug} />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <TimetablePreviewWidget schoolId={tenant.schoolId} schoolSlug={schoolSlug} />
+          <StudentPerformanceWidget schoolId={tenant.schoolId} sectionIds={sectionIds} />
+        </div>
       )}
 
       {/* Analytics Cards - At-Risk Students & Class Performance */}
