@@ -8,7 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { CheckCircle, Clock, FileText, Send, Eye } from "lucide-react";
+import { CheckCircle, Clock, FileText, Send, Eye, Paperclip } from "lucide-react";
+import { FileUploadArea } from "@/components/assignments/FileUploadArea";
+import { AttachmentsList } from "@/components/assignments/AttachmentsList";
 
 type Assignment = { 
   id: string; 
@@ -24,6 +26,7 @@ type Submission = {
   id: string;
   assignment_id: string;
   submission_text: string | null;
+  attachment_urls: string[] | null;
   submitted_at: string;
   status: string;
   marks_obtained: number | null;
@@ -31,6 +34,8 @@ type Submission = {
 };
 
 type Homework = { id: string; title: string; due_date: string; status: string };
+
+const BUCKET_NAME = "assignment-submissions";
 
 export function StudentAssignmentsModule({ myStudent, schoolId }: { myStudent: any; schoolId: string }) {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -41,6 +46,8 @@ export function StudentAssignmentsModule({ myStudent, schoolId }: { myStudent: a
   const [submitOpen, setSubmitOpen] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
   const [submissionText, setSubmissionText] = useState("");
+  const [uploadedFiles, setUploadedFiles] = useState<{ name: string; path: string }[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   
   // View result dialog
@@ -78,7 +85,7 @@ export function StudentAssignmentsModule({ myStudent, schoolId }: { myStudent: a
         .limit(200),
       supabase
         .from("assignment_submissions")
-        .select("id,assignment_id,submission_text,submitted_at,status,marks_obtained,feedback")
+        .select("id,assignment_id,submission_text,attachment_urls,submitted_at,status,marks_obtained,feedback")
         .eq("school_id", schoolId)
         .eq("student_id", myStudent.studentId),
     ]);
@@ -100,15 +107,50 @@ export function StudentAssignmentsModule({ myStudent, schoolId }: { myStudent: a
     const existing = submissions.get(assignment.id);
     setSelectedAssignment(assignment);
     setSubmissionText(existing?.submission_text || "");
+    // Load existing files
+    const existingFiles = (existing?.attachment_urls || []).map((path) => ({
+      name: path.split("/").pop() || path,
+      path,
+    }));
+    setUploadedFiles(existingFiles);
     setSubmitOpen(true);
+  };
+
+  const handleUploadFile = async (file: File): Promise<string | null> => {
+    if (!selectedAssignment || myStudent.status !== "ready") return null;
+
+    const ext = file.name.split(".").pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const filePath = `${myStudent.studentId}/${selectedAssignment.id}/${fileName}`;
+
+    setUploading(true);
+    const { error } = await supabase.storage
+      .from(BUCKET_NAME)
+      .upload(filePath, file, { upsert: false });
+
+    setUploading(false);
+
+    if (error) {
+      toast.error(`Upload failed: ${error.message}`);
+      return null;
+    }
+
+    return filePath;
   };
 
   const handleSubmit = async () => {
     if (!selectedAssignment || myStudent.status !== "ready") return;
     
+    // Require at least text or files
+    if (!submissionText.trim() && uploadedFiles.length === 0) {
+      toast.error("Please add text or attach files");
+      return;
+    }
+    
     setSubmitting(true);
     const existing = submissions.get(selectedAssignment.id);
     const isLate = selectedAssignment.due_date && new Date(selectedAssignment.due_date) < new Date();
+    const attachmentUrls = uploadedFiles.map((f) => f.path);
     
     if (existing) {
       // Update existing submission
@@ -116,6 +158,7 @@ export function StudentAssignmentsModule({ myStudent, schoolId }: { myStudent: a
         .from("assignment_submissions")
         .update({
           submission_text: submissionText,
+          attachment_urls: attachmentUrls.length > 0 ? attachmentUrls : null,
           status: isLate ? "late" : "submitted",
           submitted_at: new Date().toISOString(),
         })
@@ -137,6 +180,7 @@ export function StudentAssignmentsModule({ myStudent, schoolId }: { myStudent: a
           assignment_id: selectedAssignment.id,
           student_id: myStudent.studentId,
           submission_text: submissionText,
+          attachment_urls: attachmentUrls.length > 0 ? attachmentUrls : null,
           status: isLate ? "late" : "submitted",
         });
       
@@ -171,6 +215,11 @@ export function StudentAssignmentsModule({ myStudent, schoolId }: { myStudent: a
   const isOverdue = (dueDate: string | null) => {
     if (!dueDate) return false;
     return new Date(dueDate) < new Date();
+  };
+
+  const hasAttachments = (assignment: Assignment) => {
+    const sub = submissions.get(assignment.id);
+    return sub?.attachment_urls && sub.attachment_urls.length > 0;
   };
 
   return (
@@ -209,6 +258,9 @@ export function StudentAssignmentsModule({ myStudent, schoolId }: { myStudent: a
                           <Badge variant="outline" className="text-xs capitalize">
                             {a.assignment_type}
                           </Badge>
+                          {hasAttachments(a) && (
+                            <Paperclip className="h-4 w-4 text-muted-foreground" />
+                          )}
                         </div>
                         {a.description && (
                           <CardDescription className="mt-1">{a.description}</CardDescription>
@@ -280,7 +332,7 @@ export function StudentAssignmentsModule({ myStudent, schoolId }: { myStudent: a
 
       {/* Submit Assignment Dialog */}
       <Dialog open={submitOpen} onOpenChange={setSubmitOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Submit Assignment</DialogTitle>
             <DialogDescription>
@@ -299,14 +351,29 @@ export function StudentAssignmentsModule({ myStudent, schoolId }: { myStudent: a
                 value={submissionText}
                 onChange={(e) => setSubmissionText(e.target.value)}
                 placeholder="Enter your answer or paste your work here..."
-                rows={8}
+                rows={6}
                 className="mt-2"
+              />
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium mb-2 block">Attachments</label>
+              <FileUploadArea
+                files={uploadedFiles}
+                onFilesChange={setUploadedFiles}
+                onUpload={handleUploadFile}
+                uploading={uploading}
+                disabled={submitting}
+                maxFiles={5}
               />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSubmitOpen(false)}>Cancel</Button>
-            <Button onClick={handleSubmit} disabled={submitting || !submissionText.trim()}>
+            <Button 
+              onClick={handleSubmit} 
+              disabled={submitting || uploading || (!submissionText.trim() && uploadedFiles.length === 0)}
+            >
               {submitting ? "Submitting..." : "Submit"}
             </Button>
           </DialogFooter>
@@ -315,7 +382,7 @@ export function StudentAssignmentsModule({ myStudent, schoolId }: { myStudent: a
 
       {/* View Result Dialog */}
       <Dialog open={viewOpen} onOpenChange={setViewOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Assignment Result</DialogTitle>
             <DialogDescription>{selectedAssignment?.title}</DialogDescription>
@@ -354,6 +421,10 @@ export function StudentAssignmentsModule({ myStudent, schoolId }: { myStudent: a
                   {viewSubmission.submission_text || "No text submitted"}
                 </div>
               </div>
+              
+              {viewSubmission.attachment_urls && viewSubmission.attachment_urls.length > 0 && (
+                <AttachmentsList attachmentUrls={viewSubmission.attachment_urls} />
+              )}
             </div>
           )}
         </DialogContent>
