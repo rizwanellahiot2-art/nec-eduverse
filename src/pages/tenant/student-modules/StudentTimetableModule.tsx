@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { PeriodTimetableGrid, type PeriodTimetableEntry } from "@/components/timetable/PeriodTimetableGrid";
 
 type Enrollment = { class_section_id: string };
 type Period = { id: string; label: string; sort_order: number; start_time: string | null; end_time: string | null };
@@ -10,23 +10,15 @@ type Entry = {
   day_of_week: number;
   period_id: string;
   subject_name: string;
+  teacher_user_id: string | null;
   room: string | null;
-};
-
-const dayLabel: Record<number, string> = {
-  0: "Sun",
-  1: "Mon",
-  2: "Tue",
-  3: "Wed",
-  4: "Thu",
-  5: "Fri",
-  6: "Sat",
 };
 
 export function StudentTimetableModule({ myStudent, schoolId }: { myStudent: any; schoolId: string }) {
   const [sectionIds, setSectionIds] = useState<string[]>([]);
   const [periods, setPeriods] = useState<Period[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
+  const [directory, setDirectory] = useState<Array<{ user_id: string; display_name: string | null; email: string }>>([]);
 
   const refresh = async () => {
     if (myStudent.status !== "ready") return;
@@ -40,7 +32,7 @@ export function StudentTimetableModule({ myStudent, schoolId }: { myStudent: any
     const secIds = (enrollments ?? []).map((e) => (e as Enrollment).class_section_id);
     setSectionIds(secIds);
 
-    const [{ data: p }, { data: t }] = await Promise.all([
+    const [{ data: p }, { data: t }, { data: dir }] = await Promise.all([
       supabase
         .from("timetable_periods")
         .select("id,label,sort_order,start_time,end_time")
@@ -49,14 +41,16 @@ export function StudentTimetableModule({ myStudent, schoolId }: { myStudent: any
       secIds.length
         ? supabase
             .from("timetable_entries")
-            .select("id,day_of_week,period_id,subject_name,room")
+            .select("id,day_of_week,period_id,subject_name,teacher_user_id,room")
             .eq("school_id", schoolId)
             .in("class_section_id", secIds)
             .order("day_of_week", { ascending: true })
         : Promise.resolve({ data: [] as any[] }),
+      supabase.from("school_user_directory").select("user_id,display_name,email").eq("school_id", schoolId),
     ]);
     setPeriods((p ?? []) as Period[]);
     setEntries((t ?? []) as Entry[]);
+    setDirectory((dir ?? []) as any);
   };
 
   useEffect(() => {
@@ -64,14 +58,24 @@ export function StudentTimetableModule({ myStudent, schoolId }: { myStudent: any
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myStudent.status]);
 
-  const periodLabelById = useMemo(() => {
+  const teacherLabelByUserId = useMemo(() => {
     const m = new Map<string, string>();
-    for (const p of periods) {
-      const time = p.start_time && p.end_time ? ` (${String(p.start_time).slice(0, 5)}–${String(p.end_time).slice(0, 5)})` : "";
-      m.set(p.id, `${p.label}${time}`);
-    }
+    for (const d of directory) m.set(d.user_id, d.display_name ?? d.email);
     return m;
-  }, [periods]);
+  }, [directory]);
+
+  const gridEntries = useMemo(() => {
+    return entries.map((e) =>
+      ({
+        id: e.id,
+        day_of_week: e.day_of_week,
+        period_id: e.period_id,
+        subject_name: e.subject_name,
+        room: e.room,
+        teacher_name: e.teacher_user_id ? teacherLabelByUserId.get(e.teacher_user_id) ?? null : null,
+      }) satisfies PeriodTimetableEntry
+    );
+  }, [entries, teacherLabelByUserId]);
 
   return (
     <div className="space-y-4">
@@ -82,31 +86,13 @@ export function StudentTimetableModule({ myStudent, schoolId }: { myStudent: any
 
       <p className="text-xs text-muted-foreground">Sections: {sectionIds.length ? sectionIds.join(", ") : "—"}</p>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Day</TableHead>
-            <TableHead>Period</TableHead>
-            <TableHead>Subject</TableHead>
-            <TableHead>Room</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {entries.map((e) => (
-            <TableRow key={e.id}>
-                <TableCell className="font-medium">{dayLabel[e.day_of_week] ?? String(e.day_of_week)}</TableCell>
-              <TableCell className="text-muted-foreground">{periodLabelById.get(e.period_id) ?? e.period_id}</TableCell>
-                <TableCell className="text-muted-foreground">{e.subject_name}</TableCell>
-              <TableCell className="text-muted-foreground">{e.room ?? "—"}</TableCell>
-            </TableRow>
-          ))}
-          {entries.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={4} className="text-sm text-muted-foreground">No timetable entries yet.</TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+      {entries.length === 0 ? (
+        <div className="rounded-3xl bg-surface p-6 shadow-elevated">
+          <p className="text-sm text-muted-foreground">No timetable entries yet.</p>
+        </div>
+      ) : (
+        <PeriodTimetableGrid periods={periods} entries={gridEntries} />
+      )}
     </div>
   );
 }

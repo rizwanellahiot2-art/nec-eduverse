@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { ChildInfo } from "@/hooks/useMyChildren";
+import { PeriodTimetableGrid, type PeriodTimetableEntry } from "@/components/timetable/PeriodTimetableGrid";
 
 interface ParentTimetableModuleProps {
   child: ChildInfo | null;
@@ -12,18 +12,39 @@ interface ParentTimetableModuleProps {
 interface TimetableEntry {
   id: string;
   day_of_week: number;
-  start_time: string;
-  end_time: string;
+  period_id: string;
   subject_name: string | null;
   room: string | null;
+  teacher_user_id: string | null;
 }
 
-const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+type Period = { id: string; label: string; sort_order: number; start_time: string | null; end_time: string | null };
 
 const ParentTimetableModule = ({ child, schoolId }: ParentTimetableModuleProps) => {
   const [entries, setEntries] = useState<TimetableEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [sectionId, setSectionId] = useState<string | null>(null);
+  const [periods, setPeriods] = useState<Period[]>([]);
+  const [directory, setDirectory] = useState<Array<{ user_id: string; display_name: string | null; email: string }>>([]);
+
+  const teacherLabelByUserId = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const d of directory) m.set(d.user_id, d.display_name ?? d.email);
+    return m;
+  }, [directory]);
+
+  const gridEntries = useMemo(() => {
+    return entries.map((e) =>
+      ({
+        id: e.id,
+        day_of_week: e.day_of_week,
+        period_id: e.period_id,
+        subject_name: e.subject_name,
+        room: e.room,
+        teacher_name: e.teacher_user_id ? teacherLabelByUserId.get(e.teacher_user_id) ?? null : null,
+      }) satisfies PeriodTimetableEntry
+    );
+  }, [entries, teacherLabelByUserId]);
 
   // Fetch child's current section
   useEffect(() => {
@@ -54,12 +75,21 @@ const ParentTimetableModule = ({ child, schoolId }: ParentTimetableModuleProps) 
     const fetchTimetable = async () => {
       setLoading(true);
 
-      const { data, error } = await supabase
-        .from("timetable_entries")
-        .select("id, day_of_week, start_time, end_time, subject_name, room")
-        .eq("class_section_id", sectionId)
-        .order("day_of_week")
-        .order("start_time");
+      const [{ data: p }, { data, error }, { data: dir }] = await Promise.all([
+        supabase
+          .from("timetable_periods")
+          .select("id,label,sort_order,start_time,end_time")
+          .eq("school_id", schoolId)
+          .order("sort_order", { ascending: true }),
+        supabase
+          .from("timetable_entries")
+          .select("id, day_of_week, period_id, subject_name, room, teacher_user_id")
+          .eq("school_id", schoolId)
+          .eq("class_section_id", sectionId)
+          .order("day_of_week")
+          .order("period_id"),
+        supabase.from("school_user_directory").select("user_id,display_name,email").eq("school_id", schoolId),
+      ]);
 
       if (error) {
         console.error("Failed to fetch timetable:", error);
@@ -67,16 +97,18 @@ const ParentTimetableModule = ({ child, schoolId }: ParentTimetableModuleProps) 
         return;
       }
 
-      const formatted: TimetableEntry[] = (data || []).map((e) => ({
+      const formatted: TimetableEntry[] = (data || []).map((e: any) => ({
         id: e.id,
         day_of_week: e.day_of_week,
-        start_time: e.start_time,
-        end_time: e.end_time,
+        period_id: e.period_id,
         subject_name: e.subject_name,
         room: e.room,
+        teacher_user_id: e.teacher_user_id,
       }));
 
       setEntries(formatted);
+      setPeriods((p ?? []) as any);
+      setDirectory((dir ?? []) as any);
       setLoading(false);
     };
 
@@ -91,12 +123,6 @@ const ParentTimetableModule = ({ child, schoolId }: ParentTimetableModuleProps) 
     );
   }
 
-  // Group by day
-  const byDay = DAYS.map((dayName, idx) => ({
-    day: dayName,
-    entries: entries.filter((e) => e.day_of_week === idx),
-  })).filter((d) => d.entries.length > 0);
-
   return (
     <div className="space-y-6">
       <div>
@@ -110,48 +136,14 @@ const ParentTimetableModule = ({ child, schoolId }: ParentTimetableModuleProps) 
 
       {loading ? (
         <p className="text-muted-foreground">Loading...</p>
-      ) : byDay.length === 0 ? (
+      ) : entries.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             No timetable entries found for this section.
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {byDay.map(({ day, entries: dayEntries }) => (
-            <Card key={day}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">{day}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Time</TableHead>
-                      <TableHead>Subject</TableHead>
-                      <TableHead>Room</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {dayEntries.map((entry) => (
-                      <TableRow key={entry.id}>
-                        <TableCell className="text-sm">
-                          {entry.start_time?.slice(0, 5)} - {entry.end_time?.slice(0, 5)}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {entry.subject_name || "—"}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {entry.room || "—"}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <PeriodTimetableGrid periods={periods} entries={gridEntries} />
       )}
     </div>
   );

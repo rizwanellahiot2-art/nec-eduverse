@@ -21,6 +21,8 @@ import {
   type TeacherSubjectAssignmentRow,
 } from "@/pages/tenant/modules/components/TeacherSubjectAssignmentsCard";
 
+import { AssessmentManagerCard } from "@/pages/tenant/modules/components/AssessmentManagerCard";
+
 type ClassRow = { id: string; name: string; grade_level: number | null };
 type SectionRow = { id: string; name: string; class_id: string; room: string | null };
 type StudentRow = { id: string; first_name: string; last_name: string | null; status: string; profile_id: string | null };
@@ -434,6 +436,8 @@ export function AcademicModule() {
         teacherSubjectAssignments={teacherSubjectAssignments}
         onChanged={refresh}
       />
+
+      <AssessmentManagerCard schoolId={schoolId} />
     </div>
   );
 }
