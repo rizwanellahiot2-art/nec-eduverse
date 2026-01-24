@@ -65,10 +65,20 @@ export function TeacherBehaviorModule() {
   const fetchData = async () => {
     setLoading(true);
 
+    // Get current teacher's user id
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+
+    // Only get assignments for THIS teacher
     const { data: assignments } = await supabase
       .from("teacher_assignments")
       .select("class_section_id")
-      .eq("school_id", tenant.schoolId);
+      .eq("school_id", tenant.schoolId)
+      .eq("teacher_user_id", userId);
 
     if (!assignments?.length) {
       setLoading(false);

@@ -54,10 +54,20 @@ export function TeacherHomeworkModule() {
   const fetchData = async () => {
     setLoading(true);
 
+    // Get current teacher's user id
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+
+    // Only get assignments for THIS teacher
     const { data: assignments } = await supabase
       .from("teacher_assignments")
       .select("class_section_id")
-      .eq("school_id", tenant.schoolId);
+      .eq("school_id", tenant.schoolId)
+      .eq("teacher_user_id", userId);
 
     if (!assignments?.length) {
       setLoading(false);
@@ -92,12 +102,12 @@ export function TeacherHomeworkModule() {
 
     setSections(enrichedSections);
 
-    // Fetch homework
+    // Fetch homework - only for THIS teacher's sections OR created by this teacher
     const { data: homeworkData } = await supabase
       .from("homework")
       .select("*")
       .eq("school_id", tenant.schoolId)
-      .in("class_section_id", sectionIds)
+      .or(`class_section_id.in.(${sectionIds.join(",")}),teacher_user_id.eq.${userId}`)
       .order("due_date", { ascending: true });
 
     const sectionMap = new Map(enrichedSections.map((s) => [s.id, `${s.class_name} - ${s.name}`]));
