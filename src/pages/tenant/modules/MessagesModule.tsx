@@ -17,6 +17,8 @@ import {
   MessageCircle,
   Reply,
   CornerDownRight,
+  AlertCircle,
+  ShieldAlert,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -49,15 +51,23 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTypingIndicator } from "@/hooks/useTypingIndicator";
+import { useUserRole } from "@/hooks/useUserRole";
 import {
   ReplyPreview,
   ReplyIndicator,
   TypingIndicator,
 } from "@/components/messages/MessageThreadComponents";
+import { MessageSearchDialog } from "@/components/messages/MessageSearchDialog";
+import { ReadReceiptIndicator } from "@/components/messages/ReadReceiptIndicator";
 
 interface Conversation {
   id: string;
@@ -86,13 +96,15 @@ interface UserEntry {
   display_name: string;
   email?: string;
   role?: string;
+  canMessage?: boolean;
 }
 
 interface Props {
   schoolId: string;
+  isStudentPortal?: boolean;
 }
 
-export function MessagesModule({ schoolId }: Props) {
+export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
   const isMobile = useIsMobile();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserName, setCurrentUserName] = useState<string>("");
@@ -113,6 +125,10 @@ export function MessagesModule({ schoolId }: Props) {
   const [attachments, setAttachments] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+  const [messageReadStatus, setMessageReadStatus] = useState<Record<string, { is_read: boolean; read_at: string | null }>>({});
+
+  // Get current user's role for restrictions
+  const { isStudent, isStaff, loading: roleLoading } = useUserRole(schoolId, currentUserId);
 
   // Typing indicator hook
   const { isPartnerTyping, handleTyping, stopTyping } = useTypingIndicator({
@@ -258,21 +274,54 @@ export function MessagesModule({ schoolId }: Props) {
   }, [schoolId]);
 
   const fetchAllUsers = useCallback(async () => {
+    // Fetch all users in the school
     const { data } = await supabase
       .from("school_user_directory")
       .select("user_id, display_name, email")
       .eq("school_id", schoolId);
 
+    // For students, we need to filter to only show staff (teachers, principals, etc.)
+    // Fetch all user roles to determine who can be messaged
+    const userIds = (data || []).map((d) => d.user_id).filter(Boolean);
+    
+    let roleData: { user_id: string; role: string }[] = [];
+    if (userIds.length > 0) {
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("user_id, role")
+        .eq("school_id", schoolId)
+        .in("user_id", userIds);
+      roleData = (roles || []) as { user_id: string; role: string }[];
+    }
+
+    const staffRoles = [
+      "super_admin", "school_owner", "principal", "vice_principal",
+      "academic_coordinator", "teacher", "accountant", "hr_manager",
+      "counselor", "marketing_staff"
+    ];
+
     const users: UserEntry[] = (data || [])
       .filter((d) => d.user_id && d.user_id !== currentUserId)
-      .map((d) => ({
-        user_id: d.user_id!,
-        display_name: d.display_name || d.email || "User",
-        email: d.email || undefined,
-      }));
+      .map((d) => {
+        const userRoles = roleData.filter((r) => r.user_id === d.user_id);
+        const isUserStaff = userRoles.some((r) => staffRoles.includes(r.role));
+        const isUserStudent = userRoles.some((r) => r.role === "student") && !isUserStaff;
+        
+        // Students can only message staff
+        // Staff can message anyone
+        const canMessage = isStudent ? isUserStaff : true;
+        
+        return {
+          user_id: d.user_id!,
+          display_name: d.display_name || d.email || "User",
+          email: d.email || undefined,
+          role: isUserStaff ? "Staff" : isUserStudent ? "Student" : "Member",
+          canMessage,
+        };
+      });
 
     setAllUsers(users);
-  }, [schoolId, currentUserId]);
+  }, [schoolId, currentUserId, isStudent]);
 
   useEffect(() => {
     fetchConversations();
@@ -286,10 +335,10 @@ export function MessagesModule({ schoolId }: Props) {
     if (!currentUserId) return;
     setMessagesLoading(true);
 
-    // Get messages sent by me to this partner
+    // Get messages sent by me to this partner (with read_at timestamps)
     const { data: sent } = await supabase
       .from("admin_messages")
-      .select("*, admin_message_recipients!inner(recipient_user_id, is_read)")
+      .select("*, admin_message_recipients!inner(recipient_user_id, is_read, read_at)")
       .eq("school_id", schoolId)
       .eq("sender_user_id", currentUserId)
       .eq("admin_message_recipients.recipient_user_id", partnerId)
@@ -298,12 +347,13 @@ export function MessagesModule({ schoolId }: Props) {
     // Get messages received from this partner
     const { data: receivedRows } = await supabase
       .from("admin_message_recipients")
-      .select("message_id, is_read, admin_messages!inner(*)")
+      .select("message_id, is_read, read_at, admin_messages!inner(*)")
       .eq("recipient_user_id", currentUserId)
       .eq("admin_messages.sender_user_id", partnerId)
       .eq("admin_messages.school_id", schoolId);
 
     const chatMessages: ChatMessage[] = [];
+    const readStatusMap: Record<string, { is_read: boolean; read_at: string | null }> = {};
 
     sent?.forEach((m) => {
       const recipient = (m.admin_message_recipients as any[])?.[0];
@@ -318,6 +368,11 @@ export function MessagesModule({ schoolId }: Props) {
         subject: m.subject,
         reply_to_id: (m as any).reply_to_id || undefined,
       });
+      // Store read status with timestamp
+      readStatusMap[m.id] = {
+        is_read: recipient?.is_read || false,
+        read_at: recipient?.read_at || null,
+      };
     });
 
     receivedRows?.forEach((r) => {
@@ -348,6 +403,7 @@ export function MessagesModule({ schoolId }: Props) {
     }
 
     setMessages(chatMessages);
+    setMessageReadStatus(readStatusMap);
     setMessagesLoading(false);
 
     // Update unread count in conversation
@@ -549,12 +605,19 @@ export function MessagesModule({ schoolId }: Props) {
   }, [conversations, searchQuery]);
 
   const filteredNewChatUsers = useMemo(() => {
-    if (!newChatSearch) return allUsers;
+    let users = allUsers;
+    
+    // Filter to only show users that can be messaged
+    if (isStudent) {
+      users = users.filter((u) => u.canMessage !== false);
+    }
+    
+    if (!newChatSearch) return users;
     const q = newChatSearch.toLowerCase();
-    return allUsers.filter(
+    return users.filter(
       (u) => u.display_name.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q)
     );
-  }, [allUsers, newChatSearch]);
+  }, [allUsers, newChatSearch, isStudent]);
 
   const totalUnread = useMemo(() => conversations.reduce((sum, c) => sum + c.unreadCount, 0), [conversations]);
 
@@ -596,33 +659,60 @@ export function MessagesModule({ schoolId }: Props) {
                   value={newChatSearch}
                   onChange={(e) => setNewChatSearch(e.target.value)}
                 />
+                {isStudent && (
+                  <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-2 text-xs text-muted-foreground">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>Students can only message teachers and staff members.</span>
+                  </div>
+                )}
                 <ScrollArea className="h-64">
                   <div className="space-y-2">
-                    {filteredNewChatUsers.map((user) => (
-                      <button
-                        key={user.user_id}
-                        onClick={() => {
-                          setSelectedUsers([user.user_id]);
-                          handleStartNewChat();
-                        }}
-                        className="flex w-full items-center gap-3 rounded-lg p-2 text-left transition-colors hover:bg-accent"
-                      >
-                        <Avatar className="h-10 w-10">
-                          <AvatarFallback>{getInitials(user.display_name)}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 overflow-hidden">
-                          <p className="truncate font-medium">{user.display_name}</p>
-                          {user.email && (
-                            <p className="truncate text-xs text-muted-foreground">{user.email}</p>
-                          )}
-                        </div>
-                      </button>
-                    ))}
+                    {filteredNewChatUsers.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-8 text-center">
+                        <MessageCircle className="h-10 w-10 text-muted-foreground/30" />
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          {isStudent ? "No staff members found" : "No users found"}
+                        </p>
+                      </div>
+                    ) : (
+                      filteredNewChatUsers.map((user) => (
+                        <button
+                          key={user.user_id}
+                          onClick={() => {
+                            setSelectedUsers([user.user_id]);
+                            handleStartNewChat();
+                          }}
+                          className="flex w-full items-center gap-3 rounded-lg p-2 text-left transition-colors hover:bg-accent"
+                        >
+                          <Avatar className="h-10 w-10">
+                            <AvatarFallback>{getInitials(user.display_name)}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 overflow-hidden">
+                            <div className="flex items-center gap-2">
+                              <p className="truncate font-medium">{user.display_name}</p>
+                              {user.role && (
+                                <Badge variant="secondary" className="text-[10px] h-4 shrink-0">
+                                  {user.role}
+                                </Badge>
+                              )}
+                            </div>
+                            {user.email && (
+                              <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                            )}
+                          </div>
+                        </button>
+                      ))
+                    )}
                   </div>
                 </ScrollArea>
               </div>
             </DialogContent>
           </Dialog>
+          <MessageSearchDialog
+            schoolId={schoolId}
+            currentUserId={currentUserId || ""}
+            profileMap={profileMap}
+          />
         </div>
 
         {/* Search */}
@@ -888,11 +978,21 @@ export function MessagesModule({ schoolId }: Props) {
                                 {formatMessageTime(msg.created_at)}
                               </span>
                               {msg.is_mine && (
-                                msg.is_read ? (
-                                  <CheckCheck className="h-3 w-3 text-primary-foreground/70" />
-                                ) : (
-                                  <Check className="h-3 w-3 text-primary-foreground/70" />
-                                )
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    {msg.is_read ? (
+                                      <CheckCheck className="h-3 w-3 text-primary-foreground/70 cursor-help" />
+                                    ) : (
+                                      <Check className="h-3 w-3 text-primary-foreground/50 cursor-help" />
+                                    )}
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="text-xs">
+                                    {msg.is_read
+                                      ? `Read ${messageReadStatus[msg.id]?.read_at ? format(parseISO(messageReadStatus[msg.id].read_at!), "MMM d, h:mm a") : ""}`
+                                      : "Delivered"
+                                    }
+                                  </TooltipContent>
+                                </Tooltip>
                               )}
                             </div>
                           </div>
