@@ -571,13 +571,13 @@ export function WorkspaceMessagesTab({ schoolId, canCompose = true }: Props) {
           </div>
         </button>
         
-        {/* Delete button overlay */}
+        {/* Delete button overlay - visible on mobile, hover on desktop */}
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="absolute right-12 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              className="absolute right-12 top-1/2 -translate-y-1/2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
               onClick={(e) => e.stopPropagation()}
             >
               {deletingMessageId === message.id ? (
@@ -698,16 +698,18 @@ export function WorkspaceMessagesTab({ schoolId, canCompose = true }: Props) {
                   </AvatarFallback>
                 </Avatar>
                 <div className={cn(
-                  "flex-1 max-w-[80%]",
+                  "flex flex-col w-fit",
                   selectedMessage.is_sent ? "items-end" : "items-start"
-                )}>
+                )}
+                style={{ maxWidth: "85%" }}
+                >
                   <div className={cn(
-                    "rounded-2xl p-4",
+                    "rounded-2xl px-4 py-2.5 inline-block",
                     selectedMessage.is_sent 
                       ? "bg-primary text-primary-foreground rounded-tr-sm" 
                       : "bg-muted rounded-tl-sm"
                   )}>
-                    <p className="whitespace-pre-wrap text-sm sm:text-base">{selectedMessage.content}</p>
+                    <p className="whitespace-pre-wrap text-sm sm:text-base leading-relaxed [overflow-wrap:anywhere] [word-break:break-word]">{selectedMessage.content}</p>
                   </div>
                   <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground px-1">
                     <Clock className="h-3 w-3" />
