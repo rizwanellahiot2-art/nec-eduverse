@@ -462,27 +462,39 @@ export function WorkspaceMessagesTab({ schoolId, canCompose = true }: Props) {
   const handleDeleteMessage = async (message: Message, e?: React.MouseEvent) => {
     e?.stopPropagation();
     setDeletingMessageId(message.id);
+    setDeleting(true);
     try {
       if (message.is_sent) {
-        await supabase.from("admin_message_recipients").delete().eq("message_id", message.id);
-        await supabase.from("admin_messages").delete().eq("id", message.id);
+        // User sent this message - they can delete the message itself
+        // The recipients will be cascade deleted due to FK constraint
+        const { error: deleteError } = await supabase
+          .from("admin_messages")
+          .delete()
+          .eq("id", message.id)
+          .eq("sender_user_id", currentUserId);
+        
+        if (deleteError) throw deleteError;
       } else {
+        // User received this message - mark as read and remove from local state only
+        // We can't delete recipient records, but we can mark them read
         await supabase
           .from("admin_message_recipients")
-          .delete()
+          .update({ is_read: true, read_at: new Date().toISOString() })
           .eq("message_id", message.id)
           .eq("recipient_user_id", currentUserId);
       }
 
-      toast({ title: "Message deleted" });
+      toast({ title: message.is_sent ? "Message deleted" : "Message removed" });
+      setMessages((prev) => prev.filter((m) => m.id !== message.id));
       if (selectedMessage?.id === message.id) {
         setSelectedMessage(null);
       }
-      fetchMessages();
     } catch (error: any) {
+      console.error("Delete message error:", error);
       toast({ title: "Failed to delete", description: error.message, variant: "destructive" });
     } finally {
       setDeletingMessageId(null);
+      setDeleting(false);
     }
   };
 
