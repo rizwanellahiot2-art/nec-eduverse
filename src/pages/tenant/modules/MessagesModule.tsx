@@ -1043,9 +1043,7 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
 
         {/* Conversation List - only show in inbox tab */}
         {activeTab === "inbox" && (
-
-        {/* Conversation List */}
-        <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1">
           {loading ? (
             <div className="flex items-center justify-center p-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -1122,6 +1120,7 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
             </div>
           )}
         </ScrollArea>
+        )}
       </div>
 
       {/* Chat Area */}
