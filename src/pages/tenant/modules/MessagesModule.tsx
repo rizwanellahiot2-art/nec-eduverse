@@ -125,7 +125,8 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
   const [forwardSending, setForwardSending] = useState(false);
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
   const [activeTab, setActiveTab] = useState<"inbox" | "scheduled">("inbox");
-  const [clearedConversations, setClearedConversations] = useState<Set<string>>(new Set());
+  // Map of partner_user_id -> cleared_at timestamp (to filter old messages)
+  const [clearedConversations, setClearedConversations] = useState<Map<string, string>>(new Map());
   const [scheduledCount, setScheduledCount] = useState(0);
 
   // Get current user's role for restrictions
@@ -171,15 +172,21 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
       .maybeSingle();
     setCurrentUserName(profile?.display_name || user.user.email || "User");
 
-    // Fetch cleared conversations for this user (to hide them)
+    // Fetch cleared conversations for this user (with timestamp to filter old messages)
     const { data: clearedRows } = await supabase
       .from("cleared_conversations")
-      .select("partner_user_id")
+      .select("partner_user_id, cleared_at")
       .eq("school_id", schoolId)
       .eq("user_id", user.user.id);
     
-    const clearedSet = new Set((clearedRows || []).map((r) => r.partner_user_id));
-    setClearedConversations(clearedSet);
+    // Map of partner_user_id -> cleared_at timestamp
+    const clearedMap = new Map<string, string>();
+    (clearedRows || []).forEach((r) => {
+      if (r.partner_user_id && r.cleared_at) {
+        clearedMap.set(r.partner_user_id, r.cleared_at);
+      }
+    });
+    setClearedConversations(clearedMap);
 
     // Fetch scheduled messages count
     const { count: schedCount } = await supabase
@@ -250,8 +257,9 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
       const recipients = m.admin_message_recipients || [];
       if (recipients.length === 1) {
         const recipientId = recipients[0].recipient_user_id;
-        // Skip if conversation is cleared
-        if (clearedSet.has(recipientId)) return;
+        // Skip if conversation is cleared AND message is before cleared_at
+        const clearedAt = clearedMap.get(recipientId);
+        if (clearedAt && new Date(m.created_at) <= new Date(clearedAt)) return;
         
         const existing = conversationMap.get(recipientId);
         const hasAttachment = (m as any).attachment_urls && (m as any).attachment_urls.length > 0;
@@ -280,8 +288,9 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
       if (!msg) return;
       const senderId = msg.sender_user_id;
       
-      // Skip if conversation is cleared
-      if (clearedSet.has(senderId)) return;
+      // Skip if conversation is cleared AND message is before cleared_at
+      const clearedAt = clearedMap.get(senderId);
+      if (clearedAt && new Date(msg.created_at) <= new Date(clearedAt)) return;
       
       const existing = conversationMap.get(senderId);
       const isNewer = !existing || new Date(msg.created_at) > new Date(existing.lastMessageTime);
@@ -448,6 +457,9 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
     if (!currentUserId) return;
     setMessagesLoading(true);
 
+    // Check if this conversation was cleared (to filter old messages)
+    const clearedAt = clearedConversations.get(partnerId);
+
     // Get messages sent by me to this partner (with read_at timestamps)
     const { data: sent } = await supabase
       .from("admin_messages")
@@ -469,6 +481,9 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
     const readStatusMap: Record<string, { is_read: boolean; read_at: string | null }> = {};
 
     sent?.forEach((m) => {
+      // Skip messages before cleared_at timestamp
+      if (clearedAt && new Date(m.created_at) <= new Date(clearedAt)) return;
+      
       const recipient = (m.admin_message_recipients as any[])?.[0];
       chatMessages.push({
         id: m.id,
@@ -491,6 +506,9 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
     receivedRows?.forEach((r) => {
       const msg = r.admin_messages as any;
       if (!msg) return;
+      // Skip messages before cleared_at timestamp
+      if (clearedAt && new Date(msg.created_at) <= new Date(clearedAt)) return;
+      
       chatMessages.push({
         id: msg.id,
         content: msg.content,
@@ -652,8 +670,9 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
 
         if (error) throw error;
         
-        // Update local cleared set
-        setClearedConversations((prev) => new Set([...prev, conv.recipientId]));
+        // Update local cleared map with timestamp
+        const clearedAt = new Date().toISOString();
+        setClearedConversations((prev) => new Map([...prev, [conv.recipientId, clearedAt]]));
       } else {
         // "Delete for everyone" - permanently delete messages I sent
         const { data: sentRows, error: sentRowsError } = await supabase
