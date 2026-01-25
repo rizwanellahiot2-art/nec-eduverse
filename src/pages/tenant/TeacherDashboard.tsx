@@ -17,7 +17,6 @@ import { TeacherAssignmentsModule } from "@/pages/tenant/teacher-modules/Teacher
 import { TeacherBehaviorModule } from "@/pages/tenant/teacher-modules/TeacherBehaviorModule";
 import { TeacherReportsModule } from "@/pages/tenant/teacher-modules/TeacherReportsModule";
 import { TeacherTimetableModule } from "@/pages/tenant/teacher-modules/TeacherTimetableModule";
-import { TeacherMessagesModule } from "@/pages/tenant/teacher-modules/TeacherMessagesModule";
 import { TeacherAdminInboxModule } from "@/pages/tenant/teacher-modules/TeacherAdminInboxModule";
 import { TeacherWorkspaceMessagesModule } from "@/pages/tenant/teacher-modules/TeacherWorkspaceMessagesModule";
 import { TeacherGradebookModule } from "@/pages/tenant/teacher-modules/TeacherGradebookModule";
@@ -167,8 +166,7 @@ const TeacherDashboard = () => {
             <Route path="lesson-plans" element={<TeacherLessonPlannerModule />} />
             <Route path="reports" element={<TeacherReportsModule />} />
             <Route path="timetable" element={<TeacherTimetableModule />} />
-            <Route path="messages" element={<TeacherMessagesModule />} />
-            <Route path="workspace-messages" element={<TeacherWorkspaceMessagesModule />} />
+            <Route path="messages" element={<TeacherWorkspaceMessagesModule />} />
             <Route path="admin-inbox" element={<TeacherAdminInboxModule />} />
             <Route path="*" element={<Navigate to={`/${tenant.slug}/teacher`} replace />} />
           </Routes>
