@@ -79,7 +79,7 @@ export function MarketingShell({ title, subtitle, schoolSlug, children }: Props)
           <p className="text-xs text-muted-foreground">/{schoolSlug} • Marketing</p>
         </div>
         <div className="flex items-center gap-2">
-          <NotificationsBell schoolId={schoolId} />
+          <NotificationsBell schoolId={schoolId} schoolSlug={schoolSlug} role="marketing_staff" />
           <Button
             variant="soft"
             size="icon"
@@ -156,7 +156,7 @@ export function MarketingShell({ title, subtitle, schoolSlug, children }: Props)
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <NotificationsBell schoolId={schoolId} />
+          <NotificationsBell schoolId={schoolId} schoolSlug={schoolSlug} role="marketing_staff" />
           <Button
             variant="ghost"
             size="icon"

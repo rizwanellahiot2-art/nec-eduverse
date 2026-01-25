@@ -82,7 +82,7 @@ export function HrShell({ title, subtitle, schoolSlug, children }: Props) {
           <p className="text-xs text-muted-foreground">/{schoolSlug} • HR</p>
         </div>
         <div className="flex items-center gap-2">
-          <NotificationsBell schoolId={schoolId} />
+          <NotificationsBell schoolId={schoolId} schoolSlug={schoolSlug} role="hr_manager" />
           <Button
             variant="soft"
             size="icon"
@@ -159,7 +159,7 @@ export function HrShell({ title, subtitle, schoolSlug, children }: Props) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <NotificationsBell schoolId={schoolId} />
+          <NotificationsBell schoolId={schoolId} schoolSlug={schoolSlug} role="hr_manager" />
           <Button
             variant="ghost"
             size="icon"
