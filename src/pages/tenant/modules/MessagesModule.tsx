@@ -3,7 +3,6 @@ import { format, parseISO, isToday, isYesterday } from "date-fns";
 import {
   Send,
   Search,
-  MoreVertical,
   Check,
   CheckCheck,
   Paperclip,
@@ -18,8 +17,6 @@ import {
   Reply,
   CornerDownRight,
   AlertCircle,
-  ShieldAlert,
-  Pin,
   Forward,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,23 +26,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
@@ -73,6 +53,7 @@ import { ReadReceiptIndicator } from "@/components/messages/ReadReceiptIndicator
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { PushNotificationBanner } from "@/components/messages/PushNotificationBanner";
 import { MessageReactions, PinnedMessagesCount } from "@/components/messages/MessageReactions";
+import { DeleteConversationDialog, type DeleteMode } from "@/components/messages/DeleteConversationDialog";
 
 interface Conversation {
   id: string;
@@ -82,6 +63,9 @@ interface Conversation {
   lastMessageTime: string;
   unreadCount: number;
   isGroup: boolean;
+  hasAttachment?: boolean;
+  lastSenderName?: string;
+  isSentByMe?: boolean;
 }
 
 interface ChatMessage {
@@ -239,15 +223,21 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
       if (recipients.length === 1) {
         const recipientId = recipients[0].recipient_user_id;
         const existing = conversationMap.get(recipientId);
+        const hasAttachment = (m as any).attachment_urls && (m as any).attachment_urls.length > 0;
+        const msgContent = m.content.substring(0, 40) + (m.content.length > 40 ? "…" : "");
+        
         if (!existing || new Date(m.created_at) > new Date(existing.lastMessageTime)) {
           conversationMap.set(recipientId, {
             id: recipientId,
             recipientId,
             recipientName: map[recipientId] || "User",
-            lastMessage: m.content.substring(0, 50) + (m.content.length > 50 ? "..." : ""),
+            lastMessage: hasAttachment && !m.content.trim() ? "Attachment" : msgContent,
             lastMessageTime: m.created_at,
             unreadCount: 0,
             isGroup: false,
+            hasAttachment,
+            lastSenderName: "You",
+            isSentByMe: true,
           });
         }
       }
@@ -260,21 +250,30 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
       const senderId = msg.sender_user_id;
       const existing = conversationMap.get(senderId);
       const isNewer = !existing || new Date(msg.created_at) > new Date(existing.lastMessageTime);
+      const hasAttachment = msg.attachment_urls && msg.attachment_urls.length > 0;
+      const msgContent = msg.content.substring(0, 40) + (msg.content.length > 40 ? "…" : "");
+      const senderName = map[senderId] || "User";
       
       if (!existing) {
         conversationMap.set(senderId, {
           id: senderId,
           recipientId: senderId,
-          recipientName: map[senderId] || "User",
-          lastMessage: msg.content.substring(0, 50) + (msg.content.length > 50 ? "..." : ""),
+          recipientName: senderName,
+          lastMessage: hasAttachment && !msg.content.trim() ? "Attachment" : msgContent,
           lastMessageTime: msg.created_at,
           unreadCount: r.is_read ? 0 : 1,
           isGroup: false,
+          hasAttachment,
+          lastSenderName: senderName,
+          isSentByMe: false,
         });
       } else {
         if (isNewer) {
-          existing.lastMessage = msg.content.substring(0, 50) + (msg.content.length > 50 ? "..." : "");
+          existing.lastMessage = hasAttachment && !msg.content.trim() ? "Attachment" : msgContent;
           existing.lastMessageTime = msg.created_at;
+          existing.hasAttachment = hasAttachment;
+          existing.lastSenderName = senderName;
+          existing.isSentByMe = false;
         }
         if (!r.is_read) existing.unreadCount++;
       }
@@ -600,31 +599,34 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
     }
   };
 
-  const handleDeleteConversation = async (conv: Conversation) => {
+  const handleDeleteConversation = async (conv: Conversation, mode: DeleteMode = "delete_for_everyone") => {
     if (!currentUserId) return;
     
     try {
-      // 1) Delete messages I SENT to this partner (destructive: removes for everyone)
-      const { data: sentRows, error: sentRowsError } = await supabase
-        .from("admin_messages")
-        .select("id, admin_message_recipients!inner(recipient_user_id)")
-        .eq("school_id", schoolId)
-        .eq("sender_user_id", currentUserId)
-        .eq("admin_message_recipients.recipient_user_id", conv.recipientId);
-
-      if (sentRowsError) throw sentRowsError;
-
-      const sentIds = (sentRows || []).map((r) => r.id).filter(Boolean);
-      if (sentIds.length > 0) {
-        const { error: deleteSentError } = await supabase
+      if (mode === "delete_for_everyone") {
+        // 1) Delete messages I SENT to this partner (destructive: removes for everyone)
+        const { data: sentRows, error: sentRowsError } = await supabase
           .from("admin_messages")
-          .delete()
-          .in("id", sentIds)
-          .eq("sender_user_id", currentUserId);
-        if (deleteSentError) throw deleteSentError;
+          .select("id, admin_message_recipients!inner(recipient_user_id)")
+          .eq("school_id", schoolId)
+          .eq("sender_user_id", currentUserId)
+          .eq("admin_message_recipients.recipient_user_id", conv.recipientId);
+
+        if (sentRowsError) throw sentRowsError;
+
+        const sentIds = (sentRows || []).map((r) => r.id).filter(Boolean);
+        if (sentIds.length > 0) {
+          const { error: deleteSentError } = await supabase
+            .from("admin_messages")
+            .delete()
+            .in("id", sentIds)
+            .eq("sender_user_id", currentUserId);
+          if (deleteSentError) throw deleteSentError;
+        }
       }
 
       // 2) Delete message links I RECEIVED from this partner (clears from my view only)
+      // This is done for both modes - "clear for me" and "delete for everyone"
       const { data: receivedLinks, error: receivedLinksError } = await supabase
         .from("admin_message_recipients")
         .select("id, message_id, admin_messages!inner(sender_user_id, school_id)")
@@ -644,7 +646,9 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
         if (deleteReceivedError) throw deleteReceivedError;
       }
 
-      toast({ title: "Conversation deleted" });
+      toast({ 
+        title: mode === "delete_for_everyone" ? "Conversation deleted" : "Chat cleared" 
+      });
       setConversations((prev) => prev.filter((c) => c.id !== conv.id));
       if (selectedConversation?.id === conv.id) {
         setSelectedConversation(null);
@@ -889,6 +893,22 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
             schoolId={schoolId}
             currentUserId={currentUserId || ""}
             profileMap={profileMap}
+            onSelectMessage={(messageId, partnerId) => {
+              // Jump to the conversation and scroll to message
+              if (partnerId) {
+                const conv = conversations.find(c => c.recipientId === partnerId);
+                if (conv) {
+                  handleSelectConversation(conv);
+                  // Delay scroll to message after messages load
+                  setTimeout(() => {
+                    const el = document.getElementById(`msg-${messageId}`);
+                    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                    el?.classList.add("ring-2", "ring-primary", "ring-offset-2");
+                    setTimeout(() => el?.classList.remove("ring-2", "ring-primary", "ring-offset-2"), 2000);
+                  }, 500);
+                }
+              }
+            }}
           />
         </div>
 
@@ -946,43 +966,10 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                       <div className="flex items-center justify-between">
                         <div className="flex min-w-0 items-center gap-1.5">
                           {/* Always-visible delete icon in front of name */}
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 shrink-0"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                }}
-                                onPointerDown={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                }}
-                              >
-                                <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Conversation</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This will remove the entire conversation for you. Messages you received will be removed
-                                  from your inbox, and messages you sent will be deleted.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteConversation(conv)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          <DeleteConversationDialog
+                            recipientName={conv.recipientName}
+                            onDelete={async (mode) => handleDeleteConversation(conv, mode)}
+                          />
 
                           <p className={cn("truncate font-medium", conv.unreadCount > 0 && "font-semibold")}>
                             {conv.recipientName}
@@ -992,14 +979,23 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                           {formatConversationTime(conv.lastMessageTime)}
                         </span>
                       </div>
-                      <p
-                        className={cn(
-                          "mt-0.5 truncate text-sm",
-                          conv.unreadCount > 0 ? "font-medium text-foreground" : "text-muted-foreground"
+                      {/* Enhanced last message preview */}
+                      <div className={cn(
+                        "mt-0.5 flex items-center gap-1.5 text-sm",
+                        conv.unreadCount > 0 ? "font-medium text-foreground" : "text-muted-foreground"
+                      )}>
+                        {conv.hasAttachment && (
+                          <Paperclip className="h-3 w-3 shrink-0" />
                         )}
-                      >
-                        {conv.lastMessage || "No messages yet"}
-                      </p>
+                        {conv.lastSenderName && (
+                          <span className="shrink-0 text-xs font-medium">
+                            {conv.isSentByMe ? "You:" : `${conv.lastSenderName.split(" ")[0]}:`}
+                          </span>
+                        )}
+                        <p className="truncate">
+                          {conv.lastMessage || "No messages yet"}
+                        </p>
+                      </div>
                     </div>
                   </button>
                 </div>
@@ -1033,22 +1029,15 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
               <div className="flex-1">
                 <p className="font-semibold">{selectedConversation.recipientName}</p>
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+              <DeleteConversationDialog
+                recipientName={selectedConversation.recipientName}
+                onDelete={async (mode) => handleDeleteConversation(selectedConversation, mode)}
+                trigger={
                   <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <MoreVertical className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4 text-muted-foreground" />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() => handleDeleteConversation(selectedConversation)}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete Conversation
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                }
+              />
             </div>
 
             {/* Messages */}
@@ -1077,7 +1066,7 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                       : undefined;
 
                     return (
-                      <div key={msg.id} className="w-full">
+                      <div key={msg.id} id={`msg-${msg.id}`} className="w-full transition-all duration-300 rounded-lg">
                         {showDate && (
                           <div className="my-4 flex items-center justify-center">
                             <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
