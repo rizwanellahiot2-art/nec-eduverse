@@ -88,13 +88,12 @@ export function TeacherShell({ title, subtitle, schoolSlug, children }: Props) {
     { to: `${basePath}/lesson-plans`, icon: BookCheck, label: "Lesson Planner", badge: 0 },
     { to: `${basePath}/reports`, icon: GraduationCap, label: "Report Cards", badge: 0 },
     { to: `${basePath}/timetable`, icon: CalendarDays, label: "Timetable", badge: 0 },
-    { to: `${basePath}/messages`, icon: MessageSquare, label: "Parent Messages", badge: badges.unreadMessages },
-    { to: `${basePath}/workspace-messages`, icon: Send, label: "Admin Messages", badge: unreadAdminMessages },
+    { to: `${basePath}/messages`, icon: MessageSquare, label: "Messages", badge: unreadAdminMessages },
   ];
 
   const bottomNavItems = [
     { to: basePath, icon: LayoutGrid, label: "Home", end: true },
-    { to: `${basePath}/workspace-messages`, icon: MessageSquare, label: "Messages", badge: badges.unreadMessages + unreadAdminMessages },
+    { to: `${basePath}/messages`, icon: MessageSquare, label: "Messages", badge: unreadAdminMessages },
     { to: `${basePath}/attendance`, icon: ClipboardCheck, label: "Attendance" },
     { to: `${basePath}/students`, icon: Users, label: "Students" },
   ];
