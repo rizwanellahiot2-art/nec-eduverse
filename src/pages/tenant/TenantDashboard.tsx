@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { BarChart3, LogOut, UserRound, Coins, UserPlus, ClipboardList, GraduationCap, FileText, Users } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
-import { useTenant } from "@/hooks/useTenant";
+import { useTenantOptimized } from "@/hooks/useTenantOptimized";
+import { useAuthz } from "@/hooks/useAuthz";
 import { useRealtimeTable } from "@/hooks/useRealtime";
 import { isEduverseRole, roleLabel, type EduverseRole } from "@/lib/eduverse-roles";
 import { TenantShell } from "@/components/tenant/TenantShell";
@@ -29,8 +30,6 @@ import { MessagesModule } from "@/pages/tenant/modules/MessagesModule";
 const TenantDashboard = () => {
   const { schoolSlug, role: roleParam } = useParams();
   // Support route aliases that are nicer than DB enum values.
-  // URL: /:schoolSlug/hr  -> DB role: hr_manager
-  // URL: /:schoolSlug/marketing -> DB role: marketing_staff
   const roleAlias = useMemo(() => {
     if (!roleParam) return null;
     if (roleParam === "hr") return "hr_manager";
@@ -38,7 +37,9 @@ const TenantDashboard = () => {
     return roleParam;
   }, [roleParam]);
   const role = (isEduverseRole(roleAlias) ? roleAlias : null) as EduverseRole | null;
-  const tenant = useTenant(schoolSlug);
+  
+  // Use optimized tenant hook with caching
+  const tenant = useTenantOptimized(schoolSlug);
   const { user, loading } = useSession();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -48,12 +49,18 @@ const TenantDashboard = () => {
     [tenant.status, tenant.schoolId]
   );
 
-  const [authzState, setAuthzState] = useState<"checking" | "ok" | "denied">("checking");
-  const [authzMessage, setAuthzMessage] = useState<string | null>(null);
+  // Use optimized authorization hook with caching
+  const authz = useAuthz({
+    schoolId,
+    userId: user?.id ?? null,
+    role: role ?? undefined,
+  });
+  const authzState = authz.state;
+  const authzMessage = authz.message;
 
   const title = useMemo(() => {
-    if (tenant.status === "ready" && role) return `${tenant.school.name} • ${roleLabel[role]}`;
-    if (tenant.status === "ready") return tenant.school.name;
+    if (tenant.status === "ready" && role) return `${tenant.school?.name} • ${roleLabel[role]}`;
+    if (tenant.status === "ready") return tenant.school?.name || "EDUVERSE";
     return "EDUVERSE";
   }, [tenant.status, tenant.school, role]);
 
@@ -234,79 +241,7 @@ const TenantDashboard = () => {
     enabled: !!schoolId,
   });
 
-  useEffect(() => {
-    if (!role) return;
-    if (tenant.status !== "ready") return;
-    if (!user) return;
-
-    let cancelled = false;
-    setAuthzState("checking");
-    setAuthzMessage(null);
-
-    (async () => {
-      // Global platform Super Admin bypass
-      const { data: psa, error: psaErr } = await supabase
-        .from("platform_super_admins")
-        .select("user_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (cancelled) return;
-      if (psaErr) {
-        setAuthzState("denied");
-        setAuthzMessage(psaErr.message);
-        return;
-      }
-      if (psa?.user_id) {
-        setAuthzState("ok");
-        return;
-      }
-
-      const { data: membership, error: memErr } = await supabase
-        .from("school_memberships")
-        .select("id")
-        .eq("school_id", tenant.schoolId)
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (cancelled) return;
-      if (memErr) {
-        setAuthzState("denied");
-        setAuthzMessage(memErr.message);
-        return;
-      }
-      if (!membership) {
-        setAuthzState("denied");
-        setAuthzMessage("You are not a member of this school.");
-        return;
-      }
-
-      const { data: roleRow, error: roleErr } = await supabase
-        .from("user_roles")
-        .select("id")
-        .eq("school_id", tenant.schoolId)
-        .eq("user_id", user.id)
-        .eq("role", role)
-        .maybeSingle();
-
-      if (cancelled) return;
-      if (roleErr) {
-        setAuthzState("denied");
-        setAuthzMessage(roleErr.message);
-        return;
-      }
-      if (!roleRow) {
-        setAuthzState("denied");
-        setAuthzMessage(`You do not have the ${roleLabel[role]} role in this school.`);
-        return;
-      }
-
-      setAuthzState("ok");
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [role, tenant.status, tenant.schoolId, user]);
+  if (!role) return <Navigate to={`/${tenant.slug || ""}/auth`} replace />;
 
   if (!role) return <Navigate to={`/${tenant.slug || ""}/auth`} replace />;
 

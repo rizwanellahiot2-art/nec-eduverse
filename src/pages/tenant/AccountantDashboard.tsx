@@ -1,60 +1,38 @@
- import { Navigate, Route, Routes, useParams } from "react-router-dom";
- import { useEffect, useState } from "react";
- import { supabase } from "@/integrations/supabase/client";
- import { useSession } from "@/hooks/useSession";
- import { useTenant } from "@/hooks/useTenant";
- import { AccountantShell } from "@/components/tenant/AccountantShell";
- import { AccountantHomeModule } from "@/pages/tenant/accountant-modules/AccountantHomeModule";
- import { AccountantFeesModule } from "@/pages/tenant/accountant-modules/AccountantFeesModule";
- import { AccountantInvoicesModule } from "@/pages/tenant/accountant-modules/AccountantInvoicesModule";
- import { AccountantPaymentsModule } from "@/pages/tenant/accountant-modules/AccountantPaymentsModule";
- import { AccountantExpensesModule } from "@/pages/tenant/accountant-modules/AccountantExpensesModule";
- import { AccountantPayrollModule } from "@/pages/tenant/accountant-modules/AccountantPayrollModule";
+import { Navigate, Route, Routes, useParams } from "react-router-dom";
+import { useMemo } from "react";
+import { useSession } from "@/hooks/useSession";
+import { useTenantOptimized } from "@/hooks/useTenantOptimized";
+import { useAuthz } from "@/hooks/useAuthz";
+import { AccountantShell } from "@/components/tenant/AccountantShell";
+import { AccountantHomeModule } from "@/pages/tenant/accountant-modules/AccountantHomeModule";
+import { AccountantFeesModule } from "@/pages/tenant/accountant-modules/AccountantFeesModule";
+import { AccountantInvoicesModule } from "@/pages/tenant/accountant-modules/AccountantInvoicesModule";
+import { AccountantPaymentsModule } from "@/pages/tenant/accountant-modules/AccountantPaymentsModule";
+import { AccountantExpensesModule } from "@/pages/tenant/accountant-modules/AccountantExpensesModule";
+import { AccountantPayrollModule } from "@/pages/tenant/accountant-modules/AccountantPayrollModule";
 import { AccountantReportsModule } from "@/pages/tenant/accountant-modules/AccountantReportsModule";
-  import { AccountantMessagesModule } from "@/pages/tenant/accountant-modules/AccountantMessagesModule";
-  import { TimetableBuilderModule } from "@/pages/tenant/modules/TimetableBuilderModule";
- 
- const AccountantDashboard = () => {
-   const { schoolSlug } = useParams();
-   const tenant = useTenant(schoolSlug);
-   const { user, loading } = useSession();
-   const [authzState, setAuthzState] = useState<"checking" | "ok" | "denied">("checking");
- 
-   useEffect(() => {
-     if (tenant.status !== "ready") return;
-     if (!user) return;
- 
-     let cancelled = false;
-     setAuthzState("checking");
- 
-     (async () => {
-       const { data: psa } = await supabase
-         .from("platform_super_admins")
-         .select("user_id")
-         .eq("user_id", user.id)
-         .maybeSingle();
-       if (cancelled) return;
-       if (psa?.user_id) {
-         setAuthzState("ok");
-         return;
-       }
- 
-       const { data: roleRow } = await supabase
-         .from("user_roles")
-         .select("id")
-         .eq("school_id", tenant.schoolId)
-         .eq("user_id", user.id)
-         .eq("role", "accountant")
-         .maybeSingle();
- 
-       if (cancelled) return;
-       setAuthzState(roleRow ? "ok" : "denied");
-     })();
- 
-     return () => {
-       cancelled = true;
-     };
-   }, [tenant.status, tenant.schoolId, user]);
+import { AccountantMessagesModule } from "@/pages/tenant/accountant-modules/AccountantMessagesModule";
+import { TimetableBuilderModule } from "@/pages/tenant/modules/TimetableBuilderModule";
+
+const AccountantDashboard = () => {
+  const { schoolSlug } = useParams();
+  
+  // Use optimized hooks with caching
+  const tenant = useTenantOptimized(schoolSlug);
+  const { user, loading } = useSession();
+
+  const schoolId = useMemo(() => 
+    tenant.status === "ready" ? tenant.schoolId : null, 
+    [tenant.status, tenant.schoolId]
+  );
+
+  // Use optimized authorization hook
+  const authz = useAuthz({
+    schoolId,
+    userId: user?.id ?? null,
+    requiredRoles: ["accountant"],
+  });
+  const authzState = authz.state;
  
    if (loading) {
      return (
