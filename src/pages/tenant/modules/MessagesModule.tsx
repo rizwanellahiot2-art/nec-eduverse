@@ -975,7 +975,7 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
       </div>
 
       {/* Chat Area */}
-      <div className={cn("flex flex-1 flex-col", !showChatOnMobile && isMobile && "hidden lg:flex")}>
+      <div className={cn("flex flex-1 flex-col overflow-hidden", !showChatOnMobile && isMobile && "hidden lg:flex")}>
         {selectedConversation ? (
           <>
             {/* Chat Header */}
@@ -1057,20 +1057,20 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                         <div className={cn("group flex items-end gap-1", msg.is_mine ? "justify-end" : "justify-start")}>
                           {/* Action buttons for other's messages */}
                           {!msg.is_mine && (
-                            <div className="mb-2 flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                            <div className="mb-2 flex shrink-0 gap-0.5 rounded-lg bg-muted/80 p-0.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 sm:bg-transparent sm:shadow-none">
                               <button
                                 onClick={() => setReplyingTo(msg)}
-                                className="p-1 rounded hover:bg-muted"
+                                className="rounded p-1.5 hover:bg-accent"
                                 title="Reply"
                               >
-                                <Reply className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                                <Reply className="h-4 w-4 text-foreground/70 hover:text-foreground" />
                               </button>
                               <button
                                 onClick={() => setForwardingMessage(msg)}
-                                className="p-1 rounded hover:bg-muted"
+                                className="rounded p-1.5 hover:bg-accent"
                                 title="Forward"
                               >
-                                <Forward className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                                <Forward className="h-4 w-4 text-foreground/70 hover:text-foreground" />
                               </button>
                             </div>
                           )}
@@ -1174,20 +1174,20 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                           </div>
                           {/* Action buttons for own messages */}
                           {msg.is_mine && (
-                            <div className="mb-2 flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                            <div className="mb-2 flex shrink-0 gap-0.5 rounded-lg bg-muted/80 p-0.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 sm:bg-transparent sm:shadow-none">
                               <button
                                 onClick={() => setForwardingMessage(msg)}
-                                className="p-1 rounded hover:bg-muted"
+                                className="rounded p-1.5 hover:bg-accent"
                                 title="Forward"
                               >
-                                <Forward className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                                <Forward className="h-4 w-4 text-foreground/70 hover:text-foreground" />
                               </button>
                               <button
                                 onClick={() => setReplyingTo(msg)}
-                                className="p-1 rounded hover:bg-muted"
+                                className="rounded p-1.5 hover:bg-accent"
                                 title="Reply"
                               >
-                                <Reply className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                                <Reply className="h-4 w-4 text-foreground/70 hover:text-foreground" />
                               </button>
                             </div>
                           )}
@@ -1238,8 +1238,8 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
             )}
 
             {/* Message Input - Fixed at bottom on mobile */}
-            <div className="shrink-0 border-t bg-background p-3 sm:p-4">
-              <div className="flex items-end gap-2">
+            <div className="shrink-0 border-t bg-background p-2 sm:p-4">
+              <div className="flex w-full items-end gap-1.5 sm:gap-2">
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -1251,7 +1251,7 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 shrink-0 sm:h-10 sm:w-10"
+                  className="h-8 w-8 shrink-0 sm:h-10 sm:w-10"
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <Paperclip className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -1269,12 +1269,12 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                       handleSendMessage();
                     }
                   }}
-                  className="min-h-[40px] max-h-28 resize-none text-sm sm:min-h-[44px] sm:max-h-32"
+                  className="min-h-[36px] max-h-24 min-w-0 flex-1 resize-none text-sm sm:min-h-[44px] sm:max-h-32"
                   rows={1}
                 />
                 <Button
                   size="icon"
-                  className="h-9 w-9 shrink-0 sm:h-10 sm:w-10"
+                  className="h-8 w-8 shrink-0 sm:h-10 sm:w-10"
                   disabled={sending || (!messageText.trim() && attachments.length === 0)}
                   onClick={handleSendMessage}
                 >
