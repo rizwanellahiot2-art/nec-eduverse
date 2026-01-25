@@ -2,13 +2,13 @@ import { useState } from "react";
 import { Trash2, Loader2, AlertTriangle, EyeOff, UserX } from "lucide-react";
 import {
   AlertDialog,
+  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -39,28 +39,29 @@ export function DeleteConversationDialog({ recipientName, onDelete, trigger, cla
     }
   };
 
+  const handleTriggerClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setOpen(true);
+  };
+
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger asChild>
-        {trigger || (
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn("h-7 w-7 shrink-0", className)}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-            onPointerDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-          >
-            <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
-          </Button>
-        )}
-      </AlertDialogTrigger>
-      <AlertDialogContent className="max-w-md">
+      {/* Custom trigger that opens dialog on click */}
+      {trigger ? (
+        <span onClick={handleTriggerClick}>{trigger}</span>
+      ) : (
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn("h-7 w-7 shrink-0", className)}
+          onClick={handleTriggerClick}
+        >
+          <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+        </Button>
+      )}
+      
+      <AlertDialogContent className="max-w-md" onClick={(e) => e.stopPropagation()}>
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <Trash2 className="h-5 w-5 text-destructive" />
@@ -88,7 +89,8 @@ export function DeleteConversationDialog({ recipientName, onDelete, trigger, cla
                   Clear chat for me
                 </Label>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Messages will be removed from your inbox only. {recipientName} will still see the conversation.
+                  This conversation will be hidden from your inbox. {recipientName} will still see it.
+                  If they message you again, the conversation will reappear.
                 </p>
               </div>
             </div>
@@ -109,7 +111,7 @@ export function DeleteConversationDialog({ recipientName, onDelete, trigger, cla
                 </Label>
                 <p className="text-xs text-muted-foreground mt-1">
                   Messages you sent will be permanently deleted for both you and {recipientName}. 
-                  Received messages will only be removed from your view.
+                  Messages you received will be removed from your view only.
                 </p>
                 <div className="flex items-center gap-1.5 mt-2 text-xs text-destructive">
                   <AlertTriangle className="h-3 w-3" />
