@@ -1,16 +1,20 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Plus, Search, UserPlus } from "lucide-react";
+import { Calendar, Plus, Search, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 interface Section {
   id: string;
@@ -22,6 +26,7 @@ interface Student {
   id: string;
   first_name: string;
   last_name: string | null;
+  parent_name: string | null;
   student_code: string | null;
   status: string;
   section_id: string;
@@ -48,7 +53,15 @@ export function TeacherStudentsModule() {
 
   // Add student dialog
   const [addStudentOpen, setAddStudentOpen] = useState(false);
-  const [newStudent, setNewStudent] = useState({ first_name: "", last_name: "", student_code: "" });
+  const [newStudent, setNewStudent] = useState({
+    first_name: "",
+    last_name: "",
+    parent_name: "",
+    date_of_birth: "",
+    student_code: "",
+    status: "enrolled",
+  });
+  const [submitting, setSubmitting] = useState(false);
 
   // Add parent dialog
   const [addParentOpen, setAddParentOpen] = useState(false);
@@ -137,7 +150,7 @@ export function TeacherStudentsModule() {
       const studentIds = enrollments.map((e) => e.student_id);
       const { data: studentData } = await supabase
         .from("students")
-        .select("id, first_name, last_name, student_code, status")
+        .select("id, first_name, last_name, parent_name, student_code, status")
         .in("id", studentIds)
         .eq("status", "enrolled"); // Only show enrolled students to teachers
 
@@ -154,64 +167,87 @@ export function TeacherStudentsModule() {
     fetchStudents();
   }, [selectedSection, tenant.status, tenant.schoolId, sections]);
 
+  const resetNewStudentForm = () => {
+    setNewStudent({
+      first_name: "",
+      last_name: "",
+      parent_name: "",
+      date_of_birth: "",
+      student_code: "",
+      status: "enrolled",
+    });
+  };
+
   const handleAddStudent = async () => {
     if (!newStudent.first_name.trim()) {
-      toast({ title: "First name is required", variant: "destructive" });
+      toast.error("First name is required");
+      return;
+    }
+    if (!newStudent.parent_name.trim()) {
+      toast.error("Parent name is required for identification");
+      return;
+    }
+    if (!selectedSection) {
+      toast.error("Please select a section first");
       return;
     }
 
-    const { data: student, error: studentErr } = await supabase
-      .from("students")
-      .insert({
+    setSubmitting(true);
+    try {
+      const { data: student, error: studentErr } = await supabase
+        .from("students")
+        .insert({
+          school_id: tenant.schoolId,
+          first_name: newStudent.first_name.trim(),
+          last_name: newStudent.last_name.trim() || null,
+          parent_name: newStudent.parent_name.trim(),
+          date_of_birth: newStudent.date_of_birth || null,
+          student_code: newStudent.student_code.trim() || null,
+          status: newStudent.status,
+        })
+        .select()
+        .single();
+
+      if (studentErr) throw studentErr;
+
+      // Enroll in selected section
+      const { error: enrollErr } = await supabase.from("student_enrollments").insert({
         school_id: tenant.schoolId,
-        first_name: newStudent.first_name.trim(),
-        last_name: newStudent.last_name.trim() || null,
-        student_code: newStudent.student_code.trim() || null,
-        status: "enrolled",
-      })
-      .select()
-      .single();
+        student_id: student.id,
+        class_section_id: selectedSection,
+      });
 
-    if (studentErr) {
-      toast({ title: "Failed to add student", description: studentErr.message, variant: "destructive" });
-      return;
+      if (enrollErr) throw enrollErr;
+
+      toast.success("Student added successfully");
+      setAddStudentOpen(false);
+      resetNewStudentForm();
+
+      // Refresh students list
+      const section = sections.find((s) => s.id === selectedSection);
+      setStudents((prev) => [
+        ...prev,
+        {
+          id: student.id,
+          first_name: student.first_name,
+          last_name: student.last_name,
+          parent_name: student.parent_name,
+          student_code: student.student_code,
+          status: student.status,
+          section_id: selectedSection,
+          section_name: section?.name || "",
+        },
+      ]);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to add student");
+    } finally {
+      setSubmitting(false);
     }
-
-    // Enroll in selected section
-    const { error: enrollErr } = await supabase.from("student_enrollments").insert({
-      school_id: tenant.schoolId,
-      student_id: student.id,
-      class_section_id: selectedSection,
-    });
-
-    if (enrollErr) {
-      toast({ title: "Student created but enrollment failed", description: enrollErr.message, variant: "destructive" });
-      return;
-    }
-
-    toast({ title: "Student added successfully" });
-    setAddStudentOpen(false);
-    setNewStudent({ first_name: "", last_name: "", student_code: "" });
-
-    // Refresh students list
-    const section = sections.find((s) => s.id === selectedSection);
-    setStudents((prev) => [
-      ...prev,
-      {
-        id: student.id,
-        first_name: student.first_name,
-        last_name: student.last_name,
-        student_code: student.student_code,
-        status: student.status,
-        section_id: selectedSection,
-        section_name: section?.name || "",
-      },
-    ]);
   };
 
   const handleAddParent = async () => {
     if (!selectedStudentId || !newParent.full_name.trim()) {
-      toast({ title: "Name is required", variant: "destructive" });
+      toast.error("Name is required");
       return;
     }
 
@@ -225,11 +261,11 @@ export function TeacherStudentsModule() {
     });
 
     if (error) {
-      toast({ title: "Failed to add parent", description: error.message, variant: "destructive" });
+      toast.error(error.message || "Failed to add parent");
       return;
     }
 
-    toast({ title: "Parent/Guardian added successfully" });
+    toast.success("Parent/Guardian added successfully");
     setAddParentOpen(false);
     setNewParent({ full_name: "", relationship: "parent", phone: "", email: "" });
     setSelectedStudentId(null);
@@ -254,7 +290,13 @@ export function TeacherStudentsModule() {
 
   const filteredStudents = students.filter((s) => {
     const fullName = `${s.first_name} ${s.last_name || ""}`.toLowerCase();
-    return fullName.includes(searchQuery.toLowerCase()) || (s.student_code?.toLowerCase().includes(searchQuery.toLowerCase()));
+    const parentName = (s.parent_name || "").toLowerCase();
+    const query = searchQuery.toLowerCase();
+    return (
+      fullName.includes(query) ||
+      parentName.includes(query) ||
+      (s.student_code?.toLowerCase().includes(query))
+    );
   });
 
   if (loading) {
@@ -291,7 +333,7 @@ export function TeacherStudentsModule() {
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search students..."
+            placeholder="Search by name, parent, or code..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
@@ -304,37 +346,119 @@ export function TeacherStudentsModule() {
               <Plus className="mr-2 h-4 w-4" /> Add Student
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Add New Student</DialogTitle>
+              <DialogDescription>
+                Add a new student to {sections.find((s) => s.id === selectedSection)?.class_name} - {sections.find((s) => s.id === selectedSection)?.name}
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 pt-4">
-              <div>
-                <Label>First Name *</Label>
-                <Input
-                  value={newStudent.first_name}
-                  onChange={(e) => setNewStudent((p) => ({ ...p, first_name: e.target.value }))}
-                />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <Label htmlFor="first_name">First Name *</Label>
+                  <Input
+                    id="first_name"
+                    value={newStudent.first_name}
+                    onChange={(e) => setNewStudent((p) => ({ ...p, first_name: e.target.value }))}
+                    placeholder="e.g., Ahmed"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="last_name">Last Name</Label>
+                  <Input
+                    id="last_name"
+                    value={newStudent.last_name}
+                    onChange={(e) => setNewStudent((p) => ({ ...p, last_name: e.target.value }))}
+                    placeholder="e.g., Khan"
+                  />
+                </div>
               </div>
+              
               <div>
-                <Label>Last Name</Label>
+                <Label htmlFor="parent_name">Parent/Guardian Name *</Label>
                 <Input
-                  value={newStudent.last_name}
-                  onChange={(e) => setNewStudent((p) => ({ ...p, last_name: e.target.value }))}
+                  id="parent_name"
+                  value={newStudent.parent_name}
+                  onChange={(e) => setNewStudent((p) => ({ ...p, parent_name: e.target.value }))}
+                  placeholder="Required for identification"
                 />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  This helps differentiate students with the same name
+                </p>
               </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <Label>Date of Birth</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !newStudent.date_of_birth && "text-muted-foreground"
+                        )}
+                      >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {newStudent.date_of_birth
+                          ? format(new Date(newStudent.date_of_birth), "PPP")
+                          : "Pick a date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={newStudent.date_of_birth ? new Date(newStudent.date_of_birth) : undefined}
+                        onSelect={(date) =>
+                          setNewStudent((p) => ({
+                            ...p,
+                            date_of_birth: date ? format(date, "yyyy-MM-dd") : "",
+                          }))
+                        }
+                        disabled={(date) => date > new Date() || date < new Date("1990-01-01")}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div>
+                  <Label htmlFor="student_code">Student Code</Label>
+                  <Input
+                    id="student_code"
+                    value={newStudent.student_code}
+                    onChange={(e) => setNewStudent((p) => ({ ...p, student_code: e.target.value }))}
+                    placeholder="Optional ID/Code"
+                  />
+                </div>
+              </div>
+
               <div>
-                <Label>Student Code</Label>
-                <Input
-                  value={newStudent.student_code}
-                  onChange={(e) => setNewStudent((p) => ({ ...p, student_code: e.target.value }))}
-                  placeholder="Optional ID/Code"
-                />
+                <Label>Status</Label>
+                <Select
+                  value={newStudent.status}
+                  onValueChange={(v) => setNewStudent((p) => ({ ...p, status: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="enrolled">Enrolled</SelectItem>
+                    <SelectItem value="inquiry">Inquiry</SelectItem>
+                    <SelectItem value="withdrawn">Withdrawn</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <Button onClick={handleAddStudent} className="w-full">
-                Add Student
-              </Button>
             </div>
+            <DialogFooter className="mt-4">
+              <Button variant="outline" onClick={() => setAddStudentOpen(false)} disabled={submitting}>
+                Cancel
+              </Button>
+              <Button onClick={handleAddStudent} disabled={submitting}>
+                {submitting ? "Adding..." : "Add Student"}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
@@ -348,39 +472,45 @@ export function TeacherStudentsModule() {
           {filteredStudents.length === 0 ? (
             <p className="text-sm text-muted-foreground">No students found.</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredStudents.map((s) => (
-                  <TableRow key={s.id}>
-                    <TableCell className="font-medium">
-                      {s.first_name} {s.last_name}
-                    </TableCell>
-                    <TableCell>{s.student_code || "—"}</TableCell>
-                    <TableCell>
-                      <span className="rounded-full bg-accent px-2 py-1 text-xs">{s.status}</span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => openAddParent(s.id)}>
-                          <UserPlus className="mr-1 h-3 w-3" /> Add Parent
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => viewStudentGuardians(s.id)}>
-                          View Parents
-                        </Button>
-                      </div>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Parent</TableHead>
+                    <TableHead>Code</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredStudents.map((s) => (
+                    <TableRow key={s.id}>
+                      <TableCell className="font-medium">
+                        {s.first_name} {s.last_name}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {s.parent_name || "—"}
+                      </TableCell>
+                      <TableCell>{s.student_code || "—"}</TableCell>
+                      <TableCell>
+                        <span className="rounded-full bg-accent px-2 py-1 text-xs capitalize">{s.status}</span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" onClick={() => openAddParent(s.id)}>
+                            <UserPlus className="mr-1 h-3 w-3" /> Add Parent
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => viewStudentGuardians(s.id)}>
+                            View Parents
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
