@@ -15,6 +15,7 @@ import {
   GraduationCap,
   HeartPulse,
   LayoutGrid,
+  LifeBuoy,
   Lock,
   LogOut,
   Menu,
@@ -98,6 +99,7 @@ export function OwnerShell({ title, subtitle, schoolSlug, children }: Props) {
     { to: `${basePath}/campuses`, icon: Building2, label: "Multi-Campus View" },
     { to: `${basePath}/brand`, icon: Star, label: "Brand & Experience" },
     { to: `${basePath}/security`, icon: Shield, label: "System & Security" },
+    { to: `${basePath}/support`, icon: LifeBuoy, label: "Support Tickets" },
     { to: `${basePath}/advisor`, icon: Brain, label: "AI Strategy Advisor" },
     { to: `${basePath}/messages`, icon: MessageSquare, label: "Messages", badge: unreadCount },
   ];

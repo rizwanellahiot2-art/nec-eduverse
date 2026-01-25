@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   Activity,
@@ -14,6 +14,7 @@ import {
   GraduationCap,
   HeartPulse,
   Lightbulb,
+  MessageSquare,
   RefreshCw,
   Shield,
   Star,
@@ -21,6 +22,7 @@ import {
   TrendingUp,
   Users,
   Zap,
+  LifeBuoy,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -28,6 +30,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useRealtimeTable } from "@/hooks/useRealtime";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -81,6 +84,7 @@ const COLORS = ["hsl(var(--primary))", "hsl(var(--chart-2))", "hsl(var(--chart-3
 export function OwnerOverviewModule({ schoolId }: Props) {
   const { schoolSlug } = useParams();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
 
   const basePath = `/${schoolSlug}/school_owner`;
@@ -90,6 +94,55 @@ export function OwnerOverviewModule({ schoolId }: Props) {
   const yearStart = useMemo(() => startOfYear(new Date()), []);
   const d7Ago = useMemo(() => subDays(new Date(), 7), []);
   const d30Ago = useMemo(() => subDays(new Date(), 30), []);
+
+  // Real-time subscriptions for automatic KPI refresh
+  useRealtimeTable({
+    channel: `owner-kpi-students-${schoolId}`,
+    table: "students",
+    filter: schoolId ? `school_id=eq.${schoolId}` : undefined,
+    enabled: !!schoolId,
+    onChange: () => void qc.invalidateQueries({ queryKey: ["owner_overview_kpis", schoolId] }),
+  });
+
+  useRealtimeTable({
+    channel: `owner-kpi-payments-${schoolId}`,
+    table: "finance_payments",
+    filter: schoolId ? `school_id=eq.${schoolId}` : undefined,
+    enabled: !!schoolId,
+    onChange: () => void qc.invalidateQueries({ queryKey: ["owner_overview_kpis", schoolId] }),
+  });
+
+  useRealtimeTable({
+    channel: `owner-kpi-leads-${schoolId}`,
+    table: "crm_leads",
+    filter: schoolId ? `school_id=eq.${schoolId}` : undefined,
+    enabled: !!schoolId,
+    onChange: () => void qc.invalidateQueries({ queryKey: ["owner_overview_kpis", schoolId] }),
+  });
+
+  useRealtimeTable({
+    channel: `owner-kpi-attendance-${schoolId}`,
+    table: "attendance_entries",
+    filter: schoolId ? `school_id=eq.${schoolId}` : undefined,
+    enabled: !!schoolId,
+    onChange: () => void qc.invalidateQueries({ queryKey: ["owner_overview_kpis", schoolId] }),
+  });
+
+  useRealtimeTable({
+    channel: `owner-kpi-invoices-${schoolId}`,
+    table: "finance_invoices",
+    filter: schoolId ? `school_id=eq.${schoolId}` : undefined,
+    enabled: !!schoolId,
+    onChange: () => void qc.invalidateQueries({ queryKey: ["owner_overview_kpis", schoolId] }),
+  });
+
+  useRealtimeTable({
+    channel: `owner-kpi-tickets-${schoolId}`,
+    table: "admin_messages",
+    filter: schoolId ? `school_id=eq.${schoolId}` : undefined,
+    enabled: !!schoolId,
+    onChange: () => void qc.invalidateQueries({ queryKey: ["owner_support_tickets", schoolId] }),
+  });
 
   // Fetch all KPI data
   const { data: kpis, refetch: refetchKpis, isLoading } = useQuery({
@@ -614,7 +667,7 @@ export function OwnerOverviewModule({ schoolId }: Props) {
                 { icon: Users, label: "HR & Culture", path: "hr", color: "text-indigo-600" },
                 { icon: HeartPulse, label: "Student Wellbeing", path: "wellbeing", color: "text-pink-600" },
                 { icon: Shield, label: "System & Security", path: "security", color: "text-slate-600" },
-                { icon: Building2, label: "Multi-Campus View", path: "campuses", color: "text-blue-600" },
+                { icon: LifeBuoy, label: "Support Tickets", path: "support", color: "text-orange-600" },
                 { icon: Brain, label: "AI Strategy Advisor", path: "advisor", color: "text-purple-600" },
               ].map((item) => (
                 <button

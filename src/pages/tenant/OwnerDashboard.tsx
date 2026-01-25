@@ -16,6 +16,7 @@ import { OwnerComplianceModule } from "@/pages/tenant/owner-modules/OwnerComplia
 import { OwnerCampusesModule } from "@/pages/tenant/owner-modules/OwnerCampusesModule";
 import { OwnerBrandModule } from "@/pages/tenant/owner-modules/OwnerBrandModule";
 import { OwnerSecurityModule } from "@/pages/tenant/owner-modules/OwnerSecurityModule";
+import { OwnerSupportModule } from "@/pages/tenant/owner-modules/OwnerSupportModule";
 import { OwnerAdvisorModule } from "@/pages/tenant/owner-modules/OwnerAdvisorModule";
 import { MessagesModule } from "@/pages/tenant/modules/MessagesModule";
 
@@ -144,6 +145,7 @@ export default function OwnerDashboard() {
           <Route path="campuses" element={<OwnerCampusesModule schoolId={schoolId} />} />
           <Route path="brand" element={<OwnerBrandModule schoolId={schoolId} />} />
           <Route path="security" element={<OwnerSecurityModule schoolId={schoolId} />} />
+          <Route path="support" element={<OwnerSupportModule schoolId={schoolId} />} />
           <Route path="advisor" element={<OwnerAdvisorModule schoolId={schoolId} />} />
           <Route path="messages" element={<MessagesModule schoolId={schoolId} />} />
         </Routes>
