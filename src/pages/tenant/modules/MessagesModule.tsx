@@ -601,39 +601,53 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
   };
 
   const handleDeleteConversation = async (conv: Conversation) => {
-    // Delete all messages between this user and the partner
-    const { data: sentMessages } = await supabase
-      .from("admin_messages")
-      .select("id")
-      .eq("school_id", schoolId)
-      .eq("sender_user_id", currentUserId);
+    if (!currentUserId) return;
+    
+    try {
+      // Get all messages sent by current user to this recipient
+      const { data: sentMessages } = await supabase
+        .from("admin_messages")
+        .select("id, admin_message_recipients!inner(recipient_user_id)")
+        .eq("school_id", schoolId)
+        .eq("sender_user_id", currentUserId);
 
-    for (const msg of sentMessages || []) {
-      await supabase
-        .from("admin_message_recipients")
-        .delete()
-        .eq("message_id", msg.id)
-        .eq("recipient_user_id", conv.recipientId);
-    }
+      // Filter messages that were sent to this specific recipient and delete them
+      const messagesToDelete = (sentMessages || []).filter((msg) => 
+        msg.admin_message_recipients?.some((r: any) => r.recipient_user_id === conv.recipientId)
+      );
 
-    // Delete received messages from this partner
-    const { data: receivedRows } = await supabase
-      .from("admin_message_recipients")
-      .select("message_id, admin_messages!inner(sender_user_id)")
-      .eq("recipient_user_id", currentUserId);
-
-    for (const row of receivedRows || []) {
-      const sender = (row.admin_messages as any)?.sender_user_id;
-      if (sender === conv.recipientId) {
-        await supabase.from("admin_message_recipients").delete().eq("message_id", row.message_id);
+      // Delete the messages (this cascades to recipients due to FK)
+      for (const msg of messagesToDelete) {
+        await supabase.from("admin_messages").delete().eq("id", msg.id);
       }
-    }
 
-    toast({ title: "Conversation deleted" });
-    setConversations((prev) => prev.filter((c) => c.id !== conv.id));
-    if (selectedConversation?.id === conv.id) {
-      setSelectedConversation(null);
-      setMessages([]);
+      // For received messages, we mark them as read (since we can't delete them)
+      // and remove them from local state
+      const { data: receivedRows } = await supabase
+        .from("admin_message_recipients")
+        .select("id, message_id, admin_messages!inner(sender_user_id)")
+        .eq("recipient_user_id", currentUserId);
+
+      // Mark received messages from this partner as read
+      for (const row of receivedRows || []) {
+        const sender = (row.admin_messages as any)?.sender_user_id;
+        if (sender === conv.recipientId) {
+          await supabase
+            .from("admin_message_recipients")
+            .update({ is_read: true, read_at: new Date().toISOString() })
+            .eq("id", row.id);
+        }
+      }
+
+      toast({ title: "Conversation cleared" });
+      setConversations((prev) => prev.filter((c) => c.id !== conv.id));
+      if (selectedConversation?.id === conv.id) {
+        setSelectedConversation(null);
+        setMessages([]);
+      }
+    } catch (error: any) {
+      console.error("Delete conversation error:", error);
+      toast({ title: "Failed to delete", description: error.message, variant: "destructive" });
     }
   };
 
