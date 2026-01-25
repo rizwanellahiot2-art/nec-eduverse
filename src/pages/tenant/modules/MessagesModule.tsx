@@ -1650,6 +1650,14 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Schedule Message Dialog */}
+      <ScheduleMessageDialog
+        open={showScheduleDialog}
+        onOpenChange={setShowScheduleDialog}
+        onSchedule={handleScheduleMessage}
+        messagePreview={messageText.trim() || undefined}
+      />
     </div>
   );
 }
