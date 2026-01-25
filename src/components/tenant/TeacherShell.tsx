@@ -94,7 +94,7 @@ export function TeacherShell({ title, subtitle, schoolSlug, children }: Props) {
 
   const bottomNavItems = [
     { to: basePath, icon: LayoutGrid, label: "Home", end: true },
-    { to: `${basePath}/messages`, icon: MessageSquare, label: "Messages", badge: badges.unreadMessages + unreadAdminMessages },
+    { to: `${basePath}/workspace-messages`, icon: MessageSquare, label: "Messages", badge: badges.unreadMessages + unreadAdminMessages },
     { to: `${basePath}/attendance`, icon: ClipboardCheck, label: "Attendance" },
     { to: `${basePath}/students`, icon: Users, label: "Students" },
   ];
