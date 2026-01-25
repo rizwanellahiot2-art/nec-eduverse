@@ -18,6 +18,8 @@ import {
   CornerDownRight,
   AlertCircle,
   Forward,
+  Clock,
+  CalendarClock,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -26,6 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -54,6 +57,8 @@ import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { PushNotificationBanner } from "@/components/messages/PushNotificationBanner";
 import { MessageReactions, PinnedMessagesCount } from "@/components/messages/MessageReactions";
 import { DeleteConversationDialog, type DeleteMode } from "@/components/messages/DeleteConversationDialog";
+import { ScheduleMessageDialog } from "@/components/messages/ScheduleMessageDialog";
+import { ScheduledMessagesTab } from "@/components/messages/ScheduledMessagesTab";
 
 interface Conversation {
   id: string;
@@ -118,6 +123,10 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
   const [forwardingMessage, setForwardingMessage] = useState<ChatMessage | null>(null);
   const [forwardSearch, setForwardSearch] = useState("");
   const [forwardSending, setForwardSending] = useState(false);
+  const [showScheduleDialog, setShowScheduleDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState<"inbox" | "scheduled">("inbox");
+  const [clearedConversations, setClearedConversations] = useState<Set<string>>(new Set());
+  const [scheduledCount, setScheduledCount] = useState(0);
 
   // Get current user's role for restrictions
   const { isStudent, isStaff, loading: roleLoading } = useUserRole(schoolId, currentUserId);
@@ -161,6 +170,25 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
       .eq("user_id", user.user.id)
       .maybeSingle();
     setCurrentUserName(profile?.display_name || user.user.email || "User");
+
+    // Fetch cleared conversations for this user (to hide them)
+    const { data: clearedRows } = await supabase
+      .from("cleared_conversations")
+      .select("partner_user_id")
+      .eq("school_id", schoolId)
+      .eq("user_id", user.user.id);
+    
+    const clearedSet = new Set((clearedRows || []).map((r) => r.partner_user_id));
+    setClearedConversations(clearedSet);
+
+    // Fetch scheduled messages count
+    const { count: schedCount } = await supabase
+      .from("scheduled_messages")
+      .select("id", { count: "exact", head: true })
+      .eq("school_id", schoolId)
+      .eq("sender_user_id", user.user.id)
+      .eq("status", "pending");
+    setScheduledCount(schedCount || 0);
 
     // Fetch all messages where user is sender
     const { data: sentMessages } = await supabase
@@ -222,6 +250,9 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
       const recipients = m.admin_message_recipients || [];
       if (recipients.length === 1) {
         const recipientId = recipients[0].recipient_user_id;
+        // Skip if conversation is cleared
+        if (clearedSet.has(recipientId)) return;
+        
         const existing = conversationMap.get(recipientId);
         const hasAttachment = (m as any).attachment_urls && (m as any).attachment_urls.length > 0;
         const msgContent = m.content.substring(0, 40) + (m.content.length > 40 ? "…" : "");
@@ -248,6 +279,10 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
       const msg = r.admin_messages as any;
       if (!msg) return;
       const senderId = msg.sender_user_id;
+      
+      // Skip if conversation is cleared
+      if (clearedSet.has(senderId)) return;
+      
       const existing = conversationMap.get(senderId);
       const isNewer = !existing || new Date(msg.created_at) > new Date(existing.lastMessageTime);
       const hasAttachment = msg.attachment_urls && msg.attachment_urls.length > 0;
@@ -599,12 +634,28 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
     }
   };
 
-  const handleDeleteConversation = async (conv: Conversation, mode: DeleteMode = "delete_for_everyone") => {
+  const handleDeleteConversation = async (conv: Conversation, mode: DeleteMode = "clear_for_me") => {
     if (!currentUserId) return;
     
     try {
-      if (mode === "delete_for_everyone") {
-        // 1) Delete messages I SENT to this partner (destructive: removes for everyone)
+      if (mode === "clear_for_me") {
+        // "Clear for me" - just mark this conversation as cleared for the current user
+        // The conversation will be hidden from their view but preserved for the other party
+        const { error } = await supabase
+          .from("cleared_conversations")
+          .upsert({
+            school_id: schoolId,
+            user_id: currentUserId,
+            partner_user_id: conv.recipientId,
+            cleared_at: new Date().toISOString(),
+          }, { onConflict: "school_id,user_id,partner_user_id" });
+
+        if (error) throw error;
+        
+        // Update local cleared set
+        setClearedConversations((prev) => new Set([...prev, conv.recipientId]));
+      } else {
+        // "Delete for everyone" - permanently delete messages I sent
         const { data: sentRows, error: sentRowsError } = await supabase
           .from("admin_messages")
           .select("id, admin_message_recipients!inner(recipient_user_id)")
@@ -623,27 +674,26 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
             .eq("sender_user_id", currentUserId);
           if (deleteSentError) throw deleteSentError;
         }
-      }
 
-      // 2) Delete message links I RECEIVED from this partner (clears from my view only)
-      // This is done for both modes - "clear for me" and "delete for everyone"
-      const { data: receivedLinks, error: receivedLinksError } = await supabase
-        .from("admin_message_recipients")
-        .select("id, message_id, admin_messages!inner(sender_user_id, school_id)")
-        .eq("recipient_user_id", currentUserId)
-        .eq("admin_messages.sender_user_id", conv.recipientId)
-        .eq("admin_messages.school_id", schoolId);
-
-      if (receivedLinksError) throw receivedLinksError;
-
-      const receivedLinkIds = (receivedLinks || []).map((r) => r.id).filter(Boolean);
-      if (receivedLinkIds.length > 0) {
-        const { error: deleteReceivedError } = await supabase
+        // Also delete received message links (clears from my view)
+        const { data: receivedLinks, error: receivedLinksError } = await supabase
           .from("admin_message_recipients")
-          .delete()
-          .in("id", receivedLinkIds)
-          .eq("recipient_user_id", currentUserId);
-        if (deleteReceivedError) throw deleteReceivedError;
+          .select("id, message_id, admin_messages!inner(sender_user_id, school_id)")
+          .eq("recipient_user_id", currentUserId)
+          .eq("admin_messages.sender_user_id", conv.recipientId)
+          .eq("admin_messages.school_id", schoolId);
+
+        if (receivedLinksError) throw receivedLinksError;
+
+        const receivedLinkIds = (receivedLinks || []).map((r) => r.id).filter(Boolean);
+        if (receivedLinkIds.length > 0) {
+          const { error: deleteReceivedError } = await supabase
+            .from("admin_message_recipients")
+            .delete()
+            .in("id", receivedLinkIds)
+            .eq("recipient_user_id", currentUserId);
+          if (deleteReceivedError) throw deleteReceivedError;
+        }
       }
 
       toast({ 
@@ -658,6 +708,30 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
       console.error("Delete conversation error:", error);
       toast({ title: "Failed to delete", description: error.message, variant: "destructive" });
     }
+  };
+
+  // Handle scheduling a message
+  const handleScheduleMessage = async (scheduledAt: Date) => {
+    if (!messageText.trim() || !currentUserId || !selectedConversation) {
+      throw new Error("Missing message content or recipient");
+    }
+
+    const { error } = await supabase
+      .from("scheduled_messages")
+      .insert({
+        school_id: schoolId,
+        sender_user_id: currentUserId,
+        recipient_user_ids: [selectedConversation.recipientId],
+        subject: null,
+        content: messageText.trim(),
+        scheduled_at: scheduledAt.toISOString(),
+        message_type: "admin",
+      });
+
+    if (error) throw error;
+
+    setMessageText("");
+    setScheduledCount((prev) => prev + 1);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -814,116 +888,161 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
           showChatOnMobile && "hidden lg:flex"
         )}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b p-4">
-          <div className="flex items-center gap-2">
-            <h2 className="font-semibold">Messages</h2>
-            {totalUnread > 0 && (
-              <Badge variant="destructive" className="h-5 px-1.5 text-[10px]">
-                {totalUnread > 99 ? "99+" : totalUnread}
-              </Badge>
-            )}
-          </div>
-          <Dialog open={showNewChat} onOpenChange={setShowNewChat}>
-            <DialogTrigger asChild>
-              <Button size="icon" variant="ghost" className="h-8 w-8">
-                <Plus className="h-4 w-4" />
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>New Conversation</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <Input
-                  placeholder="Search users..."
-                  value={newChatSearch}
-                  onChange={(e) => setNewChatSearch(e.target.value)}
-                />
-                {isStudent && (
-                  <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-2 text-xs text-muted-foreground">
-                    <AlertCircle className="h-4 w-4 shrink-0" />
-                    <span>Students can only message teachers and staff members.</span>
-                  </div>
-                )}
-                <ScrollArea className="h-64">
-                  <div className="space-y-2">
-                    {filteredNewChatUsers.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-8 text-center">
-                        <MessageCircle className="h-10 w-10 text-muted-foreground/30" />
-                        <p className="mt-2 text-sm text-muted-foreground">
-                          {isStudent ? "No staff members found" : "No users found"}
-                        </p>
+        {/* Header with Tabs */}
+        <div className="flex flex-col border-b">
+          <div className="flex items-center justify-between p-3 pb-0">
+            <div className="flex items-center gap-2">
+              <h2 className="font-semibold">Messages</h2>
+              {totalUnread > 0 && (
+                <Badge variant="destructive" className="h-5 px-1.5 text-[10px]">
+                  {totalUnread > 99 ? "99+" : totalUnread}
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              <Dialog open={showNewChat} onOpenChange={setShowNewChat}>
+                <DialogTrigger asChild>
+                  <Button size="icon" variant="ghost" className="h-8 w-8">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>New Conversation</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <Input
+                      placeholder="Search users..."
+                      value={newChatSearch}
+                      onChange={(e) => setNewChatSearch(e.target.value)}
+                    />
+                    {isStudent && (
+                      <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-2 text-xs text-muted-foreground">
+                        <AlertCircle className="h-4 w-4 shrink-0" />
+                        <span>Students can only message teachers and staff members.</span>
                       </div>
-                    ) : (
-                      filteredNewChatUsers.map((user) => (
-                        <button
-                          key={user.user_id}
-                          onClick={() => {
-                            setSelectedUsers([user.user_id]);
-                            handleStartNewChat();
-                          }}
-                          className="flex w-full items-center gap-3 rounded-lg p-2 text-left transition-colors hover:bg-accent"
-                        >
-                          <Avatar className="h-10 w-10">
-                            <AvatarFallback>{getInitials(user.display_name)}</AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 overflow-hidden">
-                            <div className="flex items-center gap-2">
-                              <p className="truncate font-medium">{user.display_name}</p>
-                              {user.role && (
-                                <Badge variant="secondary" className="text-[10px] h-4 shrink-0">
-                                  {user.role}
-                                </Badge>
-                              )}
-                            </div>
-                            {user.email && (
-                              <p className="truncate text-xs text-muted-foreground">{user.email}</p>
-                            )}
-                          </div>
-                        </button>
-                      ))
                     )}
+                    <ScrollArea className="h-64">
+                      <div className="space-y-2">
+                        {filteredNewChatUsers.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center py-8 text-center">
+                            <MessageCircle className="h-10 w-10 text-muted-foreground/30" />
+                            <p className="mt-2 text-sm text-muted-foreground">
+                              {isStudent ? "No staff members found" : "No users found"}
+                            </p>
+                          </div>
+                        ) : (
+                          filteredNewChatUsers.map((user) => (
+                            <button
+                              key={user.user_id}
+                              onClick={() => {
+                                setSelectedUsers([user.user_id]);
+                                handleStartNewChat();
+                              }}
+                              className="flex w-full items-center gap-3 rounded-lg p-2 text-left transition-colors hover:bg-accent"
+                            >
+                              <Avatar className="h-10 w-10">
+                                <AvatarFallback>{getInitials(user.display_name)}</AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 overflow-hidden">
+                                <div className="flex items-center gap-2">
+                                  <p className="truncate font-medium">{user.display_name}</p>
+                                  {user.role && (
+                                    <Badge variant="secondary" className="text-[10px] h-4 shrink-0">
+                                      {user.role}
+                                    </Badge>
+                                  )}
+                                </div>
+                                {user.email && (
+                                  <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                                )}
+                              </div>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </ScrollArea>
                   </div>
-                </ScrollArea>
-              </div>
-            </DialogContent>
-          </Dialog>
-          <MessageSearchDialog
+                </DialogContent>
+              </Dialog>
+              <MessageSearchDialog
+                schoolId={schoolId}
+                currentUserId={currentUserId || ""}
+                profileMap={profileMap}
+                onSelectMessage={(messageId, partnerId) => {
+                  setActiveTab("inbox");
+                  if (partnerId) {
+                    const conv = conversations.find(c => c.recipientId === partnerId);
+                    if (conv) {
+                      handleSelectConversation(conv);
+                      setTimeout(() => {
+                        const el = document.getElementById(`msg-${messageId}`);
+                        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                        el?.classList.add("ring-2", "ring-primary", "ring-offset-2");
+                        setTimeout(() => el?.classList.remove("ring-2", "ring-primary", "ring-offset-2"), 2000);
+                      }, 500);
+                    }
+                  }
+                }}
+              />
+            </div>
+          </div>
+          
+          {/* Tabs */}
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "inbox" | "scheduled")} className="w-full">
+            <TabsList className="w-full justify-start rounded-none border-0 bg-transparent h-10 p-0 px-3">
+              <TabsTrigger 
+                value="inbox" 
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3"
+              >
+                Inbox
+              </TabsTrigger>
+              <TabsTrigger 
+                value="scheduled" 
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3"
+              >
+                <Clock className="mr-1.5 h-3.5 w-3.5" />
+                Scheduled
+                {scheduledCount > 0 && (
+                  <Badge variant="secondary" className="ml-1.5 h-4 px-1.5 text-[10px]">
+                    {scheduledCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
+        {/* Search - only show in inbox tab */}
+        {activeTab === "inbox" && (
+          <div className="p-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search conversations..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Scheduled Messages Tab */}
+        {activeTab === "scheduled" && (
+          <ScheduledMessagesTab
             schoolId={schoolId}
             currentUserId={currentUserId || ""}
             profileMap={profileMap}
-            onSelectMessage={(messageId, partnerId) => {
-              // Jump to the conversation and scroll to message
-              if (partnerId) {
-                const conv = conversations.find(c => c.recipientId === partnerId);
-                if (conv) {
-                  handleSelectConversation(conv);
-                  // Delay scroll to message after messages load
-                  setTimeout(() => {
-                    const el = document.getElementById(`msg-${messageId}`);
-                    el?.scrollIntoView({ behavior: "smooth", block: "center" });
-                    el?.classList.add("ring-2", "ring-primary", "ring-offset-2");
-                    setTimeout(() => el?.classList.remove("ring-2", "ring-primary", "ring-offset-2"), 2000);
-                  }, 500);
-                }
-              }
+            onSendNow={() => {
+              setScheduledCount((prev) => Math.max(0, prev - 1));
+              fetchConversations();
             }}
           />
-        </div>
+        )}
 
-        {/* Search */}
-        <div className="p-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search conversations..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-        </div>
+        {/* Conversation List - only show in inbox tab */}
+        {activeTab === "inbox" && (
 
         {/* Conversation List */}
         <ScrollArea className="flex-1">

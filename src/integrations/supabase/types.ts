@@ -712,6 +712,30 @@ export type Database = {
           },
         ]
       }
+      cleared_conversations: {
+        Row: {
+          cleared_at: string
+          id: string
+          partner_user_id: string
+          school_id: string
+          user_id: string
+        }
+        Insert: {
+          cleared_at?: string
+          id?: string
+          partner_user_id: string
+          school_id: string
+          user_id: string
+        }
+        Update: {
+          cleared_at?: string
+          id?: string
+          partner_user_id?: string
+          school_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       crm_activities: {
         Row: {
           activity_type: string
@@ -2309,6 +2333,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      scheduled_messages: {
+        Row: {
+          attachment_urls: string[] | null
+          content: string
+          created_at: string
+          error_message: string | null
+          id: string
+          message_type: string
+          recipient_user_ids: string[]
+          scheduled_at: string
+          school_id: string
+          sender_user_id: string
+          sent_at: string | null
+          status: string
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          attachment_urls?: string[] | null
+          content: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message_type?: string
+          recipient_user_ids: string[]
+          scheduled_at: string
+          school_id: string
+          sender_user_id: string
+          sent_at?: string | null
+          status?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attachment_urls?: string[] | null
+          content?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message_type?: string
+          recipient_user_ids?: string[]
+          scheduled_at?: string
+          school_id?: string
+          sender_user_id?: string
+          sent_at?: string | null
+          status?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       school_alert_settings: {
         Row: {
