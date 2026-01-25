@@ -1526,6 +1526,20 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                   className="min-h-[36px] max-h-24 min-w-0 flex-1 resize-none text-sm sm:min-h-[44px] sm:max-h-32"
                   rows={1}
                 />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0 sm:h-10 sm:w-10"
+                      disabled={!messageText.trim() && attachments.length === 0}
+                      onClick={() => setShowScheduleDialog(true)}
+                    >
+                      <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Schedule message</TooltipContent>
+                </Tooltip>
                 <Button
                   size="icon"
                   className="h-8 w-8 shrink-0 sm:h-10 sm:w-10"
