@@ -1,4 +1,4 @@
-import { PropsWithChildren, useEffect, useState } from "react";
+import { PropsWithChildren, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
@@ -9,8 +9,9 @@ import type { EduverseRole } from "@/lib/eduverse-roles";
 import { supabase } from "@/integrations/supabase/client";
 import { GlobalCommandPalette } from "@/components/global/GlobalCommandPalette";
 import { NotificationsBell } from "@/components/global/NotificationsBell";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { useUnreadMessages } from "@/hooks/useUnreadMessages";
+import { useUnreadMessagesOptimized } from "@/hooks/useUnreadMessagesOptimized";
+import { useTenantOptimized } from "@/hooks/useTenantOptimized";
+import { useSession } from "@/hooks/useSession";
 
 type Props = PropsWithChildren<{
   title: string;
@@ -21,42 +22,19 @@ type Props = PropsWithChildren<{
 
 export function TenantShell({ title, subtitle, role, schoolSlug, children }: Props) {
   const navigate = useNavigate();
-  const [schoolId, setSchoolId] = useState<string | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const isMobile = useIsMobile();
+  const { user } = useSession();
+  
+  // Use optimized tenant hook that caches and applies branding automatically
+  const tenant = useTenantOptimized(schoolSlug);
+  const schoolId = tenant.schoolId;
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate(`/${schoolSlug}/auth`);
   };
 
-  // Apply per-school branding to global CSS vars (white-labeling hook point)
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      const { data: school } = await supabase.from("schools").select("id").eq("slug", schoolSlug).maybeSingle();
-      if (cancelled || !school?.id) return;
-
-      setSchoolId(school.id);
-      const { data: branding } = await supabase
-        .from("school_branding")
-        .select("accent_hue,accent_saturation,accent_lightness,radius_scale")
-        .eq("school_id", school.id)
-        .maybeSingle();
-
-      if (cancelled || !branding) return;
-      const root = document.documentElement;
-      root.style.setProperty("--brand", `${branding.accent_hue} ${branding.accent_saturation}% ${branding.accent_lightness}%`);
-      root.style.setProperty("--radius", `${0.85 * (branding.radius_scale || 1)}rem`);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [schoolSlug]);
-
-  const { unreadCount } = useUnreadMessages(schoolId);
+  const { unreadCount } = useUnreadMessagesOptimized(schoolId, user?.id ?? null);
 
   const navItems = [
     { to: `/${schoolSlug}/${role}`, icon: LayoutGrid, label: "Dashboard", show: true, badge: 0 },

@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { LogOut, UserRound } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
-import { useTenant } from "@/hooks/useTenant";
+import { useTenantOptimized } from "@/hooks/useTenantOptimized";
+import { useAuthz } from "@/hooks/useAuthz";
 import { TeacherShell } from "@/components/tenant/TeacherShell";
 import { Button } from "@/components/ui/button";
 
@@ -25,61 +26,25 @@ import { TeacherLessonPlannerModule } from "@/pages/tenant/teacher-modules/Teach
 
 const TeacherDashboard = () => {
   const { schoolSlug } = useParams();
-  const tenant = useTenant(schoolSlug);
+  
+  // Use optimized hooks with caching
+  const tenant = useTenantOptimized(schoolSlug);
   const { user, loading } = useSession();
   const navigate = useNavigate();
 
-  const [authzState, setAuthzState] = useState<"checking" | "ok" | "denied">("checking");
-  const [authzMessage, setAuthzMessage] = useState<string | null>(null);
+  const schoolId = useMemo(() => 
+    tenant.status === "ready" ? tenant.schoolId : null, 
+    [tenant.status, tenant.schoolId]
+  );
 
-  useEffect(() => {
-    if (tenant.status !== "ready") return;
-    if (!user) return;
-
-    let cancelled = false;
-    setAuthzState("checking");
-    setAuthzMessage(null);
-
-    (async () => {
-      // Check if user has teacher role in this school
-      const { data: roleRow, error: roleErr } = await supabase
-        .from("user_roles")
-        .select("id")
-        .eq("school_id", tenant.schoolId)
-        .eq("user_id", user.id)
-        .eq("role", "teacher")
-        .maybeSingle();
-
-      if (cancelled) return;
-      if (roleErr) {
-        setAuthzState("denied");
-        setAuthzMessage(roleErr.message);
-        return;
-      }
-
-      // Also check for platform super admin bypass
-      if (!roleRow) {
-        const { data: psa } = await supabase
-          .from("platform_super_admins")
-          .select("user_id")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (cancelled) return;
-        if (!psa?.user_id) {
-          setAuthzState("denied");
-          setAuthzMessage("You do not have the Teacher role in this school.");
-          return;
-        }
-      }
-
-      setAuthzState("ok");
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [tenant.status, tenant.schoolId, user]);
+  // Use optimized authorization hook
+  const authz = useAuthz({
+    schoolId,
+    userId: user?.id ?? null,
+    requiredRoles: ["teacher"],
+  });
+  const authzState = authz.state;
+  const authzMessage = authz.message;
 
   if (loading) {
     return (
@@ -95,7 +60,7 @@ const TeacherDashboard = () => {
     return <Navigate to={`/${tenant.slug}/auth`} replace />;
   }
 
-  const title = tenant.status === "ready" ? `${tenant.school.name} • Teacher` : "EDUVERSE";
+  const title = tenant.status === "ready" ? `${tenant.school?.name} • Teacher` : "EDUVERSE";
 
   return (
     <TeacherShell title={title} subtitle="Teacher workspace" schoolSlug={tenant.slug}>
