@@ -1030,7 +1030,7 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="flex flex-col gap-3 px-1">
                   {messages.map((msg, idx) => {
                     const showDate =
                       idx === 0 ||
@@ -1042,7 +1042,7 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                       : undefined;
 
                     return (
-                      <div key={msg.id}>
+                      <div key={msg.id} className="w-full">
                         {showDate && (
                           <div className="my-4 flex items-center justify-center">
                             <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
@@ -1054,134 +1054,130 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                             </span>
                           </div>
                         )}
-                        <div className={cn("group flex items-end gap-1", msg.is_mine ? "justify-end" : "justify-start")}>
-                          {/* Action buttons for other's messages */}
-                          {!msg.is_mine && (
-                            <div className="mb-2 flex shrink-0 gap-0.5 rounded-lg bg-muted/80 p-0.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 sm:bg-transparent sm:shadow-none">
-                              <button
-                                onClick={() => setReplyingTo(msg)}
-                                className="rounded p-1.5 hover:bg-accent"
-                                title="Reply"
-                              >
-                                <Reply className="h-4 w-4 text-foreground/70 hover:text-foreground" />
-                              </button>
-                              <button
-                                onClick={() => setForwardingMessage(msg)}
-                                className="rounded p-1.5 hover:bg-accent"
-                                title="Forward"
-                              >
-                                <Forward className="h-4 w-4 text-foreground/70 hover:text-foreground" />
-                              </button>
-                            </div>
+                        
+                        {/* Message row container */}
+                        <div 
+                          className={cn(
+                            "group flex w-full",
+                            msg.is_mine ? "justify-end" : "justify-start"
                           )}
-                          <div className={cn(
-                            "flex max-w-[85%] flex-col gap-1 sm:max-w-[75%] lg:max-w-[65%]",
-                            msg.is_mine ? "items-end" : "items-start"
-                          )}>
-                            <div
-                              className={cn(
-                                "rounded-2xl px-3 py-2 sm:px-4 sm:py-2.5",
-                                msg.is_mine
-                                  ? "bg-primary text-primary-foreground rounded-br-md"
-                                  : "bg-muted rounded-bl-md"
-                              )}
-                            >
-                              {/* Reply indicator */}
-                              {parentMessage && (
-                                <div
-                                  className={cn(
-                                    "mb-2 flex items-center gap-1.5 rounded-lg border-l-2 px-2 py-1 text-xs",
-                                    msg.is_mine
-                                      ? "border-primary-foreground/50 bg-primary-foreground/10 text-primary-foreground/80"
-                                      : "border-muted-foreground/30 bg-background/50 text-muted-foreground"
-                                  )}
-                                >
-                                  <CornerDownRight className="h-3 w-3 shrink-0" />
-                                  <span className="truncate">
-                                    {parentMessage.content.substring(0, 40)}
-                                    {parentMessage.content.length > 40 ? "..." : ""}
-                                  </span>
-                                </div>
-                              )}
-                              <p className="whitespace-pre-wrap text-sm" style={{ wordBreak: "break-word", overflowWrap: "break-word" }}>
-                                {msg.content}
-                              </p>
-                              
-                              {/* Attachments */}
-                              {msg.attachment_urls && msg.attachment_urls.length > 0 && (
-                                <div className="mt-2 space-y-1">
-                                  {msg.attachment_urls.map((url, i) => {
-                                    const fileName = url.split("/").pop() || "File";
-                                    return (
-                                      <button
-                                        key={i}
-                                        onClick={() => downloadAttachment(url)}
-                                        className={cn(
-                                          "flex items-center gap-2 rounded-lg p-2 text-xs transition-colors",
-                                          msg.is_mine
-                                            ? "bg-primary-foreground/10 hover:bg-primary-foreground/20"
-                                            : "bg-background hover:bg-accent"
-                                        )}
-                                      >
-                                        <FileText className="h-4 w-4 shrink-0" />
-                                        <span className="truncate max-w-[120px]">{fileName.substring(fileName.indexOf("-") + 1)}</span>
-                                        <Download className="h-3 w-3 shrink-0" />
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                              
+                        >
+                          {/* Inner flex container for bubble + actions */}
+                          <div 
+                            className={cn(
+                              "flex items-end gap-1 max-w-[calc(100%-1rem)] sm:max-w-[80%] lg:max-w-[70%]",
+                              msg.is_mine ? "flex-row-reverse" : "flex-row"
+                            )}
+                          >
+                            {/* Message Bubble */}
+                            <div className={cn(
+                              "flex flex-col gap-1 min-w-0 max-w-full",
+                              msg.is_mine ? "items-end" : "items-start"
+                            )}>
                               <div
                                 className={cn(
-                                  "mt-1 flex items-center gap-1.5",
-                                  msg.is_mine ? "justify-end" : "justify-start"
+                                  "rounded-2xl px-3 py-2 sm:px-4 sm:py-2.5 min-w-0 max-w-full",
+                                  msg.is_mine
+                                    ? "bg-primary text-primary-foreground rounded-br-sm"
+                                    : "bg-muted rounded-bl-sm"
                                 )}
                               >
-                                <span className={cn(
-                                  "text-[10px]",
-                                  msg.is_mine ? "text-primary-foreground/70" : "text-muted-foreground"
-                                )}>
-                                  {formatMessageTime(msg.created_at)}
-                                </span>
-                                {msg.is_mine && (
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      {msg.is_read ? (
-                                        <CheckCheck className="h-3 w-3 text-primary-foreground/70 cursor-help" />
-                                      ) : (
-                                        <Check className="h-3 w-3 text-primary-foreground/50 cursor-help" />
-                                      )}
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top" className="text-xs">
-                                      {msg.is_read
-                                        ? `Read ${messageReadStatus[msg.id]?.read_at ? format(parseISO(messageReadStatus[msg.id].read_at!), "MMM d, h:mm a") : ""}`
-                                        : "Delivered"
-                                      }
-                                    </TooltipContent>
-                                  </Tooltip>
+                                {/* Reply indicator */}
+                                {parentMessage && (
+                                  <div
+                                    className={cn(
+                                      "mb-2 flex items-center gap-1.5 rounded-lg border-l-2 px-2 py-1 text-xs",
+                                      msg.is_mine
+                                        ? "border-primary-foreground/50 bg-primary-foreground/10 text-primary-foreground/80"
+                                        : "border-muted-foreground/30 bg-background/50 text-muted-foreground"
+                                    )}
+                                  >
+                                    <CornerDownRight className="h-3 w-3 shrink-0" />
+                                    <span className="truncate">
+                                      {parentMessage.content.substring(0, 40)}
+                                      {parentMessage.content.length > 40 ? "..." : ""}
+                                    </span>
+                                  </div>
                                 )}
+                                <p 
+                                  className="whitespace-pre-wrap text-sm break-words"
+                                  style={{ 
+                                    wordBreak: "break-word", 
+                                    overflowWrap: "anywhere",
+                                    hyphens: "auto"
+                                  }}
+                                >
+                                  {msg.content}
+                                </p>
+                                
+                                {/* Attachments */}
+                                {msg.attachment_urls && msg.attachment_urls.length > 0 && (
+                                  <div className="mt-2 space-y-1">
+                                    {msg.attachment_urls.map((url, i) => {
+                                      const fileName = url.split("/").pop() || "File";
+                                      return (
+                                        <button
+                                          key={i}
+                                          onClick={() => downloadAttachment(url)}
+                                          className={cn(
+                                            "flex items-center gap-2 rounded-lg p-2 text-xs transition-colors w-full",
+                                            msg.is_mine
+                                              ? "bg-primary-foreground/10 hover:bg-primary-foreground/20"
+                                              : "bg-background hover:bg-accent"
+                                          )}
+                                        >
+                                          <FileText className="h-4 w-4 shrink-0" />
+                                          <span className="truncate flex-1 text-left">{fileName.substring(fileName.indexOf("-") + 1)}</span>
+                                          <Download className="h-3 w-3 shrink-0" />
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                                
+                                <div
+                                  className={cn(
+                                    "mt-1 flex items-center gap-1.5",
+                                    msg.is_mine ? "justify-end" : "justify-start"
+                                  )}
+                                >
+                                  <span className={cn(
+                                    "text-[10px]",
+                                    msg.is_mine ? "text-primary-foreground/70" : "text-muted-foreground"
+                                  )}>
+                                    {formatMessageTime(msg.created_at)}
+                                  </span>
+                                  {msg.is_mine && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        {msg.is_read ? (
+                                          <CheckCheck className="h-3 w-3 text-primary-foreground/70 cursor-help" />
+                                        ) : (
+                                          <Check className="h-3 w-3 text-primary-foreground/50 cursor-help" />
+                                        )}
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top" className="text-xs">
+                                        {msg.is_read
+                                          ? `Read ${messageReadStatus[msg.id]?.read_at ? format(parseISO(messageReadStatus[msg.id].read_at!), "MMM d, h:mm a") : ""}`
+                                          : "Delivered"
+                                        }
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  )}
+                                </div>
                               </div>
+                              
+                              {/* Reactions */}
+                              <MessageReactions
+                                messageId={msg.id}
+                                schoolId={schoolId}
+                                currentUserId={currentUserId || ""}
+                                isMine={msg.is_mine}
+                              />
                             </div>
-                            
-                            {/* Reactions */}
-                            <MessageReactions
-                              messageId={msg.id}
-                              schoolId={schoolId}
-                              currentUserId={currentUserId || ""}
-                              isMine={msg.is_mine}
-                            />
-                          </div>
-                          {/* Action buttons for own messages */}
-                          {msg.is_mine && (
+
+                            {/* Action buttons */}
                             <div className="mb-2 flex shrink-0 gap-0.5 rounded-lg bg-muted/80 p-0.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 sm:bg-transparent sm:shadow-none">
-                              <button
-                                onClick={() => setForwardingMessage(msg)}
-                                className="rounded p-1.5 hover:bg-accent"
-                                title="Forward"
-                              >
-                                <Forward className="h-4 w-4 text-foreground/70 hover:text-foreground" />
-                              </button>
                               <button
                                 onClick={() => setReplyingTo(msg)}
                                 className="rounded p-1.5 hover:bg-accent"
@@ -1189,8 +1185,15 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                               >
                                 <Reply className="h-4 w-4 text-foreground/70 hover:text-foreground" />
                               </button>
+                              <button
+                                onClick={() => setForwardingMessage(msg)}
+                                className="rounded p-1.5 hover:bg-accent"
+                                title="Forward"
+                              >
+                                <Forward className="h-4 w-4 text-foreground/70 hover:text-foreground" />
+                              </button>
                             </div>
-                          )}
+                          </div>
                         </div>
                       </div>
                     );
