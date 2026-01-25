@@ -69,12 +69,34 @@ export function NotificationsBell({ schoolId, schoolSlug, role }: NotificationsB
       
       // If it's a message notification, navigate to messages with the sender's ID
       if (notification.entity_type === "admin_message" && notification.entity_id && schoolSlug) {
-        // Determine correct role path for messages
-        // Map role to the correct route path
-        const rolePath = role === "principal" || role === "vice_principal" 
-          ? "admin" 
-          : role || "admin";
+        // Map role to the correct route path for messages
+        // Each role has its own dashboard with a messages module
+        const getRolePath = (r: string | undefined): string => {
+          switch (r) {
+            case "principal":
+            case "vice_principal":
+            case "academic_coordinator":
+              return "admin";
+            case "teacher":
+              return "teacher";
+            case "student":
+              return "student";
+            case "parent":
+              return "parent";
+            case "hr_manager":
+              return "hr";
+            case "accountant":
+              return "accountant";
+            case "marketing_staff":
+              return "marketing";
+            case "school_owner":
+              return "school_owner";
+            default:
+              return r || "admin";
+          }
+        };
         
+        const rolePath = getRolePath(role);
         const messagesPath = `/${schoolSlug}/${rolePath}/messages`;
         
         // If already on messages page, dispatch custom event to open chat
@@ -248,12 +270,33 @@ export function NotificationsBell({ schoolId, schoolSlug, role }: NotificationsB
                 className="w-full h-8 text-xs text-muted-foreground"
                 onClick={() => {
                   setOpen(false);
-                  // Navigate to notifications settings/page if available, otherwise just close
+                  // Navigate to notifications page
                   if (schoolSlug && role) {
-                    const rolePath = role === "principal" || role === "vice_principal" 
-                      ? "admin" 
-                      : role || "admin";
-                    navigate(`/${schoolSlug}/${rolePath}/notifications`);
+                    const getRolePath = (r: string): string => {
+                      switch (r) {
+                        case "principal":
+                        case "vice_principal":
+                        case "academic_coordinator":
+                          return "admin";
+                        case "teacher":
+                          return "teacher";
+                        case "student":
+                          return "student";
+                        case "parent":
+                          return "parent";
+                        case "hr_manager":
+                          return "hr";
+                        case "accountant":
+                          return "accountant";
+                        case "marketing_staff":
+                          return "marketing";
+                        case "school_owner":
+                          return "school_owner";
+                        default:
+                          return r;
+                      }
+                    };
+                    navigate(`/${schoolSlug}/${getRolePath(role)}/notifications`);
                   }
                 }}
               >
