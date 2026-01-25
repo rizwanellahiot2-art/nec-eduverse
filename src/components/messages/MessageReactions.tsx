@@ -229,9 +229,9 @@ export function MessageReactions({ messageId, schoolId, currentUserId, isMine = 
         </div>
       )}
 
-      {/* Actions on hover */}
+      {/* Actions on hover - with visible background on mobile */}
       <div className={cn(
-        "flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity",
+        "flex items-center gap-0.5 rounded-lg bg-muted/80 p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity sm:bg-transparent sm:shadow-none",
         isMine ? "flex-row-reverse" : "flex-row"
       )}>
         {/* Pin button */}
@@ -241,14 +241,10 @@ export function MessageReactions({ messageId, schoolId, currentUserId, isMine = 
               onClick={togglePin}
               disabled={loading}
               className={cn(
-                "rounded-full p-1 transition-colors",
+                "rounded p-1.5 transition-colors hover:bg-accent",
                 isPinned
-                  ? isMine
-                    ? "text-primary-foreground"
-                    : "text-amber-500"
-                  : isMine
-                    ? "text-primary-foreground/50 hover:text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
+                  ? "text-amber-500"
+                  : "text-foreground/70 hover:text-foreground"
               )}
             >
               {loading ? (
@@ -269,12 +265,7 @@ export function MessageReactions({ messageId, schoolId, currentUserId, isMine = 
         <Popover open={showPicker} onOpenChange={setShowPicker}>
           <PopoverTrigger asChild>
             <button
-              className={cn(
-                "rounded-full p-1 transition-colors",
-                isMine
-                  ? "text-primary-foreground/50 hover:text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
+              className="rounded p-1.5 transition-colors text-foreground/70 hover:text-foreground hover:bg-accent"
               disabled={loading}
             >
               <Smile className="h-3.5 w-3.5" />
