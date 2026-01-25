@@ -717,7 +717,9 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
     
     setForwardSending(true);
     try {
-      const forwardedContent = `📤 Forwarded message:\n\n${forwardingMessage.content}`;
+      // Strip any existing forwarded prefix to avoid stacking labels
+      const cleanContent = forwardingMessage.content.replace(/^(📤 Forwarded message:\n\n)+/g, "");
+      const forwardedContent = `📤 Forwarded message:\n\n${cleanContent}`;
       
       const { data: newMsg, error } = await supabase
         .from("admin_messages")
