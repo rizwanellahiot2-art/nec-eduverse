@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { format, parseISO, isToday, isYesterday } from "date-fns";
 import {
   Send,
@@ -388,6 +389,97 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
   useEffect(() => {
     if (currentUserId) fetchAllUsers();
   }, [fetchAllUsers, currentUserId]);
+
+  // Handle opening chat from notification (URL param or custom event)
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  const openChatByMessageId = useCallback(async (messageId: string) => {
+    if (!schoolId || !currentUserId) return;
+    
+    try {
+      // Fetch the message to get the sender_user_id
+      const { data: message } = await supabase
+        .from("admin_messages")
+        .select("sender_user_id")
+        .eq("id", messageId)
+        .single();
+      
+      if (!message) return;
+      
+      // Find the partner ID (could be sender or recipient depending on who we are)
+      const partnerId = message.sender_user_id === currentUserId 
+        ? null // Need to find recipient
+        : message.sender_user_id;
+      
+      let targetPartnerId = partnerId;
+      
+      if (!targetPartnerId) {
+        // We sent this message, find the recipient
+        const { data: recipient } = await supabase
+          .from("admin_message_recipients")
+          .select("recipient_user_id")
+          .eq("message_id", messageId)
+          .single();
+        
+        targetPartnerId = recipient?.recipient_user_id || null;
+      }
+      
+      if (!targetPartnerId) return;
+      
+      // Get partner's name
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("user_id", targetPartnerId)
+        .maybeSingle();
+      
+      const partnerName = profile?.display_name || "User";
+      
+      // Create or find conversation and select it
+      const conv: Conversation = {
+        id: targetPartnerId,
+        recipientId: targetPartnerId,
+        recipientName: partnerName,
+        lastMessage: "",
+        lastMessageTime: new Date().toISOString(),
+        unreadCount: 0,
+        isGroup: false,
+      };
+      
+      setSelectedConversation(conv);
+      await loadConversationMessages(targetPartnerId);
+      
+      // Clear the search param
+      setSearchParams((prev) => {
+        prev.delete("open_message");
+        return prev;
+      });
+    } catch (error) {
+      console.error("Failed to open chat from notification:", error);
+    }
+  }, [schoolId, currentUserId, setSearchParams, clearedConversations]);
+  
+  // Handle URL param on mount and when conversations load
+  useEffect(() => {
+    const messageId = searchParams.get("open_message");
+    if (messageId && currentUserId && !loading) {
+      openChatByMessageId(messageId);
+    }
+  }, [searchParams, currentUserId, loading, openChatByMessageId]);
+  
+  // Listen for custom event from notification click
+  useEffect(() => {
+    const handleOpenChat = (e: CustomEvent<{ messageId: string }>) => {
+      if (e.detail?.messageId) {
+        openChatByMessageId(e.detail.messageId);
+      }
+    };
+    
+    window.addEventListener("eduverse:open-chat-from-notification", handleOpenChat as EventListener);
+    return () => {
+      window.removeEventListener("eduverse:open-chat-from-notification", handleOpenChat as EventListener);
+    };
+  }, [openChatByMessageId]);
 
   // Realtime subscription for read status updates
   useEffect(() => {

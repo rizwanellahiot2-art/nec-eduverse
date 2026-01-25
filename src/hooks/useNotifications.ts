@@ -58,22 +58,80 @@ export function useNotifications(schoolId: string | null) {
   const markRead = useCallback(
     async (id: string) => {
       try {
+        // Optimistic update
+        qc.setQueryData<AppNotification[]>(queryKey, (old) =>
+          (old ?? []).map((n) =>
+            n.id === id ? { ...n, read_at: new Date().toISOString() } : n
+          )
+        );
+
         const { error } = await supabase
           .from("app_notifications")
           .update({ read_at: new Date().toISOString() })
           .eq("id", id);
         if (error) throw error;
-        await qc.invalidateQueries({ queryKey });
       } catch (e: any) {
+        // Rollback on error
+        await qc.invalidateQueries({ queryKey });
         toast.error(e?.message ?? "Failed to mark as read");
       }
     },
-    [qc, queryKey],
+    [qc, queryKey]
+  );
+
+  const markAllRead = useCallback(async () => {
+    if (!user?.id || !schoolId) return;
+
+    try {
+      // Optimistic update
+      qc.setQueryData<AppNotification[]>(queryKey, (old) =>
+        (old ?? []).map((n) =>
+          !n.read_at ? { ...n, read_at: new Date().toISOString() } : n
+        )
+      );
+
+      const { error } = await supabase
+        .from("app_notifications")
+        .update({ read_at: new Date().toISOString() })
+        .eq("school_id", schoolId)
+        .eq("user_id", user.id)
+        .is("read_at", null);
+
+      if (error) throw error;
+      toast.success("All notifications marked as read");
+    } catch (e: any) {
+      await qc.invalidateQueries({ queryKey });
+      toast.error(e?.message ?? "Failed to mark all as read");
+    }
+  }, [qc, queryKey, user?.id, schoolId]);
+
+  const clearNotification = useCallback(
+    async (id: string) => {
+      try {
+        // Optimistic update - remove from list
+        qc.setQueryData<AppNotification[]>(queryKey, (old) =>
+          (old ?? []).filter((n) => n.id !== id)
+        );
+
+        const { error } = await supabase
+          .from("app_notifications")
+          .delete()
+          .eq("id", id);
+
+        if (error) throw error;
+      } catch (e: any) {
+        await qc.invalidateQueries({ queryKey });
+        toast.error(e?.message ?? "Failed to remove notification");
+      }
+    },
+    [qc, queryKey]
   );
 
   return {
     ...query,
     unreadCount,
     markRead,
+    markAllRead,
+    clearNotification,
   };
 }

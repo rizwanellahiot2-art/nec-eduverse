@@ -121,7 +121,7 @@ export function OwnerShell({ title, subtitle, schoolSlug, children }: Props) {
           <p className="text-xs text-muted-foreground">School Owner • CEO View</p>
         </div>
         <div className="flex items-center gap-2">
-          <NotificationsBell schoolId={schoolId} />
+          <NotificationsBell schoolId={schoolId} schoolSlug={schoolSlug} role="school_owner" />
           <Button
             variant="soft"
             size="icon"
@@ -204,7 +204,7 @@ export function OwnerShell({ title, subtitle, schoolSlug, children }: Props) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <NotificationsBell schoolId={schoolId} />
+          <NotificationsBell schoolId={schoolId} schoolSlug={schoolSlug} role="school_owner" />
           <Button
             variant="ghost"
             size="icon"

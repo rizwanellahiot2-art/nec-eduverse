@@ -90,7 +90,7 @@ export function TenantShell({ title, subtitle, role, schoolSlug, children }: Pro
           <p className="text-xs text-muted-foreground">/{schoolSlug} • {role}</p>
         </div>
         <div className="flex items-center gap-2">
-          <NotificationsBell schoolId={schoolId} />
+          <NotificationsBell schoolId={schoolId} schoolSlug={schoolSlug} role={role} />
           <Button
             variant="soft"
             size="icon"
@@ -167,7 +167,7 @@ export function TenantShell({ title, subtitle, role, schoolSlug, children }: Pro
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <NotificationsBell schoolId={schoolId} />
+          <NotificationsBell schoolId={schoolId} schoolSlug={schoolSlug} role={role} />
           <Button
             variant="ghost"
             size="icon"

@@ -111,7 +111,7 @@ export function ParentShell({
           <p className="text-xs text-muted-foreground">/{schoolSlug} • Parent</p>
         </div>
         <div className="flex items-center gap-2">
-          <NotificationsBell schoolId={schoolId} />
+          <NotificationsBell schoolId={schoolId} schoolSlug={schoolSlug} role="parent" />
           <Button
             variant="soft"
             size="icon"
@@ -219,7 +219,7 @@ export function ParentShell({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <NotificationsBell schoolId={schoolId} />
+          <NotificationsBell schoolId={schoolId} schoolSlug={schoolSlug} role="parent" />
           <Button
             variant="ghost"
             size="icon"

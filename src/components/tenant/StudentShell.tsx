@@ -80,7 +80,7 @@ export function StudentShell({ title, subtitle, schoolSlug, children }: Props) {
           <p className="text-xs text-muted-foreground">/{schoolSlug} • Student</p>
         </div>
         <div className="flex items-center gap-2">
-          <NotificationsBell schoolId={schoolId} />
+          <NotificationsBell schoolId={schoolId} schoolSlug={schoolSlug} role="student" />
           <Button
             variant="soft"
             size="icon"
@@ -157,7 +157,7 @@ export function StudentShell({ title, subtitle, schoolSlug, children }: Props) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <NotificationsBell schoolId={schoolId} />
+          <NotificationsBell schoolId={schoolId} schoolSlug={schoolSlug} role="student" />
           <Button
             variant="ghost"
             size="icon"
