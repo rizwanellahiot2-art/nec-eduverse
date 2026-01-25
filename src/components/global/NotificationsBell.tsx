@@ -64,16 +64,21 @@ export function NotificationsBell({ schoolId, schoolSlug, role }: NotificationsB
         await markRead(notification.id);
       }
 
+      // Close dropdown
+      setOpen(false);
+      
       // If it's a message notification, navigate to messages with the sender's ID
-      if (notification.entity_type === "admin_message" && notification.entity_id && schoolSlug && role) {
-        // Close dropdown
-        setOpen(false);
+      if (notification.entity_type === "admin_message" && notification.entity_id && schoolSlug) {
+        // Determine correct role path for messages
+        // Map role to the correct route path
+        const rolePath = role === "principal" || role === "vice_principal" 
+          ? "admin" 
+          : role || "admin";
         
-        // Navigate to messages page with open_chat query param
-        const messagesPath = `/${schoolSlug}/${role}/messages`;
+        const messagesPath = `/${schoolSlug}/${rolePath}/messages`;
         
         // If already on messages page, dispatch custom event to open chat
-        if (location.pathname === messagesPath || location.pathname.startsWith(messagesPath)) {
+        if (location.pathname.includes("/messages")) {
           window.dispatchEvent(
             new CustomEvent("eduverse:open-chat-from-notification", {
               detail: { messageId: notification.entity_id },
@@ -243,7 +248,13 @@ export function NotificationsBell({ schoolId, schoolSlug, role }: NotificationsB
                 className="w-full h-8 text-xs text-muted-foreground"
                 onClick={() => {
                   setOpen(false);
-                  // Could navigate to a full notifications page if exists
+                  // Navigate to notifications settings/page if available, otherwise just close
+                  if (schoolSlug && role) {
+                    const rolePath = role === "principal" || role === "vice_principal" 
+                      ? "admin" 
+                      : role || "admin";
+                    navigate(`/${schoolSlug}/${rolePath}/notifications`);
+                  }
                 }}
               >
                 View all notifications
