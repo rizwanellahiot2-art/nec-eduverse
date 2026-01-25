@@ -951,13 +951,13 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                     </div>
                   </button>
                   
-                  {/* Delete button */}
+                  {/* Delete button - visible on mobile, hover on desktop */}
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="absolute right-2 top-1/2 h-7 w-7 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"
+                        className="absolute right-2 top-1/2 h-7 w-7 -translate-y-1/2 opacity-100 sm:opacity-0 transition-opacity sm:group-hover:opacity-100 hover:bg-destructive/10"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
@@ -1079,18 +1079,19 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                           {/* Inner flex container for bubble + actions */}
                           <div 
                             className={cn(
-                              "flex items-end gap-1 max-w-[calc(100%-1rem)] sm:max-w-[80%] lg:max-w-[70%]",
+                              "flex items-end gap-1.5 w-fit",
                               msg.is_mine ? "flex-row-reverse" : "flex-row"
                             )}
+                            style={{ maxWidth: isMobile ? "85%" : "70%" }}
                           >
                             {/* Message Bubble */}
                             <div className={cn(
-                              "flex flex-col gap-1 min-w-0 max-w-full",
+                              "flex flex-col gap-0.5 min-w-0",
                               msg.is_mine ? "items-end" : "items-start"
                             )}>
                               <div
                                 className={cn(
-                                  "rounded-2xl px-3 py-2 sm:px-4 sm:py-2.5 min-w-0 max-w-full",
+                                  "rounded-2xl px-3.5 py-2 inline-block",
                                   msg.is_mine
                                     ? "bg-primary text-primary-foreground rounded-br-sm"
                                     : "bg-muted rounded-bl-sm"
@@ -1113,14 +1114,7 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                                     </span>
                                   </div>
                                 )}
-                                <p 
-                                  className="whitespace-pre-wrap text-sm break-words"
-                                  style={{ 
-                                    wordBreak: "break-word", 
-                                    overflowWrap: "anywhere",
-                                    hyphens: "auto"
-                                  }}
-                                >
+                                <p className="whitespace-pre-wrap text-sm leading-relaxed break-words [overflow-wrap:anywhere] [word-break:break-word]">
                                   {msg.content}
                                 </p>
                                 
@@ -1151,7 +1145,7 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                                 
                                 <div
                                   className={cn(
-                                    "mt-1 flex items-center gap-1.5",
+                                    "mt-0.5 flex items-center gap-1",
                                     msg.is_mine ? "justify-end" : "justify-start"
                                   )}
                                 >
@@ -1190,21 +1184,25 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                               />
                             </div>
 
-                            {/* Action buttons */}
-                            <div className="mb-2 flex shrink-0 gap-0.5 rounded-lg bg-muted/80 p-0.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 sm:bg-transparent sm:shadow-none">
+                            {/* Action buttons - visible on mobile tap, hover on desktop */}
+                            <div className={cn(
+                              "mb-1 flex shrink-0 gap-0.5 rounded-lg p-0.5 transition-opacity",
+                              "opacity-100 sm:opacity-0 sm:group-hover:opacity-100",
+                              isMobile ? "bg-muted/60 shadow-sm" : "bg-transparent"
+                            )}>
                               <button
                                 onClick={() => setReplyingTo(msg)}
-                                className="rounded p-1.5 hover:bg-accent"
+                                className="rounded p-1.5 hover:bg-accent active:bg-accent"
                                 title="Reply"
                               >
-                                <Reply className="h-4 w-4 text-foreground/70 hover:text-foreground" />
+                                <Reply className="h-3.5 w-3.5 text-foreground/70" />
                               </button>
                               <button
                                 onClick={() => setForwardingMessage(msg)}
-                                className="rounded p-1.5 hover:bg-accent"
+                                className="rounded p-1.5 hover:bg-accent active:bg-accent"
                                 title="Forward"
                               >
-                                <Forward className="h-4 w-4 text-foreground/70 hover:text-foreground" />
+                                <Forward className="h-3.5 w-3.5 text-foreground/70" />
                               </button>
                             </div>
                           </div>
