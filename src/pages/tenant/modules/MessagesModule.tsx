@@ -604,42 +604,47 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
     if (!currentUserId) return;
     
     try {
-      // Get all messages sent by current user to this recipient
-      const { data: sentMessages } = await supabase
+      // 1) Delete messages I SENT to this partner (destructive: removes for everyone)
+      const { data: sentRows, error: sentRowsError } = await supabase
         .from("admin_messages")
         .select("id, admin_message_recipients!inner(recipient_user_id)")
         .eq("school_id", schoolId)
-        .eq("sender_user_id", currentUserId);
+        .eq("sender_user_id", currentUserId)
+        .eq("admin_message_recipients.recipient_user_id", conv.recipientId);
 
-      // Filter messages that were sent to this specific recipient and delete them
-      const messagesToDelete = (sentMessages || []).filter((msg) => 
-        msg.admin_message_recipients?.some((r: any) => r.recipient_user_id === conv.recipientId)
-      );
+      if (sentRowsError) throw sentRowsError;
 
-      // Delete the messages (this cascades to recipients due to FK)
-      for (const msg of messagesToDelete) {
-        await supabase.from("admin_messages").delete().eq("id", msg.id);
+      const sentIds = (sentRows || []).map((r) => r.id).filter(Boolean);
+      if (sentIds.length > 0) {
+        const { error: deleteSentError } = await supabase
+          .from("admin_messages")
+          .delete()
+          .in("id", sentIds)
+          .eq("sender_user_id", currentUserId);
+        if (deleteSentError) throw deleteSentError;
       }
 
-      // For received messages, we mark them as read (since we can't delete them)
-      // and remove them from local state
-      const { data: receivedRows } = await supabase
+      // 2) Delete message links I RECEIVED from this partner (clears from my view only)
+      const { data: receivedLinks, error: receivedLinksError } = await supabase
         .from("admin_message_recipients")
-        .select("id, message_id, admin_messages!inner(sender_user_id)")
-        .eq("recipient_user_id", currentUserId);
+        .select("id, message_id, admin_messages!inner(sender_user_id, school_id)")
+        .eq("recipient_user_id", currentUserId)
+        .eq("admin_messages.sender_user_id", conv.recipientId)
+        .eq("admin_messages.school_id", schoolId);
 
-      // Mark received messages from this partner as read
-      for (const row of receivedRows || []) {
-        const sender = (row.admin_messages as any)?.sender_user_id;
-        if (sender === conv.recipientId) {
-          await supabase
-            .from("admin_message_recipients")
-            .update({ is_read: true, read_at: new Date().toISOString() })
-            .eq("id", row.id);
-        }
+      if (receivedLinksError) throw receivedLinksError;
+
+      const receivedLinkIds = (receivedLinks || []).map((r) => r.id).filter(Boolean);
+      if (receivedLinkIds.length > 0) {
+        const { error: deleteReceivedError } = await supabase
+          .from("admin_message_recipients")
+          .delete()
+          .in("id", receivedLinkIds)
+          .eq("recipient_user_id", currentUserId);
+        if (deleteReceivedError) throw deleteReceivedError;
       }
 
-      toast({ title: "Conversation cleared" });
+      toast({ title: "Conversation deleted" });
       setConversations((prev) => prev.filter((c) => c.id !== conv.id));
       if (selectedConversation?.id === conv.id) {
         setSelectedConversation(null);
@@ -677,15 +682,21 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
       .toUpperCase()
       .slice(0, 2);
 
+  const parseDateSafe = (dateStr: string) => {
+    const d = parseISO(dateStr);
+    return Number.isNaN(d.getTime()) ? null : d;
+  };
+
   const formatMessageTime = (dateStr: string) => {
-    const date = parseISO(dateStr);
-    if (isToday(date)) return format(date, "h:mm a");
-    if (isYesterday(date)) return `Yesterday ${format(date, "h:mm a")}`;
-    return format(date, "MMM d, h:mm a");
+    const date = parseDateSafe(dateStr);
+    if (!date) return "";
+    // Date is shown via the day separator; keep bubbles consistent.
+    return format(date, "h:mm a");
   };
 
   const formatConversationTime = (dateStr: string) => {
-    const date = parseISO(dateStr);
+    const date = parseDateSafe(dateStr);
+    if (!date) return "";
     if (isToday(date)) return format(date, "h:mm a");
     if (isYesterday(date)) return "Yesterday";
     return format(date, "MMM d");
@@ -933,9 +944,50 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                     </div>
                     <div className="flex-1 overflow-hidden">
                       <div className="flex items-center justify-between">
-                        <p className={cn("truncate font-medium", conv.unreadCount > 0 && "font-semibold")}>
-                          {conv.recipientName}
-                        </p>
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          {/* Always-visible delete icon in front of name */}
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 shrink-0"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                }}
+                                onPointerDown={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                }}
+                              >
+                                <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Conversation</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will remove the entire conversation for you. Messages you received will be removed
+                                  from your inbox, and messages you sent will be deleted.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteConversation(conv)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+
+                          <p className={cn("truncate font-medium", conv.unreadCount > 0 && "font-semibold")}>
+                            {conv.recipientName}
+                          </p>
+                        </div>
                         <span className="shrink-0 text-[10px] text-muted-foreground">
                           {formatConversationTime(conv.lastMessageTime)}
                         </span>
@@ -950,37 +1002,6 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                       </p>
                     </div>
                   </button>
-                  
-                  {/* Delete button - visible on mobile, hover on desktop */}
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-2 top-1/2 h-7 w-7 -translate-y-1/2 opacity-100 sm:opacity-0 transition-opacity sm:group-hover:opacity-100 hover:bg-destructive/10"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Conversation</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will delete all messages with {conv.recipientName}. This cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => handleDeleteConversation(conv)}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
                 </div>
               ))}
             </div>
@@ -1079,10 +1100,10 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                           {/* Inner flex container for bubble + actions */}
                           <div 
                             className={cn(
-                              "flex items-end gap-1.5 w-fit",
-                              msg.is_mine ? "flex-row-reverse" : "flex-row"
+                              "flex items-end gap-1.5 min-w-0",
+                              msg.is_mine ? "flex-row-reverse" : "flex-row",
+                              isMobile ? "max-w-[85%]" : "max-w-[70%]"
                             )}
-                            style={{ maxWidth: isMobile ? "85%" : "70%" }}
                           >
                             {/* Message Bubble */}
                             <div className={cn(
@@ -1091,7 +1112,7 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                             )}>
                               <div
                                 className={cn(
-                                  "rounded-2xl px-3.5 py-2 inline-block",
+                                  "max-w-full rounded-2xl px-3.5 py-2 inline-block",
                                   msg.is_mine
                                     ? "bg-primary text-primary-foreground rounded-br-sm"
                                     : "bg-muted rounded-bl-sm"
@@ -1114,7 +1135,7 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                                     </span>
                                   </div>
                                 )}
-                                <p className="whitespace-pre-wrap text-sm leading-relaxed break-words [overflow-wrap:anywhere] [word-break:break-word]">
+                                <p className="whitespace-pre-wrap text-sm leading-snug break-words [overflow-wrap:anywhere] [word-break:break-word]">
                                   {msg.content}
                                 </p>
                                 
@@ -1166,7 +1187,7 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
                                       </TooltipTrigger>
                                       <TooltipContent side="top" className="text-xs">
                                         {msg.is_read
-                                          ? `Read ${messageReadStatus[msg.id]?.read_at ? format(parseISO(messageReadStatus[msg.id].read_at!), "MMM d, h:mm a") : ""}`
+                                          ? `Read ${messageReadStatus[msg.id]?.read_at ? (parseDateSafe(messageReadStatus[msg.id].read_at!) ? format(parseDateSafe(messageReadStatus[msg.id].read_at!)!, "MMM d, h:mm a") : "") : ""}`
                                           : "Delivered"
                                         }
                                       </TooltipContent>
