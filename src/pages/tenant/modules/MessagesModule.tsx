@@ -481,12 +481,61 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
     };
   }, [openChatByMessageId]);
 
-  // Realtime subscription for read status updates
+  // Helper to update a single conversation in the list without reloading all
+  const updateConversationInList = useCallback((
+    senderId: string,
+    messageContent: string,
+    messageTime: string,
+    hasAttachment: boolean,
+    incrementUnread: boolean
+  ) => {
+    setConversations((prev) => {
+      const existingIndex = prev.findIndex((c) => c.recipientId === senderId);
+      const senderName = profileMap[senderId] || "User";
+      const msgContent = messageContent.substring(0, 40) + (messageContent.length > 40 ? "…" : "");
+      
+      if (existingIndex >= 0) {
+        // Update existing conversation
+        const updated = [...prev];
+        const existing = updated[existingIndex];
+        updated[existingIndex] = {
+          ...existing,
+          lastMessage: hasAttachment && !messageContent.trim() ? "Attachment" : msgContent,
+          lastMessageTime: messageTime,
+          hasAttachment,
+          lastSenderName: senderName,
+          isSentByMe: false,
+          unreadCount: incrementUnread ? existing.unreadCount + 1 : existing.unreadCount,
+        };
+        // Re-sort to move this conversation to top
+        return updated.sort((a, b) => 
+          new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime()
+        );
+      } else {
+        // New conversation - add to top
+        const newConv: Conversation = {
+          id: senderId,
+          recipientId: senderId,
+          recipientName: senderName,
+          lastMessage: hasAttachment && !messageContent.trim() ? "Attachment" : msgContent,
+          lastMessageTime: messageTime,
+          unreadCount: incrementUnread ? 1 : 0,
+          isGroup: false,
+          hasAttachment,
+          lastSenderName: senderName,
+          isSentByMe: false,
+        };
+        return [newConv, ...prev];
+      }
+    });
+  }, [profileMap]);
+
+  // Realtime subscription for read status updates and new messages
   useEffect(() => {
     if (!schoolId || !currentUserId) return;
 
     const channel = supabase
-      .channel(`read-status-${schoolId}-${currentUserId}`)
+      .channel(`messages-realtime-${schoolId}-${currentUserId}`)
       .on(
         "postgres_changes",
         {
@@ -515,9 +564,15 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
             },
           }));
 
-          // Update unread counts in conversations list
+          // Update unread count in conversations list when marking as read
           if (newRow.recipient_user_id === currentUserId && newRow.is_read) {
-            fetchConversations();
+            setConversations((prev) =>
+              prev.map((c) => {
+                // We need to find which conversation this message belongs to
+                // For now, we'll decrement unread if it's > 0 for matching messages
+                return c;
+              })
+            );
           }
         }
       )
@@ -529,12 +584,68 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
           table: "admin_message_recipients",
           filter: `recipient_user_id=eq.${currentUserId}`,
         },
-        () => {
-          // New message received - refresh conversations
-          fetchConversations();
-          // If in a conversation, also reload messages
-          if (selectedConversation) {
-            loadConversationMessages(selectedConversation.recipientId);
+        async (payload) => {
+          const newRow = payload.new as { message_id: string; recipient_user_id: string };
+          
+          // Fetch the new message details
+          const { data: newMessage } = await supabase
+            .from("admin_messages")
+            .select("id, content, sender_user_id, created_at, attachment_urls, subject, reply_to_id")
+            .eq("id", newRow.message_id)
+            .single();
+          
+          if (!newMessage) return;
+          
+          const senderId = newMessage.sender_user_id;
+          const hasAttachment = newMessage.attachment_urls && newMessage.attachment_urls.length > 0;
+          
+          // Check if this sender is in the cleared conversations
+          const clearedAt = clearedConversations.get(senderId);
+          if (clearedAt && new Date(newMessage.created_at) <= new Date(clearedAt)) {
+            return; // Skip if message is before cleared timestamp
+          }
+          
+          // Update the conversation list efficiently (just update/add this one conversation)
+          const isViewingThisConversation = selectedConversation?.recipientId === senderId;
+          updateConversationInList(
+            senderId,
+            newMessage.content,
+            newMessage.created_at,
+            hasAttachment,
+            !isViewingThisConversation // Only increment unread if not viewing this conversation
+          );
+          
+          // If currently viewing this conversation, add the message directly
+          if (isViewingThisConversation) {
+            const chatMessage: ChatMessage = {
+              id: newMessage.id,
+              content: newMessage.content,
+              sender_user_id: senderId,
+              created_at: newMessage.created_at,
+              is_mine: false,
+              is_read: false,
+              attachment_urls: newMessage.attachment_urls || [],
+              subject: newMessage.subject || undefined,
+              reply_to_id: newMessage.reply_to_id || undefined,
+            };
+            
+            // Add message to the list if not already present
+            setMessages((prev) => {
+              if (prev.some((m) => m.id === newMessage.id)) {
+                return prev; // Already exists, skip
+              }
+              return [...prev, chatMessage].sort(
+                (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+              );
+            });
+            
+            // Mark as read since we're viewing it
+            supabase
+              .from("admin_message_recipients")
+              .update({ is_read: true, read_at: new Date().toISOString() })
+              .eq("message_id", newMessage.id)
+              .eq("recipient_user_id", currentUserId)
+              .then();
           }
         }
       )
@@ -543,7 +654,7 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [schoolId, currentUserId, fetchConversations, selectedConversation]);
+  }, [schoolId, currentUserId, selectedConversation, clearedConversations, updateConversationInList]);
 
   const loadConversationMessages = async (partnerId: string) => {
     if (!currentUserId) return;
@@ -643,6 +754,10 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
   const handleSendMessage = async () => {
     if ((!messageText.trim() && attachments.length === 0) || !currentUserId || !selectedConversation) return;
 
+    const sentContent = messageText.trim() || "[Attachment]";
+    const sentTime = new Date().toISOString();
+    const hasAttachmentFlag = attachments.length > 0;
+    
     setSending(true);
     try {
       // Upload attachments if any
@@ -665,13 +780,13 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
           school_id: schoolId,
           sender_user_id: currentUserId,
           subject: replyingTo ? "Reply" : "Direct Message",
-          content: messageText.trim() || "[Attachment]",
+          content: sentContent,
           priority: "normal",
           status: "sent",
           attachment_urls: attachmentUrls.length > 0 ? attachmentUrls : null,
           reply_to_id: replyingTo?.id || null,
         })
-        .select("id")
+        .select("id, created_at")
         .single();
 
       if (messageError) throw messageError;
@@ -686,16 +801,52 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
         school_id: schoolId,
         user_id: selectedConversation.recipientId,
         title: replyingTo ? "New Reply" : "New Message",
-        body: messageText.trim().substring(0, 100) || "Sent you an attachment",
+        body: sentContent.substring(0, 100) || "Sent you an attachment",
         type: "admin_message",
+      });
+
+      // Add message directly to current chat (optimistic update)
+      const newChatMessage: ChatMessage = {
+        id: messageData.id,
+        content: sentContent,
+        sender_user_id: currentUserId,
+        created_at: messageData.created_at,
+        is_mine: true,
+        is_read: false,
+        attachment_urls: attachmentUrls,
+        subject: replyingTo ? "Reply" : "Direct Message",
+        reply_to_id: replyingTo?.id || undefined,
+      };
+      
+      setMessages((prev) => [...prev, newChatMessage]);
+      
+      // Update conversation list efficiently (move to top, update last message)
+      setConversations((prev) => {
+        const existingIndex = prev.findIndex((c) => c.recipientId === selectedConversation.recipientId);
+        const msgPreview = sentContent.substring(0, 40) + (sentContent.length > 40 ? "…" : "");
+        
+        if (existingIndex >= 0) {
+          const updated = [...prev];
+          updated[existingIndex] = {
+            ...updated[existingIndex],
+            lastMessage: hasAttachmentFlag && !sentContent.trim() ? "Attachment" : msgPreview,
+            lastMessageTime: messageData.created_at,
+            hasAttachment: hasAttachmentFlag,
+            lastSenderName: "You",
+            isSentByMe: true,
+          };
+          // Move to top
+          return updated.sort((a, b) => 
+            new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime()
+          );
+        }
+        return prev;
       });
 
       setMessageText("");
       setAttachments([]);
       setReplyingTo(null);
       stopTyping();
-      await loadConversationMessages(selectedConversation.recipientId);
-      fetchConversations();
     } catch (error: any) {
       toast({ title: "Failed to send", description: error.message, variant: "destructive" });
     } finally {
@@ -944,7 +1095,7 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
           content: forwardedContent,
           attachment_urls: forwardingMessage.attachment_urls || [],
         })
-        .select()
+        .select("id, created_at")
         .single();
 
       if (error) throw error;
@@ -966,10 +1117,47 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
         created_by: currentUserId,
       });
 
+      // Update conversation list efficiently
+      const hasAttachmentFlag = (forwardingMessage.attachment_urls?.length || 0) > 0;
+      setConversations((prev) => {
+        const existingIndex = prev.findIndex((c) => c.recipientId === recipientId);
+        const recipientName = profileMap[recipientId] || allUsers.find(u => u.user_id === recipientId)?.display_name || "User";
+        const msgPreview = forwardedContent.substring(0, 40) + (forwardedContent.length > 40 ? "…" : "");
+        
+        if (existingIndex >= 0) {
+          const updated = [...prev];
+          updated[existingIndex] = {
+            ...updated[existingIndex],
+            lastMessage: hasAttachmentFlag && !forwardedContent.trim() ? "Attachment" : msgPreview,
+            lastMessageTime: newMsg.created_at,
+            hasAttachment: hasAttachmentFlag,
+            lastSenderName: "You",
+            isSentByMe: true,
+          };
+          return updated.sort((a, b) => 
+            new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime()
+          );
+        } else {
+          // New conversation
+          const newConv: Conversation = {
+            id: recipientId,
+            recipientId,
+            recipientName,
+            lastMessage: hasAttachmentFlag && !forwardedContent.trim() ? "Attachment" : msgPreview,
+            lastMessageTime: newMsg.created_at,
+            unreadCount: 0,
+            isGroup: false,
+            hasAttachment: hasAttachmentFlag,
+            lastSenderName: "You",
+            isSentByMe: true,
+          };
+          return [newConv, ...prev];
+        }
+      });
+
       toast({ title: "Message forwarded successfully" });
       setForwardingMessage(null);
       setForwardSearch("");
-      fetchConversations();
     } catch (err: any) {
       toast({ title: "Failed to forward message", description: err.message, variant: "destructive" });
     } finally {
