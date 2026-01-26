@@ -71,9 +71,7 @@ export function TimetablePreviewWidget({ schoolId, schoolSlug }: TimetablePrevie
     return today === 0 || today === 6 ? 1 : today;
   });
 
-  const fetchSchedule = useCallback(async (dayOfWeek: number) => {
-    if (!schoolId) return;
-    
+  const fetchSchedule = useCallback(async (dayOfWeek: number, currentSchoolId: string) => {
     setLoading(true);
 
     const { data: user } = await supabase.auth.getUser();
@@ -89,7 +87,7 @@ export function TimetablePreviewWidget({ schoolId, schoolSlug }: TimetablePrevie
     const { data: periods } = await supabase
       .from("timetable_periods")
       .select("id,label,sort_order,start_time,end_time,is_break")
-      .eq("school_id", schoolId)
+      .eq("school_id", currentSchoolId)
       .order("sort_order", { ascending: true });
 
     const periodMap = new Map<string, Period>();
@@ -99,7 +97,7 @@ export function TimetablePreviewWidget({ schoolId, schoolSlug }: TimetablePrevie
     const { data: entries } = await supabase
       .from("timetable_entries")
       .select("id,subject_name,period_id,room,class_section_id,class_sections(name,academic_classes(name))")
-      .eq("school_id", schoolId)
+      .eq("school_id", currentSchoolId)
       .eq("teacher_user_id", userId)
       .eq("day_of_week", dayOfWeek)
       .order("period_id");
@@ -146,12 +144,12 @@ export function TimetablePreviewWidget({ schoolId, schoolSlug }: TimetablePrevie
 
     setTodayEntries(enriched);
     setLoading(false);
-  }, [schoolId]);
+  }, []);
 
-  // Fetch schedule when selectedDay changes
+  // Fetch schedule when selectedDay or schoolId changes
   useEffect(() => {
     if (schoolId) {
-      void fetchSchedule(selectedDay);
+      void fetchSchedule(selectedDay, schoolId);
     }
   }, [selectedDay, schoolId, fetchSchedule]);
 
@@ -311,7 +309,7 @@ export function TimetablePreviewWidget({ schoolId, schoolSlug }: TimetablePrevie
           entry={dialogEntry}
           schoolId={schoolId}
           existingLog={existingLog}
-          onSaved={() => fetchSchedule(selectedDay)}
+          onSaved={() => fetchSchedule(selectedDay, schoolId)}
         />
       )}
     </>
