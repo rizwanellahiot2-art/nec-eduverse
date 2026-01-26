@@ -87,13 +87,13 @@ export function ScheduledMessagesTab({ schoolId, currentUserId, profileMap, onSe
   const handleSendNow = async (msg: ScheduledMessage) => {
     setSendingId(msg.id);
     try {
-      // Create the actual message now
+      // Create the actual message now - use empty string if subject is null (DB requires non-null)
       const { data: newMsg, error: msgError } = await supabase
         .from("admin_messages")
         .insert({
           school_id: schoolId,
           sender_user_id: currentUserId,
-          subject: msg.subject,
+          subject: msg.subject || "",
           content: msg.content,
           attachment_urls: [],
         })
