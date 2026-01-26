@@ -29,6 +29,8 @@ import { NotificationsBell } from "@/components/global/NotificationsBell";
 import { useUnreadMessagesOptimized } from "@/hooks/useUnreadMessagesOptimized";
 import { useTenantOptimized } from "@/hooks/useTenantOptimized";
 import { useSession } from "@/hooks/useSession";
+import { useOfflineUniversal } from "@/hooks/useOfflineUniversal";
+import { OfflineStatusIndicator } from "@/components/offline/OfflineStatusIndicator";
 
 interface ParentShellProps {
   children: ReactNode;
@@ -56,6 +58,13 @@ export function ParentShell({
   const tenant = useTenantOptimized(schoolSlug);
   const schoolId = tenant.schoolId;
   const { unreadCount } = useUnreadMessagesOptimized(schoolId, user?.id ?? null);
+
+  // Offline support
+  const offline = useOfflineUniversal({
+    schoolId,
+    userId: user?.id ?? null,
+    role: "parent",
+  });
 
   const basePath = `/${schoolSlug}/parent`;
 
@@ -91,6 +100,16 @@ export function ParentShell({
           <p className="text-xs text-muted-foreground">/{schoolSlug} • Parent</p>
         </div>
         <div className="flex items-center gap-2">
+          <OfflineStatusIndicator
+            isOnline={offline.isOnline}
+            isSyncing={offline.isSyncing}
+            stats={offline.stats}
+            lastSyncAt={offline.lastSyncAt}
+            syncProgress={offline.syncProgress}
+            storageInfo={offline.storageInfo}
+            onSync={offline.syncPendingItems}
+            variant="compact"
+          />
           <NotificationsBell schoolId={schoolId} schoolSlug={schoolSlug} role="parent" />
           <Button
             variant="soft"
@@ -199,6 +218,16 @@ export function ParentShell({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <OfflineStatusIndicator
+            isOnline={offline.isOnline}
+            isSyncing={offline.isSyncing}
+            stats={offline.stats}
+            lastSyncAt={offline.lastSyncAt}
+            syncProgress={offline.syncProgress}
+            storageInfo={offline.storageInfo}
+            onSync={offline.syncPendingItems}
+            variant="compact"
+          />
           <NotificationsBell schoolId={schoolId} schoolSlug={schoolSlug} role="parent" />
           <Button
             variant="ghost"
@@ -257,6 +286,20 @@ export function ParentShell({
           <span className="text-[10px] font-medium">More</span>
         </button>
       </nav>
+
+      {/* Floating offline indicator for desktop */}
+      <div className="hidden lg:block">
+        <OfflineStatusIndicator
+          isOnline={offline.isOnline}
+          isSyncing={offline.isSyncing}
+          stats={offline.stats}
+          lastSyncAt={offline.lastSyncAt}
+          syncProgress={offline.syncProgress}
+          storageInfo={offline.storageInfo}
+          onSync={offline.syncPendingItems}
+          variant="floating"
+        />
+      </div>
     </div>
   );
 }

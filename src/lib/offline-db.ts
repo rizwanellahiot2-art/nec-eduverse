@@ -2,9 +2,23 @@ import { openDB, IDBPDatabase } from 'idb';
 
 // ==================== Types ====================
 
+export type OfflineActionType = 
+  | 'attendance' 
+  | 'period_log' 
+  | 'behavior_note' 
+  | 'homework' 
+  | 'quick_grade' 
+  | 'message'
+  | 'support_ticket'
+  | 'expense'
+  | 'payment'
+  | 'leave_request'
+  | 'lead_update'
+  | 'call_log';
+
 export interface OfflineQueueItem {
   id: string;
-  type: 'attendance' | 'period_log' | 'behavior_note' | 'homework' | 'quick_grade' | 'message';
+  type: OfflineActionType;
   data: Record<string, unknown>;
   timestamp: number;
   synced: boolean;
