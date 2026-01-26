@@ -243,8 +243,6 @@ const TenantDashboard = () => {
 
   if (!role) return <Navigate to={`/${tenant.slug || ""}/auth`} replace />;
 
-  if (!role) return <Navigate to={`/${tenant.slug || ""}/auth`} replace />;
-
   if (loading) {
     return (
       <div className="min-h-screen bg-background p-8">
