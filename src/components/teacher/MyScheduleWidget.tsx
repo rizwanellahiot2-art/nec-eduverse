@@ -42,7 +42,7 @@ export function MyScheduleWidget({ schoolId, schoolSlug }: MyScheduleWidgetProps
     return today >= 1 && today <= 5 ? today : 1;
   });
 
-  const { entries, periodLogs, loading, error, refetch } = useTeacherSchedule(schoolId, selectedDay);
+  const { entries, periodLogs, loading, error, isOffline, refetch } = useTeacherSchedule(schoolId, selectedDay);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogEntry, setDialogEntry] = useState<ScheduleEntry | null>(null);
@@ -143,6 +143,15 @@ export function MyScheduleWidget({ schoolId, schoolSlug }: MyScheduleWidgetProps
               {[1, 2, 3].map((i) => (
                 <Skeleton key={i} className="h-16 w-full rounded-lg" />
               ))}
+            </div>
+          )}
+
+          {/* Offline Notice */}
+          {!loading && isOffline && entries.length > 0 && (
+            <div className="mb-3 rounded-lg border border-muted bg-muted/30 p-2">
+              <p className="text-xs text-muted-foreground text-center">
+                📶 Showing cached schedule (offline)
+              </p>
             </div>
           )}
 

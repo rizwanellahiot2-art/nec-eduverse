@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getCachedTimetable, cacheTimetable, CachedTimetableEntry } from "@/lib/offline-db";
 
 export interface ScheduleEntry {
   id: string;
@@ -26,7 +27,31 @@ interface UseTeacherScheduleResult {
   periodLogs: Map<string, PeriodLog>;
   loading: boolean;
   error: string | null;
+  isOffline: boolean;
   refetch: () => void;
+}
+
+// Local cache for period logs (persisted in localStorage)
+const PERIOD_LOGS_CACHE_KEY = "eduverse_period_logs_cache";
+
+function getCachedPeriodLogs(schoolId: string, date: string): Map<string, PeriodLog> {
+  try {
+    const cached = localStorage.getItem(`${PERIOD_LOGS_CACHE_KEY}_${schoolId}_${date}`);
+    if (!cached) return new Map();
+    const data: [string, PeriodLog][] = JSON.parse(cached);
+    return new Map(data);
+  } catch {
+    return new Map();
+  }
+}
+
+function cachePeriodLogs(schoolId: string, date: string, logs: Map<string, PeriodLog>) {
+  try {
+    const data = Array.from(logs.entries());
+    localStorage.setItem(`${PERIOD_LOGS_CACHE_KEY}_${schoolId}_${date}`, JSON.stringify(data));
+  } catch {
+    // Ignore storage errors
+  }
 }
 
 export function useTeacherSchedule(
@@ -37,10 +62,25 @@ export function useTeacherSchedule(
   const [periodLogs, setPeriodLogs] = useState<Map<string, PeriodLog>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const refetch = useCallback(() => {
     setRefreshKey((k) => k + 1);
+  }, []);
+
+  // Monitor online status
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
   }, []);
 
   useEffect(() => {
@@ -56,6 +96,50 @@ export function useTeacherSchedule(
     async function fetchData() {
       setLoading(true);
       setError(null);
+
+      const todayDate = new Date().toISOString().split("T")[0];
+
+      // Try to load from cache first (for instant display)
+      try {
+        const cachedEntries = await getCachedTimetable(schoolId!, dayOfWeek);
+        if (cachedEntries.length > 0 && !cancelled) {
+          const mappedEntries: ScheduleEntry[] = cachedEntries.map(e => ({
+            id: e.id,
+            subjectName: e.subjectName,
+            periodId: e.periodId,
+            periodLabel: e.periodLabel,
+            startTime: e.startTime,
+            endTime: e.endTime,
+            sortOrder: e.sortOrder,
+            room: e.room,
+            sectionLabel: e.sectionLabel,
+          }));
+          mappedEntries.sort((a, b) => a.sortOrder - b.sortOrder);
+          setEntries(mappedEntries);
+          
+          // Also load cached period logs
+          const cachedLogs = getCachedPeriodLogs(schoolId!, todayDate);
+          if (cachedLogs.size > 0) {
+            setPeriodLogs(cachedLogs);
+          }
+          
+          // If offline, stop here
+          if (!navigator.onLine) {
+            setLoading(false);
+            return;
+          }
+        }
+      } catch {
+        // Continue with network fetch
+      }
+
+      // If offline and no cache, show error
+      if (!navigator.onLine) {
+        if (cancelled) return;
+        setError("You are offline. Schedule data is not available.");
+        setLoading(false);
+        return;
+      }
 
       try {
         // Get current user
@@ -143,8 +227,28 @@ export function useTeacherSchedule(
 
         if (cancelled) return;
 
+        // Cache entries for offline use
+        const entriesToCache: CachedTimetableEntry[] = enrichedEntries.map(e => ({
+          id: e.id,
+          schoolId: schoolId!,
+          dayOfWeek,
+          periodId: e.periodId,
+          periodLabel: e.periodLabel,
+          subjectName: e.subjectName,
+          classSectionId: null,
+          sectionLabel: e.sectionLabel,
+          room: e.room,
+          startTime: e.startTime,
+          endTime: e.endTime,
+          sortOrder: e.sortOrder,
+          cachedAt: Date.now(),
+        }));
+        
+        if (entriesToCache.length > 0) {
+          await cacheTimetable(entriesToCache);
+        }
+
         // Fetch today's period logs for these entries
-        const todayDate = new Date().toISOString().split("T")[0];
         const entryIds = enrichedEntries.map((e) => e.id);
         
         let logsMap = new Map<string, PeriodLog>();
@@ -165,6 +269,9 @@ export function useTeacherSchedule(
               topicsCovered: log.topics_covered,
             });
           });
+          
+          // Cache period logs
+          cachePeriodLogs(schoolId!, todayDate, logsMap);
         }
 
         if (cancelled) return;
@@ -173,7 +280,26 @@ export function useTeacherSchedule(
         setPeriodLogs(logsMap);
       } catch (err: any) {
         if (!cancelled) {
-          setError(err.message ?? "Failed to load schedule");
+          // If network error and we have cached data, show it
+          const cachedEntries = await getCachedTimetable(schoolId!, dayOfWeek);
+          if (cachedEntries.length > 0) {
+            const mappedEntries: ScheduleEntry[] = cachedEntries.map(e => ({
+              id: e.id,
+              subjectName: e.subjectName,
+              periodId: e.periodId,
+              periodLabel: e.periodLabel,
+              startTime: e.startTime,
+              endTime: e.endTime,
+              sortOrder: e.sortOrder,
+              room: e.room,
+              sectionLabel: e.sectionLabel,
+            }));
+            mappedEntries.sort((a, b) => a.sortOrder - b.sortOrder);
+            setEntries(mappedEntries);
+            setError(null); // Don't show error if we have cached data
+          } else {
+            setError(err.message ?? "Failed to load schedule");
+          }
         }
       } finally {
         if (!cancelled) {
@@ -189,5 +315,5 @@ export function useTeacherSchedule(
     };
   }, [schoolId, dayOfWeek, refreshKey]);
 
-  return { entries, periodLogs, loading, error, refetch };
+  return { entries, periodLogs, loading, error, isOffline, refetch };
 }
