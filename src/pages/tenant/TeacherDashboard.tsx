@@ -46,7 +46,8 @@ const TeacherDashboard = () => {
   const authzState = authz.state;
   const authzMessage = authz.message;
 
-  if (loading) {
+  // Don't show loading screen if we have cached session data
+  if (loading && !user) {
     return (
       <div className="min-h-screen bg-background p-8">
         <div className="rounded-3xl bg-surface p-6 shadow-elevated">

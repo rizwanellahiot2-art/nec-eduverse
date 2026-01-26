@@ -2,6 +2,42 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+// LocalStorage cache key builder
+const getTenantCacheKey = (slug: string) => `eduverse_tenant_${slug}`;
+
+// Get cached tenant data from localStorage
+function getCachedTenant(slug: string): TenantData | null {
+  try {
+    const cached = localStorage.getItem(getTenantCacheKey(slug));
+    if (!cached) return null;
+    
+    const parsed = JSON.parse(cached);
+    const age = Date.now() - parsed.timestamp;
+    
+    // Cache valid for 24 hours
+    if (age > 24 * 60 * 60 * 1000) {
+      localStorage.removeItem(getTenantCacheKey(slug));
+      return null;
+    }
+    
+    return parsed.data;
+  } catch {
+    return null;
+  }
+}
+
+// Save tenant data to localStorage
+function cacheTenant(slug: string, data: TenantData) {
+  try {
+    localStorage.setItem(
+      getTenantCacheKey(slug),
+      JSON.stringify({ data, timestamp: Date.now() })
+    );
+  } catch (e) {
+    console.warn("Failed to cache tenant data:", e);
+  }
+}
+
 interface TenantData {
   id: string;
   slug: string;
@@ -44,6 +80,13 @@ export function useTenantOptimized(schoolSlug: string | undefined): TenantResult
   const { data, error, isLoading, isError } = useQuery({
     queryKey: ["tenant", normalizedSlug],
     queryFn: async (): Promise<TenantData | null> => {
+      // Check if offline and return cached data immediately
+      if (!navigator.onLine) {
+        const cached = getCachedTenant(normalizedSlug);
+        if (cached) return cached;
+        throw new Error("No cached data available offline");
+      }
+
       // Get school data
       const { data: schoolData, error: schoolError } = await supabase
         .rpc("get_school_public_by_slug", { _slug: normalizedSlug })
@@ -59,16 +102,25 @@ export function useTenantOptimized(schoolSlug: string | undefined): TenantResult
         .eq("school_id", schoolData.id)
         .maybeSingle();
 
-      return {
+      const tenantData: TenantData = {
         id: schoolData.id,
         slug: schoolData.slug,
         name: schoolData.name,
         branding: branding || null,
       };
+
+      // Cache the result
+      cacheTenant(normalizedSlug, tenantData);
+      return tenantData;
     },
     enabled: !!normalizedSlug,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+    initialData: () => {
+      // Provide cached data as initial data to prevent loading state
+      if (!normalizedSlug) return undefined;
+      return getCachedTenant(normalizedSlug) || undefined;
+    },
   });
 
   // Apply branding when data is available
