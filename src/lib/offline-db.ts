@@ -91,17 +91,61 @@ export interface SyncMetadata {
   itemCount: number;
 }
 
+// ==================== Messaging Types ====================
+
+export interface CachedConversation {
+  id: string; // recipientId as key
+  schoolId: string;
+  recipientId: string;
+  recipientName: string;
+  lastMessage: string;
+  lastMessageTime: string;
+  unreadCount: number;
+  hasAttachment: boolean;
+  lastSenderName: string;
+  isSentByMe: boolean;
+  cachedAt: number;
+}
+
+export interface CachedMessage {
+  id: string;
+  schoolId: string;
+  conversationPartnerId: string; // for indexing
+  content: string;
+  senderUserId: string;
+  createdAt: string;
+  isMine: boolean;
+  isRead: boolean;
+  attachmentUrls: string[];
+  subject: string | null;
+  replyToId: string | null;
+  cachedAt: number;
+  isPending?: boolean; // true if queued offline
+  localId?: string; // for matching with queue
+}
+
+export interface CachedContact {
+  id: string;
+  schoolId: string;
+  userId: string;
+  displayName: string;
+  email: string | null;
+  role: string | null;
+  canMessage: boolean;
+  cachedAt: number;
+}
+
 // ==================== Database Instance ====================
 
 const DB_NAME = 'eduverse-offline-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Bumped for messaging stores
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
 export async function getOfflineDB(): Promise<IDBPDatabase> {
   if (!dbPromise) {
     dbPromise = openDB(DB_NAME, DB_VERSION, {
-      upgrade(db) {
+      upgrade(db, oldVersion) {
         // Offline Queue Store
         if (!db.objectStoreNames.contains('offlineQueue')) {
           const queueStore = db.createObjectStore('offlineQueue', { keyPath: 'id' });
@@ -109,6 +153,30 @@ export async function getOfflineDB(): Promise<IDBPDatabase> {
           queueStore.createIndex('by-type', 'type');
           queueStore.createIndex('by-priority', 'priority');
           queueStore.createIndex('by-timestamp', 'timestamp');
+        }
+
+        // Messaging stores (added in version 2)
+        if (oldVersion < 2) {
+          // Conversations Cache Store
+          if (!db.objectStoreNames.contains('conversations')) {
+            const convStore = db.createObjectStore('conversations', { keyPath: 'id' });
+            convStore.createIndex('by-school', 'schoolId');
+            convStore.createIndex('by-time', 'lastMessageTime');
+          }
+
+          // Messages Cache Store
+          if (!db.objectStoreNames.contains('messages')) {
+            const msgStore = db.createObjectStore('messages', { keyPath: 'id' });
+            msgStore.createIndex('by-school', 'schoolId');
+            msgStore.createIndex('by-partner', 'conversationPartnerId');
+            msgStore.createIndex('by-pending', 'isPending');
+          }
+
+          // Contacts Cache Store
+          if (!db.objectStoreNames.contains('contacts')) {
+            const contactStore = db.createObjectStore('contacts', { keyPath: 'id' });
+            contactStore.createIndex('by-school', 'schoolId');
+          }
         }
 
         // Students Cache Store
@@ -422,20 +490,141 @@ export async function getStorageEstimate(): Promise<{
 
 export async function clearAllOfflineData(): Promise<void> {
   const db = await getOfflineDB();
-  const tx = db.transaction(
-    ['offlineQueue', 'students', 'timetable', 'assignments', 'subjects', 'classSections', 'syncMetadata'],
-    'readwrite'
-  );
+  const storeNames = [
+    'offlineQueue', 'students', 'timetable', 'assignments', 
+    'subjects', 'classSections', 'syncMetadata',
+    'conversations', 'messages', 'contacts'
+  ].filter(name => db.objectStoreNames.contains(name));
   
-  await Promise.all([
-    tx.objectStore('offlineQueue').clear(),
-    tx.objectStore('students').clear(),
-    tx.objectStore('timetable').clear(),
-    tx.objectStore('assignments').clear(),
-    tx.objectStore('subjects').clear(),
-    tx.objectStore('classSections').clear(),
-    tx.objectStore('syncMetadata').clear(),
-  ]);
+  const tx = db.transaction(storeNames, 'readwrite');
+  
+  await Promise.all(storeNames.map(name => tx.objectStore(name).clear()));
+  await tx.done;
+}
+
+// ==================== Messaging Cache Operations ====================
+
+export async function cacheConversations(conversations: CachedConversation[]): Promise<void> {
+  const db = await getOfflineDB();
+  if (!db.objectStoreNames.contains('conversations')) return;
+  
+  const tx = db.transaction('conversations', 'readwrite');
+  const now = Date.now();
+  
+  for (const conv of conversations) {
+    await tx.store.put({ ...conv, cachedAt: now });
+  }
+  
+  await tx.done;
+  await updateSyncMetadata('conversations', conversations.length);
+}
+
+export async function getCachedConversations(schoolId: string): Promise<CachedConversation[]> {
+  const db = await getOfflineDB();
+  if (!db.objectStoreNames.contains('conversations')) return [];
+  
+  const all = await db.getAllFromIndex('conversations', 'by-school', schoolId);
+  return (all as CachedConversation[]).sort(
+    (a, b) => new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime()
+  );
+}
+
+export async function updateCachedConversation(conv: Partial<CachedConversation> & { id: string; schoolId: string }): Promise<void> {
+  const db = await getOfflineDB();
+  if (!db.objectStoreNames.contains('conversations')) return;
+  
+  const existing = await db.get('conversations', conv.id);
+  if (existing) {
+    await db.put('conversations', { ...existing, ...conv, cachedAt: Date.now() });
+  } else {
+    await db.put('conversations', { ...conv, cachedAt: Date.now() });
+  }
+}
+
+export async function cacheMessages(messages: CachedMessage[]): Promise<void> {
+  const db = await getOfflineDB();
+  if (!db.objectStoreNames.contains('messages')) return;
+  
+  const tx = db.transaction('messages', 'readwrite');
+  const now = Date.now();
+  
+  for (const msg of messages) {
+    await tx.store.put({ ...msg, cachedAt: now });
+  }
+  
+  await tx.done;
+}
+
+export async function getCachedMessages(schoolId: string, partnerId: string): Promise<CachedMessage[]> {
+  const db = await getOfflineDB();
+  if (!db.objectStoreNames.contains('messages')) return [];
+  
+  const all = await db.getAllFromIndex('messages', 'by-partner', partnerId);
+  return (all as CachedMessage[])
+    .filter(m => m.schoolId === schoolId)
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+}
+
+export async function addPendingMessage(message: CachedMessage): Promise<void> {
+  const db = await getOfflineDB();
+  if (!db.objectStoreNames.contains('messages')) return;
+  
+  await db.put('messages', { ...message, isPending: true, cachedAt: Date.now() });
+}
+
+export async function markMessageSynced(localId: string, realId: string): Promise<void> {
+  const db = await getOfflineDB();
+  if (!db.objectStoreNames.contains('messages')) return;
+  
+  const pending = await db.get('messages', localId);
+  if (pending) {
+    await db.delete('messages', localId);
+    await db.put('messages', { ...pending, id: realId, isPending: false, localId: undefined });
+  }
+}
+
+export async function getPendingMessages(schoolId: string): Promise<CachedMessage[]> {
+  const db = await getOfflineDB();
+  if (!db.objectStoreNames.contains('messages')) return [];
+  
+  const all = await db.getAll('messages');
+  return (all as CachedMessage[]).filter(m => m.schoolId === schoolId && m.isPending === true);
+}
+
+export async function cacheContacts(contacts: CachedContact[]): Promise<void> {
+  const db = await getOfflineDB();
+  if (!db.objectStoreNames.contains('contacts')) return;
+  
+  const tx = db.transaction('contacts', 'readwrite');
+  const now = Date.now();
+  
+  for (const contact of contacts) {
+    await tx.store.put({ ...contact, cachedAt: now });
+  }
+  
+  await tx.done;
+  await updateSyncMetadata('contacts', contacts.length);
+}
+
+export async function getCachedContacts(schoolId: string): Promise<CachedContact[]> {
+  const db = await getOfflineDB();
+  if (!db.objectStoreNames.contains('contacts')) return [];
+  
+  return db.getAllFromIndex('contacts', 'by-school', schoolId) as Promise<CachedContact[]>;
+}
+
+export async function clearMessagesForConversation(schoolId: string, partnerId: string): Promise<void> {
+  const db = await getOfflineDB();
+  if (!db.objectStoreNames.contains('messages')) return;
+  
+  const tx = db.transaction('messages', 'readwrite');
+  const all = await tx.store.index('by-partner').getAll(partnerId);
+  
+  for (const msg of all) {
+    if ((msg as CachedMessage).schoolId === schoolId) {
+      await tx.store.delete(msg.id);
+    }
+  }
   
   await tx.done;
 }
