@@ -3236,6 +3236,50 @@ export type Database = {
           },
         ]
       }
+      timetable_period_logs: {
+        Row: {
+          created_at: string
+          id: string
+          logged_at: string
+          notes: string | null
+          school_id: string
+          teacher_user_id: string
+          timetable_entry_id: string
+          topic_covered: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          logged_at?: string
+          notes?: string | null
+          school_id: string
+          teacher_user_id: string
+          timetable_entry_id: string
+          topic_covered: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          logged_at?: string
+          notes?: string | null
+          school_id?: string
+          teacher_user_id?: string
+          timetable_entry_id?: string
+          topic_covered?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timetable_period_logs_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       timetable_periods: {
         Row: {
           created_by: string | null

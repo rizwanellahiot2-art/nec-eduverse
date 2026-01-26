@@ -6,12 +6,21 @@ import { useRealtimeTable } from "@/hooks/useRealtime";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PeriodTimetableGrid, type PeriodTimetableEntry } from "@/components/timetable/PeriodTimetableGrid";
 import { TimetableConflictAlert } from "@/components/timetable/TimetableConflictAlert";
+import { DayFilterTabs } from "@/components/timetable/DayFilterTabs";
+import { CurrentPeriodIndicator } from "@/components/timetable/CurrentPeriodIndicator";
+import { WorkloadChart } from "@/components/timetable/WorkloadChart";
+import { PeriodNotesDialog } from "@/components/timetable/PeriodNotesDialog";
+import { SectionTimetableDialog } from "@/components/timetable/SectionTimetableDialog";
 import { Button } from "@/components/ui/button";
-import { Printer, Coffee, Download, FileText } from "lucide-react";
+import { Printer, Coffee, Download, FileText, Calendar, NotebookPen } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { openTimetablePdf, downloadTimetableHtml, type TimetablePdfData } from "@/lib/timetable-pdf";
+import { downloadTimetableIcs } from "@/lib/timetable-ics";
 import { useConflictDetection } from "@/pages/tenant/modules/components/timetable/useConflictDetection";
+import { toast } from "sonner";
+
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 type Period = {
   id: string;
@@ -48,6 +57,14 @@ type AllEntryRow = {
   class_section_id: string;
 };
 
+type PeriodLog = {
+  id: string;
+  timetable_entry_id: string;
+  topic_covered: string | null;
+  notes: string | null;
+  logged_at: string;
+};
+
 export function TeacherTimetableModule() {
   const { schoolSlug } = useParams();
   const tenant = useTenant(schoolSlug);
@@ -58,12 +75,22 @@ export function TeacherTimetableModule() {
   const [sectionEntries, setSectionEntries] = useState<TimetableEntry[]>([]);
   const [allSchoolEntries, setAllSchoolEntries] = useState<AllEntryRow[]>([]);
   const [viewMode, setViewMode] = useState<"mine" | "sections">("mine");
+  const [selectedDay, setSelectedDay] = useState<number>(-1); // -1 = all days
   const [periods, setPeriods] = useState<Period[]>([]);
+  const [periodLogs, setPeriodLogs] = useState<PeriodLog[]>([]);
   const [directory, setDirectory] = useState<Array<{ user_id: string; display_name: string | null; email: string }>>([]);
   const [mySections, setMySections] = useState<SectionInfo[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserName, setCurrentUserName] = useState<string>("Teacher");
   const [loading, setLoading] = useState(true);
+
+  // Period notes dialog state
+  const [notesDialogOpen, setNotesDialogOpen] = useState(false);
+  const [selectedEntryForNotes, setSelectedEntryForNotes] = useState<TimetableEntry | null>(null);
+
+  // Section timetable dialog state
+  const [sectionDialogOpen, setSectionDialogOpen] = useState(false);
+  const [selectedSectionForView, setSelectedSectionForView] = useState<SectionInfo | null>(null);
 
   // Build section label map for conflict detection
   const sectionLabelById = useMemo(() => {
@@ -72,7 +99,7 @@ export function TeacherTimetableModule() {
     return m;
   }, [mySections]);
 
-  // Conflict detection - check for teacher double-bookings and room collisions
+  // Conflict detection
   const conflictMap = useConflictDetection(allSchoolEntries, "", sectionLabelById);
 
   // Filter conflicts to only show those affecting current user's entries
@@ -98,6 +125,22 @@ export function TeacherTimetableModule() {
     return m;
   }, [myEntries, sectionEntries, viewMode]);
 
+  // Period label lookup
+  const periodLabelById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of periods) m.set(p.id, p.label);
+    return m;
+  }, [periods]);
+
+  // Period logs by entry ID
+  const logsByEntryId = useMemo(() => {
+    const m = new Map<string, PeriodLog>();
+    for (const log of periodLogs) {
+      m.set(log.timetable_entry_id, log);
+    }
+    return m;
+  }, [periodLogs]);
+
   const fetchTimetable = useCallback(async () => {
     if (tenant.status !== "ready") return;
     setLoading(true);
@@ -113,11 +156,7 @@ export function TeacherTimetableModule() {
 
     setCurrentUserId(userId);
 
-    // Fetch periods, directory, and timetable entries.
-    // IMPORTANT: we intentionally fetch base rows only (no embedded joins) because
-    // some roles may not have SELECT access on embedded tables, which can cause
-    // the entire query to fail and show an empty timetable.
-    const [{ data: p, error: pErr }, { data: dir, error: dirErr }, { data: allEntries, error: entriesErr }] = await Promise.all([
+    const [{ data: p }, { data: dir }, { data: allEntries }, { data: logs }] = await Promise.all([
       supabase
         .from("timetable_periods")
         .select("id,label,sort_order,start_time,end_time,is_break")
@@ -128,23 +167,23 @@ export function TeacherTimetableModule() {
         .from("timetable_entries")
         .select("id,subject_name,day_of_week,period_id,room,teacher_user_id,class_section_id")
         .eq("school_id", tenant.schoolId),
+      supabase
+        .from("timetable_period_logs" as any)
+        .select("id,timetable_entry_id,topic_covered,notes,logged_at")
+        .eq("school_id", tenant.schoolId)
+        .eq("teacher_user_id", userId)
+        .order("logged_at", { ascending: false }),
     ]);
-
-    if (pErr) console.error("TeacherTimetableModule: Error fetching periods", pErr);
-    if (dirErr) console.error("TeacherTimetableModule: Error fetching directory", dirErr);
-    if (entriesErr) console.error("TeacherTimetableModule: Error fetching timetable_entries", entriesErr);
 
     setPeriods((p ?? []) as Period[]);
     setDirectory((dir ?? []) as any);
     setAllSchoolEntries((allEntries ?? []) as AllEntryRow[]);
-
-    // Get current user's display name
+    setPeriodLogs(((logs ?? []) as unknown[]) as PeriodLog[]);
     const currentUserDir = (dir ?? []).find((d: any) => d.user_id === userId);
     if (currentUserDir) {
       setCurrentUserName((currentUserDir as any).display_name || (currentUserDir as any).email || "Teacher");
     }
 
-    // Get teacher's assigned sections
     const { data: assignments } = await supabase
       .from("teacher_assignments")
       .select("class_section_id")
@@ -152,7 +191,6 @@ export function TeacherTimetableModule() {
       .eq("teacher_user_id", userId);
     const sectionIds = (assignments ?? []).map((a) => a.class_section_id).filter(Boolean) as string[];
 
-    // Build section labels map (best-effort; don't block timetable rendering)
     const entrySectionIds = new Set<string>();
     for (const e of allEntries ?? []) {
       if (e.class_section_id) entrySectionIds.add(e.class_section_id);
@@ -162,21 +200,16 @@ export function TeacherTimetableModule() {
     const sectionLabelById = new Map<string, string>();
 
     if (sectionIdsToLabel.length > 0) {
-      const { data: secs, error: secsErr } = await supabase
+      const { data: secs } = await supabase
         .from("class_sections")
         .select("id, name, academic_classes(name)")
         .in("id", sectionIdsToLabel);
 
-      if (secsErr) {
-        console.error("TeacherTimetableModule: Error fetching class_sections (labels)", secsErr);
-      } else {
-        for (const s of secs ?? []) {
-          sectionLabelById.set(s.id, `${(s as any).academic_classes?.name || ""} • ${(s as any).name}`.trim());
-        }
+      for (const s of secs ?? []) {
+        sectionLabelById.set(s.id, `${(s as any).academic_classes?.name || ""} • ${(s as any).name}`.trim());
       }
     }
 
-    // Assigned sections list (best-effort)
     if (sectionIds.length > 0) {
       setMySections(
         sectionIds
@@ -187,31 +220,24 @@ export function TeacherTimetableModule() {
       setMySections([]);
     }
 
-    // Enrich entries for grid rendering
-    const enrichedAll: TimetableEntry[] = (allEntries ?? []).map((e: any) => {
-      return {
-        id: e.id,
-        subject_name: e.subject_name,
-        day_of_week: e.day_of_week,
-        period_id: e.period_id,
-        room: e.room,
-        teacher_user_id: e.teacher_user_id,
-        class_section_id: e.class_section_id,
-        section_label: e.class_section_id ? sectionLabelById.get(e.class_section_id) ?? null : null,
-      } satisfies TimetableEntry;
-    });
+    const enrichedAll: TimetableEntry[] = (allEntries ?? []).map((e: any) => ({
+      id: e.id,
+      subject_name: e.subject_name,
+      day_of_week: e.day_of_week,
+      period_id: e.period_id,
+      room: e.room,
+      teacher_user_id: e.teacher_user_id,
+      class_section_id: e.class_section_id,
+      section_label: e.class_section_id ? sectionLabelById.get(e.class_section_id) ?? null : null,
+    }));
 
-    // Filter: "My periods" = entries where I am the teacher
     const mineEnriched = enrichedAll.filter((e) => e.teacher_user_id === userId);
-    
-    // Filter: "All assigned sections" = entries in sections I'm assigned to
     const sectionSet = new Set(sectionIds);
     const sectionEnriched = enrichedAll.filter((e) => e.class_section_id && sectionSet.has(e.class_section_id));
 
     setMyEntries(mineEnriched);
     setSectionEntries(sectionEnriched);
 
-    // Default: My periods. If empty but sections exist, auto-switch.
     if (mineEnriched.length === 0 && sectionEnriched.length > 0) setViewMode("sections");
     setLoading(false);
   }, [tenant.status, tenant.schoolId]);
@@ -220,7 +246,6 @@ export function TeacherTimetableModule() {
     void fetchTimetable();
   }, [fetchTimetable]);
 
-  // Realtime subscription for live updates
   useRealtimeTable({
     channel: `teacher-timetable-${schoolId}`,
     table: "timetable_entries",
@@ -235,38 +260,39 @@ export function TeacherTimetableModule() {
     return m;
   }, [directory]);
 
-  const entries = viewMode === "mine" ? myEntries : sectionEntries;
-
-  // Break period IDs
-  const breakPeriodIds = useMemo(() => new Set(periods.filter((p) => p.is_break).map((p) => p.id)), [periods]);
+  // Apply day filter
+  const entries = useMemo(() => {
+    const base = viewMode === "mine" ? myEntries : sectionEntries;
+    if (selectedDay === -1) return base;
+    return base.filter((e) => e.day_of_week === selectedDay);
+  }, [viewMode, myEntries, sectionEntries, selectedDay]);
 
   const gridEntries = useMemo(() => {
-    return entries.map((e) =>
-      ({
-        id: e.id,
-        day_of_week: e.day_of_week,
-        period_id: e.period_id,
-        subject_name: e.subject_name,
-        room: e.room,
-        teacher_name: e.teacher_user_id ? teacherLabelByUserId.get(e.teacher_user_id) ?? null : null,
-        section_label: e.section_label,
-      }) satisfies PeriodTimetableEntry
-    );
+    return entries.map((e) => ({
+      id: e.id,
+      day_of_week: e.day_of_week,
+      period_id: e.period_id,
+      subject_name: e.subject_name,
+      room: e.room,
+      teacher_name: e.teacher_user_id ? teacherLabelByUserId.get(e.teacher_user_id) ?? null : null,
+      section_label: e.section_label,
+    }) satisfies PeriodTimetableEntry);
   }, [entries, teacherLabelByUserId]);
 
   // Stats
-  const uniqueSections = useMemo(() => new Set(entries.map((e) => e.class_section_id).filter(Boolean)).size, [entries]);
-  const totalPeriods = entries.length;
-  const uniqueSubjects = useMemo(() => new Set(entries.map((e) => e.subject_name).filter(Boolean)).size, [entries]);
+  const baseEntries = viewMode === "mine" ? myEntries : sectionEntries;
+  const uniqueSections = useMemo(() => new Set(baseEntries.map((e) => e.class_section_id).filter(Boolean)).size, [baseEntries]);
+  const totalPeriods = baseEntries.length;
+  const uniqueSubjects = useMemo(() => new Set(baseEntries.map((e) => e.subject_name).filter(Boolean)).size, [baseEntries]);
   const conflictCount = myConflicts.size;
 
-  // PDF export handler
+  // Handlers
   const handleExportPdf = useCallback(() => {
     const pdfData: TimetablePdfData = {
       teacherName: currentUserName,
       schoolName,
       periods,
-      entries: entries.map((e) => ({
+      entries: baseEntries.map((e) => ({
         day_of_week: e.day_of_week,
         period_id: e.period_id,
         subject_name: e.subject_name,
@@ -277,14 +303,14 @@ export function TeacherTimetableModule() {
       generatedAt: new Date().toLocaleString(),
     };
     openTimetablePdf(pdfData);
-  }, [currentUserName, schoolName, periods, entries, teacherLabelByUserId]);
+  }, [currentUserName, schoolName, periods, baseEntries, teacherLabelByUserId]);
 
   const handleDownloadHtml = useCallback(() => {
     const pdfData: TimetablePdfData = {
       teacherName: currentUserName,
       schoolName,
       periods,
-      entries: entries.map((e) => ({
+      entries: baseEntries.map((e) => ({
         day_of_week: e.day_of_week,
         period_id: e.period_id,
         subject_name: e.subject_name,
@@ -295,7 +321,51 @@ export function TeacherTimetableModule() {
       generatedAt: new Date().toLocaleString(),
     };
     downloadTimetableHtml(pdfData);
-  }, [currentUserName, schoolName, periods, entries, teacherLabelByUserId]);
+  }, [currentUserName, schoolName, periods, baseEntries, teacherLabelByUserId]);
+
+  const handleExportIcs = useCallback(() => {
+    downloadTimetableIcs({
+      teacherName: currentUserName,
+      schoolName,
+      periods,
+      entries: baseEntries.map((e) => ({
+        day_of_week: e.day_of_week,
+        period_id: e.period_id,
+        subject_name: e.subject_name,
+        room: e.room,
+        section_label: e.section_label,
+        teacher_name: e.teacher_user_id ? teacherLabelByUserId.get(e.teacher_user_id) ?? null : null,
+      })),
+      weeksAhead: 4,
+    });
+    toast.success("Calendar file downloaded! Import it to Google Calendar or Outlook.");
+  }, [currentUserName, schoolName, periods, baseEntries, teacherLabelByUserId]);
+
+  const handleOpenNotes = (entry: TimetableEntry) => {
+    setSelectedEntryForNotes(entry);
+    setNotesDialogOpen(true);
+  };
+
+  const handleSectionClick = (section: SectionInfo) => {
+    setSelectedSectionForView(section);
+    setSectionDialogOpen(true);
+  };
+
+  // Get entries for selected section
+  const sectionDialogEntries = useMemo(() => {
+    if (!selectedSectionForView) return [];
+    return (allSchoolEntries as TimetableEntry[])
+      .filter((e) => e.class_section_id === selectedSectionForView.id)
+      .map((e) => ({
+        id: e.id,
+        day_of_week: e.day_of_week,
+        period_id: e.period_id,
+        subject_name: e.subject_name,
+        room: e.room,
+        teacher_name: e.teacher_user_id ? teacherLabelByUserId.get(e.teacher_user_id) ?? null : null,
+        section_label: null,
+      }) satisfies PeriodTimetableEntry);
+  }, [selectedSectionForView, allSchoolEntries, teacherLabelByUserId]);
 
   if (loading) {
     return <p className="text-sm text-muted-foreground">Loading...</p>;
@@ -303,10 +373,18 @@ export function TeacherTimetableModule() {
 
   return (
     <div className="space-y-4">
+      {/* Current Period Indicator */}
+      <CurrentPeriodIndicator periods={periods} className="no-print" />
+
       {/* Conflict Alert */}
       {conflictCount > 0 && (
         <TimetableConflictAlert conflicts={myConflicts} entryLabels={entryLabels} />
       )}
+
+      {/* Day Filter */}
+      <div className="no-print">
+        <DayFilterTabs selectedDay={selectedDay} onSelectDay={setSelectedDay} />
+      </div>
 
       {/* Stats bar */}
       <div className="flex flex-wrap gap-3">
@@ -332,7 +410,8 @@ export function TeacherTimetableModule() {
         )}
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end no-print">
+      {/* Controls */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between no-print">
         <Select value={viewMode} onValueChange={(v) => setViewMode(v as any)}>
           <SelectTrigger className="w-full sm:w-[260px]">
             <SelectValue />
@@ -343,43 +422,82 @@ export function TeacherTimetableModule() {
           </SelectContent>
         </Select>
 
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExportPdf} disabled={entries.length === 0}>
-            <FileText className="mr-2 h-4 w-4" /> Export PDF
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={handleExportIcs} disabled={baseEntries.length === 0}>
+            <Calendar className="mr-2 h-4 w-4" /> Sync Calendar
           </Button>
-          <Button variant="outline" onClick={handleDownloadHtml} disabled={entries.length === 0}>
-            <Download className="mr-2 h-4 w-4" /> Download
+          <Button variant="outline" size="sm" onClick={handleExportPdf} disabled={baseEntries.length === 0}>
+            <FileText className="mr-2 h-4 w-4" /> PDF
           </Button>
-          <Button variant="outline" onClick={() => window.print()}>
+          <Button variant="outline" size="sm" onClick={handleDownloadHtml} disabled={baseEntries.length === 0}>
+            <Download className="mr-2 h-4 w-4" /> HTML
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => window.print()}>
             <Printer className="mr-2 h-4 w-4" /> Print
           </Button>
         </div>
       </div>
 
-      {/* Assigned sections list */}
+      {/* Workload Chart */}
+      <WorkloadChart entries={baseEntries} periods={periods} />
+
+      {/* Assigned sections list - now clickable */}
       {mySections.length > 0 && (
         <Card className="no-print">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">My Assigned Sections</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              My Assigned Sections (click to view full timetable)
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
               {mySections.map((s) => (
-                <Badge key={s.id} variant="outline">{s.label}</Badge>
+                <Badge
+                  key={s.id}
+                  variant="outline"
+                  className="cursor-pointer hover:bg-primary/10 transition-colors"
+                  onClick={() => handleSectionClick(s)}
+                >
+                  {s.label}
+                </Badge>
               ))}
             </div>
           </CardContent>
         </Card>
       )}
 
+      {/* Main Timetable Grid */}
       <Card className="print-area">
         <CardHeader className="no-print">
-          <CardTitle>My Weekly Schedule</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            {viewMode === "mine" 
-              ? "Periods where you are the assigned teacher" 
-              : "All periods in your assigned sections"}
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>
+                {selectedDay === -1 ? "My Weekly Schedule" : `${DAYS[selectedDay]} Schedule`}
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                {viewMode === "mine"
+                  ? "Periods where you are the assigned teacher"
+                  : "All periods in your assigned sections"}
+              </p>
+            </div>
+            {viewMode === "mine" && entries.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const today = new Date().getDay();
+                  const todayEntry = entries.find((e) => e.day_of_week === today);
+                  if (todayEntry) {
+                    handleOpenNotes(todayEntry);
+                  } else if (entries[0]) {
+                    handleOpenNotes(entries[0]);
+                  }
+                }}
+              >
+                <NotebookPen className="mr-2 h-4 w-4" /> Log Period
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {entries.length === 0 ? (
@@ -391,6 +509,37 @@ export function TeacherTimetableModule() {
           )}
         </CardContent>
       </Card>
+
+      {/* Period Notes Dialog */}
+      {selectedEntryForNotes && schoolId && (
+        <PeriodNotesDialog
+          open={notesDialogOpen}
+          onOpenChange={setNotesDialogOpen}
+          schoolId={schoolId}
+          entryId={selectedEntryForNotes.id}
+          periodInfo={{
+            id: selectedEntryForNotes.id,
+            subject_name: selectedEntryForNotes.subject_name,
+            room: selectedEntryForNotes.room,
+            section_label: selectedEntryForNotes.section_label,
+            period_label: periodLabelById.get(selectedEntryForNotes.period_id) ?? "Period",
+            day_label: DAYS[selectedEntryForNotes.day_of_week] ?? "Day",
+          }}
+          existingNote={logsByEntryId.get(selectedEntryForNotes.id) ?? null}
+          onSaved={fetchTimetable}
+        />
+      )}
+
+      {/* Section Timetable Dialog */}
+      {selectedSectionForView && (
+        <SectionTimetableDialog
+          open={sectionDialogOpen}
+          onOpenChange={setSectionDialogOpen}
+          sectionLabel={selectedSectionForView.label}
+          periods={periods}
+          entries={sectionDialogEntries}
+        />
+      )}
     </div>
   );
 }
