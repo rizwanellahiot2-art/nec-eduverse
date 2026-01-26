@@ -63,22 +63,20 @@ const HrDashboard = () => {
  
    return (
      <HrShell title={`${tenant.school?.name || "EDUVERSE"} • HR`} subtitle="Human Resources" schoolSlug={tenant.slug}>
-       {authzState === "ok" && (
-         <Routes>
-           <Route index element={<HrHomeModule />} />
-           <Route path="users" element={<HrUsersModule />} />
-           <Route path="leaves" element={<HrLeavesModule />} />
-           <Route path="attendance" element={<HrAttendanceModule />} />
-           <Route path="salaries" element={<HrSalariesModule />} />
-           <Route path="contracts" element={<HrContractsModule />} />
-           <Route path="reviews" element={<HrReviewsModule />} />
-           <Route path="documents" element={<HrDocumentsModule />} />
-            <Route path="support" element={<HrSupportModule />} />
-            <Route path="messages" element={<HrMessagesModule />} />
-            <Route path="timetable" element={<TimetableBuilderModule />} />
-           <Route path="*" element={<Navigate to={`/${tenant.slug}/hr`} replace />} />
-         </Routes>
-       )}
+       <Routes>
+         <Route index element={<HrHomeModule />} />
+         <Route path="users" element={<HrUsersModule />} />
+         <Route path="leaves" element={<HrLeavesModule />} />
+         <Route path="attendance" element={<HrAttendanceModule />} />
+         <Route path="salaries" element={<HrSalariesModule />} />
+         <Route path="contracts" element={<HrContractsModule />} />
+         <Route path="reviews" element={<HrReviewsModule />} />
+         <Route path="documents" element={<HrDocumentsModule />} />
+         <Route path="support" element={<HrSupportModule />} />
+         <Route path="messages" element={<HrMessagesModule />} />
+         <Route path="timetable" element={<TimetableBuilderModule />} />
+         <Route path="*" element={<Navigate to={`/${tenant.slug}/hr`} replace />} />
+       </Routes>
      </HrShell>
    );
  };

@@ -363,30 +363,26 @@ const TenantDashboard = () => {
             </div>
           </div>
 
-          {authzState !== "ok" && (
-            <div className="mt-5 rounded-2xl bg-accent p-4 text-sm text-accent-foreground">
-              <p className="font-medium">Access check</p>
-              <p className="mt-1">
-                {authzState === "checking" ? "Verifying membership and role…" : authzMessage ?? "Access denied."}
-              </p>
-              {authzState === "denied" && (
-                <div className="mt-3">
-                  <Button
-                    variant="hero"
-                    onClick={async () => {
-                      await supabase.auth.signOut();
-                      navigate(`/${tenant.slug}/auth`);
-                    }}
-                  >
-                    Return to login
-                  </Button>
-                </div>
-              )}
+          {authzState === "denied" && (
+            <div className="mt-5 rounded-2xl bg-destructive/10 p-4 text-sm">
+              <p className="font-medium text-destructive">Access Denied</p>
+              <p className="mt-1">{authzMessage ?? "You do not have access to this role."}</p>
+              <div className="mt-3">
+                <Button
+                  variant="hero"
+                  onClick={async () => {
+                    await supabase.auth.signOut();
+                    navigate(`/${tenant.slug}/auth`);
+                  }}
+                >
+                  Return to login
+                </Button>
+              </div>
             </div>
           )}
         </div>
 
-        {authzState === "ok" && (
+        {authzState !== "denied" && (
           <Routes>
             <Route index element={
               role === "principal" ? <PrincipalHome /> : 
