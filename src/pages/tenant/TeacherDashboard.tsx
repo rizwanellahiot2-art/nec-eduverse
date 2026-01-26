@@ -93,32 +93,28 @@ const TeacherDashboard = () => {
           </div>
         </div>
 
-        {/* Access check */}
-        {authzState !== "ok" && (
+        {/* Access check - only show if denied (not while checking with cache) */}
+        {authzState === "denied" && (
           <div className="rounded-2xl bg-destructive/10 p-4 text-sm">
-            <p className="font-medium text-destructive">Access check</p>
-            <p className="mt-1">
-              {authzState === "checking" ? "Verifying teacher role…" : authzMessage ?? "Access denied."}
-            </p>
-            {authzState === "denied" && (
-              <div className="mt-3">
-                <Button
-                  variant="hero"
-                  size="sm"
-                  onClick={async () => {
-                    await supabase.auth.signOut();
-                    navigate(`/${tenant.slug}/auth`);
-                  }}
-                >
-                  Return to login
-                </Button>
-              </div>
-            )}
+            <p className="font-medium text-destructive">Access Denied</p>
+            <p className="mt-1">{authzMessage ?? "You do not have access to this area."}</p>
+            <div className="mt-3">
+              <Button
+                variant="hero"
+                size="sm"
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  navigate(`/${tenant.slug}/auth`);
+                }}
+              >
+                Return to login
+              </Button>
+            </div>
           </div>
         )}
 
-        {/* Routes */}
-        {authzState === "ok" && (
+        {/* Routes - show if OK or checking (with cached auth) */}
+        {authzState !== "denied" && (
           <Routes>
             <Route index element={<TeacherHome />} />
             <Route path="students" element={<TeacherStudentsModule />} />

@@ -60,20 +60,18 @@ const MarketingDashboard = () => {
 
   return (
     <MarketingShell title={`${tenant.school?.name || "EDUVERSE"} • Marketing`} subtitle="CRM & campaigns" schoolSlug={tenant.slug}>
-      {authzState === "ok" && (
-        <Routes>
-          <Route index element={<MarketingHomeModule />} />
-          <Route path="leads" element={<MarketingLeadsModule />} />
-          <Route path="follow-ups" element={<MarketingFollowUpsModule />} />
-          <Route path="calls" element={<MarketingCallsModule />} />
-          <Route path="sources" element={<MarketingSourcesModule />} />
-          <Route path="campaigns" element={<MarketingCampaignsModule />} />
-          <Route path="reports" element={<MarketingReportsModule />} />
-          <Route path="messages" element={<MarketingMessagesModule />} />
-          <Route path="timetable" element={<TimetableBuilderModule />} />
-          <Route path="*" element={<Navigate to={`/${tenant.slug}/marketing`} replace />} />
-        </Routes>
-      )}
+      <Routes>
+        <Route index element={<MarketingHomeModule />} />
+        <Route path="leads" element={<MarketingLeadsModule />} />
+        <Route path="follow-ups" element={<MarketingFollowUpsModule />} />
+        <Route path="calls" element={<MarketingCallsModule />} />
+        <Route path="sources" element={<MarketingSourcesModule />} />
+        <Route path="campaigns" element={<MarketingCampaignsModule />} />
+        <Route path="reports" element={<MarketingReportsModule />} />
+        <Route path="messages" element={<MarketingMessagesModule />} />
+        <Route path="timetable" element={<TimetableBuilderModule />} />
+        <Route path="*" element={<Navigate to={`/${tenant.slug}/marketing`} replace />} />
+      </Routes>
     </MarketingShell>
   );
 };

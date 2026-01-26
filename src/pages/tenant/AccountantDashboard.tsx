@@ -61,20 +61,18 @@ const AccountantDashboard = () => {
  
    return (
      <AccountantShell title={`${tenant.school?.name || "EDUVERSE"} • Finance`} subtitle="Accounting & Finance" schoolSlug={tenant.slug}>
-       {authzState === "ok" && (
-         <Routes>
-           <Route index element={<AccountantHomeModule />} />
-           <Route path="fees" element={<AccountantFeesModule />} />
-           <Route path="invoices" element={<AccountantInvoicesModule />} />
-           <Route path="payments" element={<AccountantPaymentsModule />} />
-           <Route path="expenses" element={<AccountantExpensesModule />} />
-           <Route path="payroll" element={<AccountantPayrollModule />} />
-            <Route path="reports" element={<AccountantReportsModule />} />
-            <Route path="messages" element={<AccountantMessagesModule />} />
-            <Route path="timetable" element={<TimetableBuilderModule />} />
-           <Route path="*" element={<Navigate to={`/${tenant.slug}/accountant`} replace />} />
-         </Routes>
-       )}
+       <Routes>
+         <Route index element={<AccountantHomeModule />} />
+         <Route path="fees" element={<AccountantFeesModule />} />
+         <Route path="invoices" element={<AccountantInvoicesModule />} />
+         <Route path="payments" element={<AccountantPaymentsModule />} />
+         <Route path="expenses" element={<AccountantExpensesModule />} />
+         <Route path="payroll" element={<AccountantPayrollModule />} />
+         <Route path="reports" element={<AccountantReportsModule />} />
+         <Route path="messages" element={<AccountantMessagesModule />} />
+         <Route path="timetable" element={<TimetableBuilderModule />} />
+         <Route path="*" element={<Navigate to={`/${tenant.slug}/accountant`} replace />} />
+       </Routes>
      </AccountantShell>
    );
  };
