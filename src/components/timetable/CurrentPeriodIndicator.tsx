@@ -1,6 +1,7 @@
 import { useMemo, useEffect, useState } from "react";
 import { Clock, ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 type Period = {
   id: string;
@@ -86,24 +87,24 @@ export function CurrentPeriodIndicator({
   }
 
   return (
-    <div className={`flex flex-wrap items-center gap-3 ${className}`}>
+    <div className={cn("flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-2 sm:gap-3", className)}>
       {currentPeriod && (
-        <div className="flex items-center gap-2 rounded-xl bg-primary/10 px-3 py-2">
-          <Clock className="h-4 w-4 text-primary animate-pulse" />
-          <span className="text-sm font-medium">
+        <div className="flex items-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl bg-primary/10 px-2 sm:px-3 py-1.5 sm:py-2">
+          <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary animate-pulse shrink-0" />
+          <span className="text-xs sm:text-sm font-medium">
             Now: <span className="text-primary">{currentPeriod.label}</span>
           </span>
         </div>
       )}
 
       {nextPeriod && minutesUntilNext !== null && (
-        <div className="flex items-center gap-2 rounded-xl bg-muted px-3 py-2">
-          <ArrowRight className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">
+        <div className="flex items-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl bg-muted px-2 sm:px-3 py-1.5 sm:py-2">
+          <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
+          <span className="text-xs sm:text-sm text-muted-foreground">
             Next: {nextPeriod.label}
             {minutesUntilNext > 0 && (
-              <Badge variant="outline" className="ml-2 text-xs">
-                in {minutesUntilNext} min
+              <Badge variant="outline" className="ml-1.5 sm:ml-2 text-[10px] sm:text-xs px-1.5">
+                {minutesUntilNext}m
               </Badge>
             )}
           </span>

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { BookOpen, Clock, MapPin, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 type PeriodInfo = {
   id: string;
@@ -100,67 +101,79 @@ export function PeriodNotesDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5 text-primary" />
+      <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[90vh] p-0">
+        <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-2">
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
             Period Log
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Period Info */}
-          <div className="flex flex-wrap gap-2 rounded-xl bg-muted/50 p-3">
-            <Badge variant="secondary" className="gap-1">
-              <Clock className="h-3 w-3" />
-              {periodInfo.day_label} • {periodInfo.period_label}
-            </Badge>
-            {periodInfo.subject_name && (
-              <Badge variant="outline">{periodInfo.subject_name}</Badge>
-            )}
-            {periodInfo.section_label && (
-              <Badge variant="outline" className="gap-1">
-                <Users className="h-3 w-3" />
-                {periodInfo.section_label}
+        <ScrollArea className="max-h-[60vh] px-4 sm:px-6">
+          <div className="space-y-4 pb-4">
+            {/* Period Info */}
+            <div className="flex flex-wrap gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl bg-muted/50 p-2.5 sm:p-3">
+              <Badge variant="secondary" className="gap-1 text-xs">
+                <Clock className="h-3 w-3" />
+                {periodInfo.day_label} • {periodInfo.period_label}
               </Badge>
-            )}
-            {periodInfo.room && (
-              <Badge variant="outline" className="gap-1">
-                <MapPin className="h-3 w-3" />
-                {periodInfo.room}
-              </Badge>
-            )}
-          </div>
+              {periodInfo.subject_name && (
+                <Badge variant="outline" className="text-xs">{periodInfo.subject_name}</Badge>
+              )}
+              {periodInfo.section_label && (
+                <Badge variant="outline" className="gap-1 text-xs">
+                  <Users className="h-3 w-3" />
+                  {periodInfo.section_label}
+                </Badge>
+              )}
+              {periodInfo.room && (
+                <Badge variant="outline" className="gap-1 text-xs">
+                  <MapPin className="h-3 w-3" />
+                  {periodInfo.room}
+                </Badge>
+              )}
+            </div>
 
-          {/* Topic */}
-          <div className="space-y-2">
-            <Label htmlFor="topic">Topic Covered *</Label>
-            <Input
-              id="topic"
-              placeholder="e.g., Chapter 5: Quadratic Equations"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-            />
-          </div>
+            {/* Topic */}
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="topic" className="text-sm">Topic Covered *</Label>
+              <Input
+                id="topic"
+                placeholder="e.g., Chapter 5: Quadratic Equations"
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                className="text-sm"
+              />
+            </div>
 
-          {/* Notes */}
-          <div className="space-y-2">
-            <Label htmlFor="notes">Additional Notes</Label>
-            <Textarea
-              id="notes"
-              placeholder="Observations, homework assigned, student questions..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={4}
-            />
+            {/* Notes */}
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="notes" className="text-sm">Additional Notes</Label>
+              <Textarea
+                id="notes"
+                placeholder="Observations, homework assigned, student questions..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+                className="text-sm resize-none"
+              />
+            </div>
           </div>
-        </div>
+        </ScrollArea>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="px-4 sm:px-6 pb-4 sm:pb-6 pt-2 flex-col-reverse sm:flex-row gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)}
+            className="w-full sm:w-auto"
+          >
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={saving}>
+          <Button 
+            onClick={handleSave} 
+            disabled={saving}
+            className="w-full sm:w-auto"
+          >
             {saving ? "Saving..." : existingNote ? "Update" : "Save Log"}
           </Button>
         </DialogFooter>

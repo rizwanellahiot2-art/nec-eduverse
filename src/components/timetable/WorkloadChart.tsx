@@ -47,7 +47,11 @@ function calculateHours(periods: Period[], periodIds: string[]): number {
     }
   }
 
-  return Math.round((totalMinutes / 60) * 10) / 10;
+  return Number((totalMinutes / 60).toFixed(2));
+}
+
+function formatNumber(value: number): string {
+  return value.toFixed(2);
 }
 
 export function WorkloadChart({
@@ -75,41 +79,48 @@ export function WorkloadChart({
   }, [entries, periods]);
 
   const totalPeriods = useMemo(() => entries.filter((e) => e.subject_name).length, [entries]);
-  const totalHours = useMemo(() => data.reduce((sum, d) => sum + d.hours, 0), [data]);
+  const totalHours = useMemo(() => Number(data.reduce((sum, d) => sum + d.hours, 0).toFixed(2)), [data]);
   const avgPerDay = useMemo(() => {
     const daysWithClasses = data.filter((d) => d.periods > 0).length;
-    return daysWithClasses > 0 ? Math.round((totalHours / daysWithClasses) * 10) / 10 : 0;
+    return daysWithClasses > 0 ? Number((totalHours / daysWithClasses).toFixed(2)) : 0;
   }, [data, totalHours]);
 
   const today = new Date().getDay();
 
   return (
     <Card className="no-print">
-      <CardHeader className="pb-2">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+      <CardHeader className="pb-2 px-3 sm:px-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <CardTitle className="text-sm font-medium">Weekly Workload</CardTitle>
-          <div className="flex gap-2">
-            <Badge variant="secondary">{totalPeriods} periods</Badge>
-            <Badge variant="outline">{totalHours}h total</Badge>
-            <Badge variant="outline">{avgPerDay}h/day avg</Badge>
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
+            <Badge variant="secondary" className="text-xs">{totalPeriods} periods</Badge>
+            <Badge variant="outline" className="text-xs">{formatNumber(totalHours)}h</Badge>
+            <Badge variant="outline" className="text-xs">{formatNumber(avgPerDay)}h/day</Badge>
           </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="h-[180px] w-full">
+      <CardContent className="px-2 sm:px-6 pb-3">
+        <div className="h-[160px] sm:h-[180px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <BarChart 
+              data={data} 
+              margin={{ top: 10, right: 5, left: 0, bottom: 5 }}
+            >
               <XAxis
                 dataKey="name"
-                tick={{ fontSize: 12 }}
+                tick={{ fontSize: 10 }}
                 tickLine={false}
                 axisLine={false}
+                interval={0}
+                height={25}
+                dy={5}
               />
               <YAxis
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: 10 }}
                 tickLine={false}
                 axisLine={false}
-                label={{ value: "hours", angle: -90, position: "insideLeft", fontSize: 10 }}
+                width={30}
+                tickFormatter={(value) => value.toFixed(1)}
               />
               <Tooltip
                 content={({ active, payload }) => {
@@ -119,7 +130,7 @@ export function WorkloadChart({
                       <div className="rounded-lg bg-popover px-3 py-2 text-sm shadow-md border">
                         <p className="font-medium">{d.name}</p>
                         <p className="text-muted-foreground">
-                          {d.periods} period{d.periods !== 1 ? "s" : ""} • {d.hours}h
+                          {d.periods} period{d.periods !== 1 ? "s" : ""} • {formatNumber(d.hours)}h
                         </p>
                       </div>
                     );
