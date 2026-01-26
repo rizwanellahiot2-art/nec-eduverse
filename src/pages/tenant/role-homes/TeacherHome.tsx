@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { BarChart3, BookOpen, CalendarCheck, ClipboardCheck, MessageSquare, TableIcon, TrendingUp, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useTenant } from "@/hooks/useTenant";
+import { useTenantOptimized } from "@/hooks/useTenantOptimized";
 import { useSession } from "@/hooks/useSession";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AtRiskStudentsCard } from "@/components/teacher/AtRiskStudentsCard";
@@ -23,9 +23,44 @@ interface Stats {
   unreadMessages: number;
 }
 
+// LocalStorage cache for stats
+const getStatsCacheKey = (schoolId: string, userId: string) => 
+  `eduverse_teacher_stats_${schoolId}_${userId}`;
+
+function getCachedStats(schoolId: string, userId: string): Stats | null {
+  try {
+    const cached = localStorage.getItem(getStatsCacheKey(schoolId, userId));
+    if (!cached) return null;
+    
+    const parsed = JSON.parse(cached);
+    const age = Date.now() - parsed.timestamp;
+    
+    // Cache valid for 1 hour
+    if (age > 60 * 60 * 1000) {
+      localStorage.removeItem(getStatsCacheKey(schoolId, userId));
+      return null;
+    }
+    
+    return parsed.data;
+  } catch {
+    return null;
+  }
+}
+
+function cacheStats(schoolId: string, userId: string, data: Stats) {
+  try {
+    localStorage.setItem(
+      getStatsCacheKey(schoolId, userId),
+      JSON.stringify({ data, timestamp: Date.now() })
+    );
+  } catch (e) {
+    console.warn("Failed to cache stats:", e);
+  }
+}
+
 export function TeacherHome() {
   const { schoolSlug } = useParams();
-  const tenant = useTenant(schoolSlug);
+  const tenant = useTenantOptimized(schoolSlug);
   const { user } = useSession();
   const [stats, setStats] = useState<Stats>({
     totalStudents: 0,
@@ -37,6 +72,7 @@ export function TeacherHome() {
   const [sectionIds, setSectionIds] = useState<string[]>([]);
   const [recentHomework, setRecentHomework] = useState<{ id: string; title: string; due_date: string }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   // Initialize keyboard shortcuts
   useTeacherKeyboardShortcuts(schoolSlug || "", tenant.status === "ready");
@@ -48,12 +84,43 @@ export function TeacherHome() {
     user?.id ?? null
   );
 
+  // Monitor online/offline status
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   useEffect(() => {
     if (tenant.status !== "ready" || !user) return;
 
     const fetchStats = async () => {
-      setLoading(true);
       const schoolId = tenant.schoolId;
+
+      // Try to load from cache first (especially when offline)
+      const cachedData = getCachedStats(schoolId, user.id);
+      if (cachedData) {
+        setStats(cachedData);
+        setLoading(false);
+        
+        // If offline, stop here
+        if (!navigator.onLine) return;
+      } else {
+        setLoading(true);
+      }
+
+      // If offline and no cache, show empty state
+      if (!navigator.onLine && !cachedData) {
+        setLoading(false);
+        return;
+      }
 
       // Get assigned sections for this teacher
       const { data: assignments } = await supabase
@@ -124,18 +191,30 @@ export function TeacherHome() {
         homework = data || [];
       }
 
-      setStats({
+      const newStats: Stats = {
         totalStudents,
         assignedSections,
         pendingHomework: pendingHomeworkCount,
         todayAttendance: todayAttendanceCount,
         unreadMessages: unreadMessages || 0,
-      });
+      };
+
+      setStats(newStats);
+      cacheStats(schoolId, user.id, newStats);
       setRecentHomework(homework);
       setLoading(false);
     };
 
-    fetchStats();
+    fetchStats().catch(() => {
+      // On error, try to use cached data
+      if (tenant.schoolId && user.id) {
+        const cachedData = getCachedStats(tenant.schoolId, user.id);
+        if (cachedData) {
+          setStats(cachedData);
+        }
+      }
+      setLoading(false);
+    });
   }, [tenant.status, tenant.schoolId, user]);
 
   if (loading) {
@@ -148,6 +227,16 @@ export function TeacherHome() {
 
   return (
     <div className="space-y-6">
+      {/* Offline Notice */}
+      {isOffline && (
+        <div className="rounded-2xl bg-accent p-4">
+          <p className="text-sm font-medium">📶 Offline Mode</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Showing cached data. Some features may be limited until you're back online.
+          </p>
+        </div>
+      )}
+
       {/* Offline Indicator */}
       <OfflineIndicator
         isOnline={isOnline}
