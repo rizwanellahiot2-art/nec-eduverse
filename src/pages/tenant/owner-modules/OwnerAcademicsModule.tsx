@@ -227,10 +227,34 @@ export function OwnerAcademicsModule({ schoolId }: Props) {
               <CardContent>
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={performanceChartData} layout="vertical">
-                      <XAxis type="number" />
-                      <YAxis dataKey="name" type="category" width={100} fontSize={11} />
-                      <Tooltip />
+                    <BarChart 
+                      data={performanceChartData} 
+                      layout="vertical"
+                      margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+                    >
+                      <XAxis 
+                        type="number" 
+                        tick={{ fontSize: 10 }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis 
+                        dataKey="name" 
+                        type="category" 
+                        width={85} 
+                        tick={{ fontSize: 10 }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <Tooltip 
+                        formatter={(value: number) => [`${value} students`, "Count"]}
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px",
+                          fontSize: "12px"
+                        }}
+                      />
                       <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                         {performanceChartData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.fill} />

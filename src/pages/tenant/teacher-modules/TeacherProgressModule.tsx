@@ -370,25 +370,40 @@ export function TeacherProgressModule() {
                 </p>
               ) : (
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={stats.assessments}>
+                  <LineChart 
+                    data={stats.assessments}
+                    margin={{ top: 10, right: 10, left: 0, bottom: 5 }}
+                  >
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis
                       dataKey="date"
                       tickFormatter={(v) => format(new Date(v), "MMM d")}
-                      tick={{ fontSize: 12 }}
+                      tick={{ fontSize: 10 }}
+                      tickLine={false}
+                      axisLine={false}
+                      interval="preserveStartEnd"
+                      height={30}
+                      dy={5}
                     />
-                    <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} />
+                    <YAxis 
+                      domain={[0, 100]} 
+                      tick={{ fontSize: 10 }} 
+                      tickLine={false}
+                      axisLine={false}
+                      width={35}
+                      tickFormatter={(v) => `${v}%`}
+                    />
                     <Tooltip
                       content={({ active, payload }) => {
                         if (active && payload && payload.length) {
                           const data = payload[0].payload;
                           return (
                             <div className="rounded-lg border bg-card p-2 shadow-md">
-                              <p className="font-medium">{data.title}</p>
-                              <p className="text-sm text-muted-foreground">
+                              <p className="font-medium text-sm">{data.title}</p>
+                              <p className="text-xs text-muted-foreground">
                                 {format(new Date(data.date), "MMM d, yyyy")}
                               </p>
-                              <p className="text-lg font-bold">{data.percentage.toFixed(1)}%</p>
+                              <p className="text-base font-bold">{data.percentage.toFixed(2)}%</p>
                             </div>
                           );
                         }
@@ -400,7 +415,8 @@ export function TeacherProgressModule() {
                       dataKey="percentage"
                       stroke="hsl(var(--primary))"
                       strokeWidth={2}
-                      dot={{ fill: "hsl(var(--primary))" }}
+                      dot={{ fill: "hsl(var(--primary))", r: 3 }}
+                      activeDot={{ r: 5 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>

@@ -509,10 +509,26 @@ export function SalaryBudgetForecast() {
           <CardContent>
             <div className="h-[350px]">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={monthlyForecast}>
+                <ComposedChart 
+                  data={monthlyForecast}
+                  margin={{ top: 10, right: 10, left: 0, bottom: 5 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
+                  <XAxis 
+                    dataKey="month" 
+                    tick={{ fontSize: 10 }}
+                    tickLine={false}
+                    axisLine={false}
+                    interval={0}
+                    height={30}
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 10 }} 
+                    tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`}
+                    tickLine={false}
+                    axisLine={false}
+                    width={40}
+                  />
                   <Tooltip
                     formatter={(value: number, name: string) => {
                       const labels: Record<string, string> = {
@@ -522,8 +538,14 @@ export function SalaryBudgetForecast() {
                       };
                       return [value.toLocaleString(), labels[name] || name];
                     }}
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                      fontSize: "12px"
+                    }}
                   />
-                  <Legend />
+                  <Legend wrapperStyle={{ fontSize: "10px", paddingTop: "8px" }} />
                   <Bar dataKey="budget" name="Budget" fill="hsl(var(--muted-foreground) / 0.3)" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="actual" name="Actual" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="projected" name="Projected" fill="hsl(var(--primary) / 0.5)" radius={[4, 4, 0, 0]} />
@@ -541,12 +563,36 @@ export function SalaryBudgetForecast() {
           <CardContent>
             <div className="h-[350px]">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={monthlyForecast}>
+                <ComposedChart 
+                  data={monthlyForecast}
+                  margin={{ top: 10, right: 10, left: 0, bottom: 5 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`} />
-                  <Tooltip formatter={(value: number) => value.toLocaleString()} />
-                  <Legend />
+                  <XAxis 
+                    dataKey="month" 
+                    tick={{ fontSize: 10 }}
+                    tickLine={false}
+                    axisLine={false}
+                    interval={0}
+                    height={30}
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 10 }} 
+                    tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`}
+                    tickLine={false}
+                    axisLine={false}
+                    width={40}
+                  />
+                  <Tooltip 
+                    formatter={(value: number) => value.toLocaleString()}
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                      fontSize: "12px"
+                    }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: "10px", paddingTop: "8px" }} />
                   <Line
                     type="monotone"
                     dataKey="cumBudget"
@@ -562,14 +608,14 @@ export function SalaryBudgetForecast() {
                     name="Cumulative Actual"
                     stroke="hsl(var(--primary))"
                     strokeWidth={2}
-                    dot={{ r: 3 }}
+                    dot={{ r: 2 }}
                   />
                   {totals.totalBudget > 0 && (
                     <ReferenceLine
                       y={totals.totalBudget}
                       stroke="hsl(var(--destructive))"
                       strokeDasharray="3 3"
-                      label={{ value: "Annual Budget", position: "right", fontSize: 10 }}
+                      label={{ value: "Annual", position: "right", fontSize: 9 }}
                     />
                   )}
                 </ComposedChart>
@@ -592,12 +638,37 @@ export function SalaryBudgetForecast() {
             <div className="grid gap-6 lg:grid-cols-2">
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={varianceAnalysis} layout="vertical" margin={{ left: 30 }}>
+                  <BarChart 
+                    data={varianceAnalysis} 
+                    layout="vertical" 
+                    margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+                  >
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis type="number" tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
-                    <YAxis type="category" dataKey="role" width={120} tick={{ fontSize: 11 }} />
-                    <Tooltip formatter={(value: number) => value.toLocaleString()} />
-                    <Legend />
+                    <XAxis 
+                      type="number" 
+                      tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`}
+                      tick={{ fontSize: 10 }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis 
+                      type="category" 
+                      dataKey="role" 
+                      width={90} 
+                      tick={{ fontSize: 10 }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <Tooltip 
+                      formatter={(value: number) => value.toLocaleString()}
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px",
+                        fontSize: "12px"
+                      }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: "10px", paddingTop: "8px" }} />
                     <Bar dataKey="budget" name="Budget" fill="hsl(var(--muted-foreground) / 0.4)" radius={[0, 4, 4, 0]} />
                     <Bar dataKey="actual" name="Actual" radius={[0, 4, 4, 0]}>
                       {varianceAnalysis.map((entry) => (

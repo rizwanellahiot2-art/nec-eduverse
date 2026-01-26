@@ -575,18 +575,36 @@ export function FinancialReportGenerator({ schoolId, schoolName }: FinancialRepo
           <CardContent>
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={reportData.dailyData}>
+                <AreaChart 
+                  data={reportData.dailyData}
+                  margin={{ top: 10, right: 10, left: 0, bottom: 5 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                  <XAxis 
+                    dataKey="date" 
+                    tick={{ fontSize: 10 }}
+                    tickLine={false}
+                    axisLine={false}
+                    interval="preserveStartEnd"
+                    height={30}
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 10 }} 
+                    tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                    tickLine={false}
+                    axisLine={false}
+                    width={40}
+                  />
                   <Tooltip
                     formatter={(value: number) => `PKR ${value.toLocaleString()}`}
                     contentStyle={{
                       backgroundColor: "hsl(var(--card))",
                       border: "1px solid hsl(var(--border))",
                       borderRadius: "8px",
+                      fontSize: "12px"
                     }}
                   />
+                  <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
                   <Area
                     type="monotone"
                     dataKey="revenue"
@@ -627,11 +645,10 @@ export function FinancialReportGenerator({ schoolId, schoolName }: FinancialRepo
                     data={reportData.expenseBreakdown}
                     cx="50%"
                     cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
+                    innerRadius={50}
+                    outerRadius={80}
                     paddingAngle={2}
                     dataKey="value"
-                    label={({ name, percentage }) => `${name} (${percentage.toFixed(0)}%)`}
                     labelLine={false}
                   >
                     {reportData.expenseBreakdown.map((_, index) => (
@@ -639,12 +656,17 @@ export function FinancialReportGenerator({ schoolId, schoolName }: FinancialRepo
                     ))}
                   </Pie>
                   <Tooltip
-                    formatter={(value: number) => `PKR ${value.toLocaleString()}`}
+                    formatter={(value: number, name: string) => [`PKR ${value.toLocaleString()}`, name]}
                     contentStyle={{
                       backgroundColor: "hsl(var(--card))",
                       border: "1px solid hsl(var(--border))",
                       borderRadius: "8px",
+                      fontSize: "12px"
                     }}
+                  />
+                  <Legend 
+                    wrapperStyle={{ fontSize: "10px", paddingTop: "8px" }}
+                    formatter={(value) => <span className="text-xs">{value}</span>}
                   />
                 </PieChart>
               </ResponsiveContainer>
