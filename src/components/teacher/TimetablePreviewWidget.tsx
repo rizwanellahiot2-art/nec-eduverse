@@ -72,6 +72,8 @@ export function TimetablePreviewWidget({ schoolId, schoolSlug }: TimetablePrevie
   });
 
   const fetchSchedule = useCallback(async (dayOfWeek: number) => {
+    if (!schoolId) return;
+    
     setLoading(true);
 
     const { data: user } = await supabase.auth.getUser();
@@ -123,7 +125,7 @@ export function TimetablePreviewWidget({ schoolId, schoolSlug }: TimetablePrevie
     // Sort by period sort_order
     enriched.sort((a, b) => a.sort_order - b.sort_order);
 
-    // Fetch today's period logs
+    // Fetch today's period logs (only relevant for today's view)
     const entryIds = enriched.map((e) => e.id);
     if (entryIds.length > 0) {
       const { data: logs } = await supabase
@@ -146,9 +148,12 @@ export function TimetablePreviewWidget({ schoolId, schoolSlug }: TimetablePrevie
     setLoading(false);
   }, [schoolId]);
 
+  // Fetch schedule when selectedDay changes
   useEffect(() => {
-    void fetchSchedule(selectedDay);
-  }, [fetchSchedule, selectedDay]);
+    if (schoolId) {
+      void fetchSchedule(selectedDay);
+    }
+  }, [selectedDay, schoolId, fetchSchedule]);
 
   const handleOpenLog = (entry: TimetableEntry) => {
     setDialogEntry(entry);
