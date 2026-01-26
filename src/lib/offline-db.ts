@@ -85,6 +85,31 @@ export interface CachedClassSection {
   cachedAt: number;
 }
 
+export interface CachedAttendance {
+  id: string;
+  schoolId: string;
+  studentId: string;
+  sessionId: string;
+  sessionDate: string;
+  status: string;
+  note: string | null;
+  periodLabel: string;
+  classSectionId: string;
+  cachedAt: number;
+}
+
+export interface CachedHomework {
+  id: string;
+  schoolId: string;
+  title: string;
+  description: string | null;
+  dueDate: string;
+  status: string;
+  classSectionId: string;
+  sectionLabel: string;
+  cachedAt: number;
+}
+
 export interface SyncMetadata {
   key: string;
   lastSyncAt: number;
@@ -138,7 +163,7 @@ export interface CachedContact {
 // ==================== Database Instance ====================
 
 const DB_NAME = 'eduverse-offline-db';
-const DB_VERSION = 2; // Bumped for messaging stores
+const DB_VERSION = 3; // Bumped for attendance and homework stores
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
@@ -215,6 +240,23 @@ export async function getOfflineDB(): Promise<IDBPDatabase> {
         // Sync Metadata Store
         if (!db.objectStoreNames.contains('syncMetadata')) {
           db.createObjectStore('syncMetadata', { keyPath: 'key' });
+        }
+
+        // Attendance Cache Store (added in version 3)
+        if (oldVersion < 3) {
+          if (!db.objectStoreNames.contains('attendance')) {
+            const attendanceStore = db.createObjectStore('attendance', { keyPath: 'id' });
+            attendanceStore.createIndex('by-school', 'schoolId');
+            attendanceStore.createIndex('by-student', 'studentId');
+            attendanceStore.createIndex('by-date', 'sessionDate');
+          }
+
+          // Homework Cache Store
+          if (!db.objectStoreNames.contains('homework')) {
+            const homeworkStore = db.createObjectStore('homework', { keyPath: 'id' });
+            homeworkStore.createIndex('by-school', 'schoolId');
+            homeworkStore.createIndex('by-section', 'classSectionId');
+          }
         }
       },
     });
@@ -427,6 +469,52 @@ export async function getCachedClassSections(schoolId: string): Promise<CachedCl
   return db.getAllFromIndex('classSections', 'by-school', schoolId);
 }
 
+export async function cacheAttendance(entries: CachedAttendance[]): Promise<void> {
+  const db = await getOfflineDB();
+  const tx = db.transaction('attendance', 'readwrite');
+  const now = Date.now();
+  
+  for (const entry of entries) {
+    await tx.store.put({ ...entry, cachedAt: now });
+  }
+  
+  await tx.done;
+  await updateSyncMetadata('attendance', entries.length);
+}
+
+export async function getCachedAttendance(schoolId: string, studentId?: string): Promise<CachedAttendance[]> {
+  const db = await getOfflineDB();
+  
+  if (studentId) {
+    return db.getAllFromIndex('attendance', 'by-student', studentId);
+  }
+  
+  return db.getAllFromIndex('attendance', 'by-school', schoolId);
+}
+
+export async function cacheHomework(homework: CachedHomework[]): Promise<void> {
+  const db = await getOfflineDB();
+  const tx = db.transaction('homework', 'readwrite');
+  const now = Date.now();
+  
+  for (const item of homework) {
+    await tx.store.put({ ...item, cachedAt: now });
+  }
+  
+  await tx.done;
+  await updateSyncMetadata('homework', homework.length);
+}
+
+export async function getCachedHomework(schoolId: string, sectionId?: string): Promise<CachedHomework[]> {
+  const db = await getOfflineDB();
+  
+  if (sectionId) {
+    return db.getAllFromIndex('homework', 'by-section', sectionId);
+  }
+  
+  return db.getAllFromIndex('homework', 'by-school', schoolId);
+}
+
 // ==================== Sync Metadata ====================
 
 export async function updateSyncMetadata(key: string, itemCount: number): Promise<void> {
@@ -493,7 +581,8 @@ export async function clearAllOfflineData(): Promise<void> {
   const storeNames = [
     'offlineQueue', 'students', 'timetable', 'assignments', 
     'subjects', 'classSections', 'syncMetadata',
-    'conversations', 'messages', 'contacts'
+    'conversations', 'messages', 'contacts',
+    'attendance', 'homework'
   ].filter(name => db.objectStoreNames.contains(name));
   
   const tx = db.transaction(storeNames, 'readwrite');
