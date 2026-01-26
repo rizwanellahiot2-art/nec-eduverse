@@ -30,6 +30,8 @@ import { NotificationsBell } from "@/components/global/NotificationsBell";
 import { useUnreadMessagesOptimized } from "@/hooks/useUnreadMessagesOptimized";
 import { useTenantOptimized } from "@/hooks/useTenantOptimized";
 import { useSession } from "@/hooks/useSession";
+import { useOfflineUniversal } from "@/hooks/useOfflineUniversal";
+import { OfflineStatusIndicator } from "@/components/offline/OfflineStatusIndicator";
 
 type Props = PropsWithChildren<{
   title: string;
@@ -46,6 +48,13 @@ export function OwnerShell({ title, subtitle, schoolSlug, children }: Props) {
   const tenant = useTenantOptimized(schoolSlug);
   const schoolId = tenant.schoolId;
   const schoolName = tenant.school?.name || "";
+
+  // Offline support
+  const offline = useOfflineUniversal({
+    schoolId,
+    userId: user?.id ?? null,
+    role: "school_owner",
+  });
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -89,6 +98,16 @@ export function OwnerShell({ title, subtitle, schoolSlug, children }: Props) {
           <p className="text-xs text-muted-foreground">School Owner • CEO View</p>
         </div>
         <div className="flex items-center gap-2">
+          <OfflineStatusIndicator
+            isOnline={offline.isOnline}
+            isSyncing={offline.isSyncing}
+            stats={offline.stats}
+            lastSyncAt={offline.lastSyncAt}
+            syncProgress={offline.syncProgress}
+            storageInfo={offline.storageInfo}
+            onSync={offline.syncPendingItems}
+            variant="compact"
+          />
           <NotificationsBell schoolId={schoolId} schoolSlug={schoolSlug} role="school_owner" />
           <Button
             variant="soft"
@@ -172,6 +191,16 @@ export function OwnerShell({ title, subtitle, schoolSlug, children }: Props) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <OfflineStatusIndicator
+            isOnline={offline.isOnline}
+            isSyncing={offline.isSyncing}
+            stats={offline.stats}
+            lastSyncAt={offline.lastSyncAt}
+            syncProgress={offline.syncProgress}
+            storageInfo={offline.storageInfo}
+            onSync={offline.syncPendingItems}
+            variant="compact"
+          />
           <NotificationsBell schoolId={schoolId} schoolSlug={schoolSlug} role="school_owner" />
           <Button
             variant="ghost"
@@ -215,6 +244,20 @@ export function OwnerShell({ title, subtitle, schoolSlug, children }: Props) {
           <span className="text-[10px] font-medium">More</span>
         </button>
       </nav>
+
+      {/* Floating offline indicator for desktop */}
+      <div className="hidden lg:block">
+        <OfflineStatusIndicator
+          isOnline={offline.isOnline}
+          isSyncing={offline.isSyncing}
+          stats={offline.stats}
+          lastSyncAt={offline.lastSyncAt}
+          syncProgress={offline.syncProgress}
+          storageInfo={offline.storageInfo}
+          onSync={offline.syncPendingItems}
+          variant="floating"
+        />
+      </div>
     </div>
   );
 }
