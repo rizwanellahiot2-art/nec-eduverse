@@ -171,9 +171,13 @@ export function ClassPerformanceChart({ schoolId, sectionIds }: Props) {
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="comparison" className="w-full">
-          <TabsList className="mb-4">
-            <TabsTrigger value="comparison">Section Comparison</TabsTrigger>
-            <TabsTrigger value="grades">Grade Distribution</TabsTrigger>
+          <TabsList className="mb-4 w-full grid grid-cols-2">
+            <TabsTrigger value="comparison" className="text-xs sm:text-sm px-2 sm:px-4">
+              Section Comparison
+            </TabsTrigger>
+            <TabsTrigger value="grades" className="text-xs sm:text-sm px-2 sm:px-4">
+              Grade Distribution
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="comparison">
@@ -182,44 +186,51 @@ export function ClassPerformanceChart({ schoolId, sectionIds }: Props) {
                 No data available yet
               </p>
             ) : (
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart 
-                  data={sectionStats} 
-                  margin={{ top: 10, right: 10, left: 0, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis 
-                    dataKey="section_name" 
-                    tick={{ fontSize: 10 }} 
-                    tickLine={false}
-                    axisLine={false}
-                    interval={0}
-                    height={40}
-                    angle={-20}
-                    textAnchor="end"
-                  />
-                  <YAxis 
-                    domain={[0, 100]} 
-                    tick={{ fontSize: 10 }} 
-                    tickLine={false}
-                    axisLine={false}
-                    width={35}
-                    tickFormatter={(v) => `${v}%`}
-                  />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: "hsl(var(--card))", 
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                      fontSize: "12px"
-                    }}
-                    formatter={(value: number) => [`${value.toFixed(2)}%`, ""]}
-                  />
-                  <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "10px" }} />
-                  <Bar dataKey="avg_attendance" name="Attendance %" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="avg_grade" name="Avg Grade %" fill="hsl(var(--secondary))" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="w-full overflow-x-auto">
+                <div className="min-w-[300px]">
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart 
+                      data={sectionStats} 
+                      margin={{ top: 10, right: 10, left: -10, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis 
+                        dataKey="section_name" 
+                        tick={{ fontSize: 9 }} 
+                        tickLine={false}
+                        axisLine={false}
+                        interval={0}
+                        height={45}
+                        angle={-25}
+                        textAnchor="end"
+                      />
+                      <YAxis 
+                        domain={[0, 100]} 
+                        tick={{ fontSize: 9 }} 
+                        tickLine={false}
+                        axisLine={false}
+                        width={30}
+                        tickFormatter={(v) => `${v}%`}
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: "hsl(var(--card))", 
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px",
+                          fontSize: "11px"
+                        }}
+                        formatter={(value: number) => [`${value.toFixed(1)}%`, ""]}
+                      />
+                      <Legend 
+                        wrapperStyle={{ fontSize: "10px", paddingTop: "8px" }} 
+                        iconSize={10}
+                      />
+                      <Bar dataKey="avg_attendance" name="Attendance" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="avg_grade" name="Grade" fill="hsl(var(--secondary))" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
             )}
           </TabsContent>
 
@@ -229,37 +240,52 @@ export function ClassPerformanceChart({ schoolId, sectionIds }: Props) {
                 No grades recorded yet
               </p>
             ) : (
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={gradeDistribution}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
-                    paddingAngle={2}
-                    dataKey="value"
-                    labelLine={false}
-                  >
-                    {gradeDistribution.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    formatter={(value: number, name: string) => [`${value} students`, name]}
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                      fontSize: "12px"
-                    }}
-                  />
-                  <Legend 
-                    wrapperStyle={{ fontSize: "10px", paddingTop: "8px" }}
-                    formatter={(value) => <span className="text-xs">{value}</span>}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                {/* Pie Chart */}
+                <div className="w-full sm:w-1/2 flex justify-center">
+                  <ResponsiveContainer width="100%" height={180}>
+                    <PieChart>
+                      <Pie
+                        data={gradeDistribution}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={40}
+                        outerRadius={70}
+                        paddingAngle={2}
+                        dataKey="value"
+                        labelLine={false}
+                      >
+                        {gradeDistribution.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        formatter={(value: number, name: string) => [`${value} students`, name]}
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px",
+                          fontSize: "11px"
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                {/* Legend - Stacked on mobile, side by side on desktop */}
+                <div className="flex flex-wrap justify-center gap-2 sm:flex-col sm:gap-1.5">
+                  {gradeDistribution.map((entry) => (
+                    <div key={entry.name} className="flex items-center gap-1.5">
+                      <div 
+                        className="h-3 w-3 rounded-sm shrink-0" 
+                        style={{ backgroundColor: entry.color }} 
+                      />
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        {entry.name}: {entry.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </TabsContent>
         </Tabs>
