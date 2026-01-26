@@ -21,6 +21,8 @@ import {
   Forward,
   Clock,
   CalendarClock,
+  WifiOff,
+  CloudOff,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -47,6 +49,7 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTypingIndicator } from "@/hooks/useTypingIndicator";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useOfflineMessaging } from "@/hooks/useOfflineMessaging";
 import {
   ReplyPreview,
   ReplyIndicator,
@@ -84,6 +87,7 @@ interface ChatMessage {
   attachment_urls?: string[];
   subject?: string;
   reply_to_id?: string;
+  isPending?: boolean; // Offline pending message
 }
 
 interface UserEntry {
@@ -132,6 +136,13 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
 
   // Get current user's role for restrictions
   const { isStudent, isStaff, loading: roleLoading } = useUserRole(schoolId, currentUserId);
+
+  // Offline messaging hook
+  const offlineMessaging = useOfflineMessaging({
+    schoolId,
+    userId: currentUserId,
+    enabled: true,
+  });
 
   // Push notifications hook
   const { supported: pushSupported, permission: pushPermission, requestPermission } = usePushNotifications({
@@ -329,8 +340,14 @@ export function MessagesModule({ schoolId, isStudentPortal = false }: Props) {
     );
 
     setConversations(convList);
+    
+    // Cache conversations for offline use
+    if (navigator.onLine && convList.length > 0) {
+      offlineMessaging.prefetchAndCacheConversations(convList);
+    }
+    
     setLoading(false);
-  }, [schoolId]);
+  }, [schoolId, offlineMessaging.prefetchAndCacheConversations]);
 
   const fetchAllUsers = useCallback(async () => {
     // Fetch all users in the school
