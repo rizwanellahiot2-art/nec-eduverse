@@ -7,7 +7,7 @@ import { useSession } from "@/hooks/useSession";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AtRiskStudentsCard } from "@/components/teacher/AtRiskStudentsCard";
 import { ClassPerformanceChart } from "@/components/teacher/ClassPerformanceChart";
-import { TimetablePreviewWidget } from "@/components/teacher/TimetablePreviewWidget";
+import { MyScheduleWidget } from "@/components/teacher/MyScheduleWidget";
 import { StudentPerformanceWidget } from "@/components/teacher/StudentPerformanceWidget";
 
 interface Stats {
@@ -259,7 +259,7 @@ export function TeacherHome() {
       {/* Timetable Preview & Performance Widget */}
       {tenant.status === "ready" && schoolSlug && (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <TimetablePreviewWidget schoolId={tenant.schoolId} schoolSlug={schoolSlug} />
+          <MyScheduleWidget schoolId={tenant.schoolId} schoolSlug={schoolSlug} />
           <StudentPerformanceWidget schoolId={tenant.schoolId} sectionIds={sectionIds} />
         </div>
       )}
