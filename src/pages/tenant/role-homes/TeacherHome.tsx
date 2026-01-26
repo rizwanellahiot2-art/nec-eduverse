@@ -9,6 +9,11 @@ import { AtRiskStudentsCard } from "@/components/teacher/AtRiskStudentsCard";
 import { ClassPerformanceChart } from "@/components/teacher/ClassPerformanceChart";
 import { MyScheduleWidget } from "@/components/teacher/MyScheduleWidget";
 import { StudentPerformanceWidget } from "@/components/teacher/StudentPerformanceWidget";
+import { TodaysFocusCard } from "@/components/teacher/TodaysFocusCard";
+import { QuickActionsBar } from "@/components/teacher/QuickActionsBar";
+import { OfflineIndicator } from "@/components/teacher/OfflineIndicator";
+import { useOfflineSync } from "@/hooks/useOfflineSync";
+import { useTeacherKeyboardShortcuts } from "@/hooks/useTeacherKeyboardShortcuts";
 
 interface Stats {
   totalStudents: number;
@@ -32,6 +37,16 @@ export function TeacherHome() {
   const [sectionIds, setSectionIds] = useState<string[]>([]);
   const [recentHomework, setRecentHomework] = useState<{ id: string; title: string; due_date: string }[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Initialize keyboard shortcuts
+  useTeacherKeyboardShortcuts(schoolSlug || "", tenant.status === "ready");
+
+  // Initialize offline sync
+  const schoolId = tenant.status === "ready" ? tenant.schoolId : null;
+  const { isOnline, pendingCount, isSyncing, syncPendingEntries } = useOfflineSync(
+    schoolId,
+    user?.id ?? null
+  );
 
   useEffect(() => {
     if (tenant.status !== "ready" || !user) return;
@@ -88,11 +103,10 @@ export function TeacherHome() {
         todayAttendanceCount = count || 0;
       }
 
-      // Get unread parent messages
+      // Get unread messages
       const { count: unreadMessages } = await supabase
-        .from("parent_messages")
+        .from("admin_message_recipients")
         .select("id", { count: "exact", head: true })
-        .eq("school_id", schoolId)
         .eq("recipient_user_id", user.id)
         .eq("is_read", false);
 
@@ -134,124 +148,94 @@ export function TeacherHome() {
 
   return (
     <div className="space-y-6">
-      {/* Quick Actions - Top for better accessibility */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-            <a
-              href={`/${schoolSlug}/teacher/attendance`}
-              className="flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-colors hover:bg-accent"
-            >
-              <ClipboardCheck className="h-6 w-6 text-primary" />
-              <span className="text-sm">Take Attendance</span>
-            </a>
-            <a
-              href={`/${schoolSlug}/teacher/homework`}
-              className="flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-colors hover:bg-accent"
-            >
-              <BookOpen className="h-6 w-6 text-primary" />
-              <span className="text-sm">Add Homework</span>
-            </a>
-            <a
-              href={`/${schoolSlug}/teacher/gradebook`}
-              className="flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-colors hover:bg-accent"
-            >
-              <TableIcon className="h-6 w-6 text-primary" />
-              <span className="text-sm">Gradebook</span>
-            </a>
-            <a
-              href={`/${schoolSlug}/teacher/progress`}
-              className="flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-colors hover:bg-accent"
-            >
-              <TrendingUp className="h-6 w-6 text-primary" />
-              <span className="text-sm">Progress</span>
-            </a>
-            <a
-              href={`/${schoolSlug}/teacher/students`}
-              className="flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-colors hover:bg-accent"
-            >
-              <Users className="h-6 w-6 text-primary" />
-              <span className="text-sm">View Students</span>
-            </a>
-            <a
-              href={`/${schoolSlug}/teacher/messages`}
-              className="flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition-colors hover:bg-accent"
-            >
-              <MessageSquare className="h-6 w-6 text-primary" />
-              <span className="text-sm">Messages</span>
-            </a>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Offline Indicator */}
+      <OfflineIndicator
+        isOnline={isOnline}
+        pendingCount={pendingCount}
+        isSyncing={isSyncing}
+        onSync={syncPendingEntries}
+      />
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">My Students</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{stats.totalStudents}</p>
-            <p className="text-xs text-muted-foreground">across {stats.assignedSections} sections</p>
+      {/* Today's Focus Card - NEW Prominent Section */}
+      {tenant.status === "ready" && schoolSlug && (
+        <TodaysFocusCard
+          schoolId={tenant.schoolId}
+          schoolSlug={schoolSlug}
+          sectionIds={sectionIds}
+        />
+      )}
+
+      {/* Stats Grid - Compact Version */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <Card className="bg-gradient-to-br from-primary/5 to-transparent">
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-primary shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-bold">{stats.totalStudents}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Students</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Pending Homework</CardTitle>
-            <BookOpen className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{stats.pendingHomework}</p>
-            <p className="text-xs text-muted-foreground">active assignments</p>
+        <Card className="bg-gradient-to-br from-primary/5 to-transparent">
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2">
+              <CalendarCheck className="h-4 w-4 text-primary shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-bold">{stats.assignedSections}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Sections</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Today's Attendance</CardTitle>
-            <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{stats.todayAttendance}</p>
-            <p className="text-xs text-muted-foreground">sessions recorded</p>
+        <Card className="bg-gradient-to-br from-primary/5 to-transparent">
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-primary shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-bold">{stats.pendingHomework}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Homework</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Unread Messages</CardTitle>
-            <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{stats.unreadMessages}</p>
-            <p className="text-xs text-muted-foreground">from parents</p>
+        <Card className="bg-gradient-to-br from-primary/5 to-transparent">
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2">
+              <ClipboardCheck className="h-4 w-4 text-primary shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-bold">{stats.todayAttendance}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Attendance</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Assigned Sections</CardTitle>
-            <CalendarCheck className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{stats.assignedSections}</p>
-            <p className="text-xs text-muted-foreground">class sections</p>
+        <Card className="bg-gradient-to-br from-primary/5 to-transparent">
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4 text-primary shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-bold">{stats.unreadMessages}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Messages</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Analytics</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">—</p>
-            <p className="text-xs text-muted-foreground">view class performance</p>
+        <Card className="bg-gradient-to-br from-primary/5 to-transparent">
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-primary shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-bold">—</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Analytics</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -292,6 +276,9 @@ export function TeacherHome() {
           )}
         </CardContent>
       </Card>
+
+      {/* Quick Actions Floating Bar */}
+      {schoolSlug && <QuickActionsBar schoolSlug={schoolSlug} />}
     </div>
   );
 }
