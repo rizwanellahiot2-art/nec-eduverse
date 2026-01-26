@@ -34,6 +34,7 @@ import {
   PieChart,
   Pie,
   Cell,
+  Legend,
 } from "recharts";
 
 type Kpis = {
@@ -345,7 +346,7 @@ export function VicePrincipalHome() {
           <CardContent>
             <div className="flex items-center justify-center">
               {attendancePieData.length > 0 ? (
-                <ResponsiveContainer width={200} height={200}>
+                <ResponsiveContainer width={180} height={180}>
                   <PieChart>
                     <Pie
                       data={attendancePieData}
@@ -353,14 +354,26 @@ export function VicePrincipalHome() {
                       nameKey="name"
                       cx="50%"
                       cy="50%"
-                      outerRadius={80}
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={65}
+                      innerRadius={35}
+                      labelLine={false}
                     >
                       {attendancePieData.map((_, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip 
+                      formatter={(value: number, name: string) => [`${value}`, name]}
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px",
+                        fontSize: "12px"
+                      }}
+                    />
+                    <Legend 
+                      wrapperStyle={{ fontSize: "10px", paddingTop: "8px" }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (

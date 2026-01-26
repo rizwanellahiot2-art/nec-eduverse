@@ -183,17 +183,39 @@ export function ClassPerformanceChart({ schoolId, sectionIds }: Props) {
               </p>
             ) : (
               <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={sectionStats} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                <BarChart 
+                  data={sectionStats} 
+                  margin={{ top: 10, right: 10, left: 0, bottom: 5 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="section_name" tick={{ fontSize: 12 }} />
-                  <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} />
+                  <XAxis 
+                    dataKey="section_name" 
+                    tick={{ fontSize: 10 }} 
+                    tickLine={false}
+                    axisLine={false}
+                    interval={0}
+                    height={40}
+                    angle={-20}
+                    textAnchor="end"
+                  />
+                  <YAxis 
+                    domain={[0, 100]} 
+                    tick={{ fontSize: 10 }} 
+                    tickLine={false}
+                    axisLine={false}
+                    width={35}
+                    tickFormatter={(v) => `${v}%`}
+                  />
                   <Tooltip 
                     contentStyle={{ 
                       backgroundColor: "hsl(var(--card))", 
                       border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px"
+                      borderRadius: "8px",
+                      fontSize: "12px"
                     }}
+                    formatter={(value: number) => [`${value.toFixed(2)}%`, ""]}
                   />
+                  <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "10px" }} />
                   <Bar dataKey="avg_attendance" name="Attendance %" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="avg_grade" name="Avg Grade %" fill="hsl(var(--secondary))" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -213,18 +235,29 @@ export function ClassPerformanceChart({ schoolId, sectionIds }: Props) {
                     data={gradeDistribution}
                     cx="50%"
                     cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
+                    innerRadius={50}
+                    outerRadius={80}
                     paddingAngle={2}
                     dataKey="value"
-                    label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                    labelLine={false}
                   >
                     {gradeDistribution.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip />
-                  <Legend />
+                  <Tooltip 
+                    formatter={(value: number, name: string) => [`${value} students`, name]}
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                      fontSize: "12px"
+                    }}
+                  />
+                  <Legend 
+                    wrapperStyle={{ fontSize: "10px", paddingTop: "8px" }}
+                    formatter={(value) => <span className="text-xs">{value}</span>}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             )}

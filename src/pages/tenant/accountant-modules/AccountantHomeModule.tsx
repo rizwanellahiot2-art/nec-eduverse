@@ -1054,15 +1054,38 @@ export function AccountantHomeModule() {
             <CardContent>
               <div className="h-[350px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={monthlyComparison}>
+                  <ComposedChart 
+                    data={monthlyComparison}
+                    margin={{ top: 10, right: 10, left: 0, bottom: 5 }}
+                  >
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted/50" vertical={false} />
-                    <XAxis dataKey="month" tick={{ fontSize: 12 }} axisLine={false} />
-                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} axisLine={false} />
-                    <Tooltip formatter={(value: number) => value.toLocaleString()} />
-                    <Legend />
+                    <XAxis 
+                      dataKey="month" 
+                      tick={{ fontSize: 10 }} 
+                      axisLine={false}
+                      tickLine={false}
+                      height={30}
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 10 }} 
+                      tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} 
+                      axisLine={false}
+                      tickLine={false}
+                      width={40}
+                    />
+                    <Tooltip 
+                      formatter={(value: number) => value.toLocaleString()}
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px",
+                        fontSize: "12px"
+                      }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: "10px", paddingTop: "8px" }} />
                     <Bar dataKey="revenue" name="Revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="expenses" name="Expenses" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
-                    <Line type="monotone" dataKey="profit" name="Profit" stroke="hsl(var(--chart-3))" strokeWidth={3} dot={{ r: 4 }} />
+                    <Line type="monotone" dataKey="profit" name="Profit" stroke="hsl(var(--chart-3))" strokeWidth={2} dot={{ r: 3 }} />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
@@ -1084,16 +1107,25 @@ export function AccountantHomeModule() {
                           data={expenseBreakdown}
                           cx="50%"
                           cy="50%"
-                          innerRadius={50}
-                          outerRadius={90}
+                          innerRadius={40}
+                          outerRadius={70}
                           paddingAngle={2}
                           dataKey="value"
+                          labelLine={false}
                         >
                           {expenseBreakdown.map((entry, index) => (
                             <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
                           ))}
                         </Pie>
-                        <Tooltip formatter={(value: number) => value.toLocaleString()} />
+                        <Tooltip 
+                          formatter={(value: number) => value.toLocaleString()}
+                          contentStyle={{
+                            backgroundColor: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "8px",
+                            fontSize: "12px"
+                          }}
+                        />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>

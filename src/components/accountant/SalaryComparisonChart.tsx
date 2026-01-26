@@ -271,15 +271,38 @@ export function SalaryComparisonChart() {
             <CardContent>
               <div className="h-[350px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={salaryByRole} layout="vertical" margin={{ left: 20 }}>
+                  <BarChart 
+                    data={salaryByRole} 
+                    layout="vertical" 
+                    margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+                  >
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis type="number" tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
-                    <YAxis type="category" dataKey="role" width={100} />
+                    <XAxis 
+                      type="number" 
+                      tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`}
+                      tick={{ fontSize: 10 }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis 
+                      type="category" 
+                      dataKey="role" 
+                      width={80}
+                      tick={{ fontSize: 10 }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
                     <Tooltip
                       formatter={(value: number, name: string) => [value.toLocaleString(), name === "avgSalary" ? "Avg Salary" : name]}
                       labelFormatter={(label) => `Role: ${label}`}
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px",
+                        fontSize: "12px"
+                      }}
                     />
-                    <Legend />
+                    <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
                     <Bar dataKey="avgSalary" name="Average Salary" radius={[0, 4, 4, 0]}>
                       {salaryByRole.map((entry, index) => (
                         <Cell key={entry.role} fill={entry.color} />
@@ -337,18 +360,29 @@ export function SalaryComparisonChart() {
                         data={salaryRanges}
                         cx="50%"
                         cy="50%"
-                        innerRadius={60}
-                        outerRadius={100}
+                        innerRadius={50}
+                        outerRadius={80}
                         paddingAngle={2}
                         dataKey="count"
                         nameKey="name"
+                        labelLine={false}
                       >
                         {salaryRanges.map((entry, index) => (
                           <Cell key={entry.name} fill={`hsl(var(--chart-${(index % 5) + 1}))`} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(value: number) => `${value} employees`} />
-                      <Legend />
+                      <Tooltip 
+                        formatter={(value: number) => `${value} employees`}
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px",
+                          fontSize: "12px"
+                        }}
+                      />
+                      <Legend 
+                        wrapperStyle={{ fontSize: "10px", paddingTop: "8px" }}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -383,10 +417,27 @@ export function SalaryComparisonChart() {
             <CardContent>
               <div className="h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={topEarners} layout="vertical" margin={{ left: 80 }}>
+                  <BarChart 
+                    data={topEarners} 
+                    layout="vertical" 
+                    margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+                  >
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis type="number" tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
-                    <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 12 }} />
+                    <XAxis 
+                      type="number" 
+                      tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`}
+                      tick={{ fontSize: 10 }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis 
+                      type="category" 
+                      dataKey="name" 
+                      width={90} 
+                      tick={{ fontSize: 10 }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
                     <Tooltip
                       formatter={(value: number, name: string) => {
                         const labels: Record<string, string> = {
@@ -396,8 +447,14 @@ export function SalaryComparisonChart() {
                         };
                         return [value.toLocaleString(), labels[name] || name];
                       }}
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px",
+                        fontSize: "12px"
+                      }}
                     />
-                    <Legend />
+                    <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
                     <Bar dataKey="baseSalary" name="Base Salary" stackId="salary" fill="hsl(var(--primary))" radius={[0, 0, 0, 0]} />
                     <Bar dataKey="allowances" name="Allowances" stackId="salary" fill="hsl(var(--chart-2))" radius={[0, 0, 0, 0]} />
                     <Bar dataKey="deductions" name="Deductions" fill="hsl(var(--destructive) / 0.7)" radius={[0, 4, 4, 0]} />

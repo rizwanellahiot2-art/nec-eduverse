@@ -372,10 +372,34 @@ export function PrincipalHome() {
 
           <div className="h-[200px] rounded-xl border bg-surface p-2 sm:h-[260px] sm:rounded-2xl">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trend} margin={{ left: 0, right: 8, top: 10, bottom: 0 }}>
-                <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
-                <YAxis tickLine={false} axisLine={false} width={35} tick={{ fontSize: 10 }} />
-                <Tooltip />
+              <AreaChart 
+                data={trend} 
+                margin={{ left: 0, right: 8, top: 10, bottom: 5 }}
+              >
+                <XAxis 
+                  dataKey="day" 
+                  tickLine={false} 
+                  axisLine={false} 
+                  tick={{ fontSize: 9 }}
+                  interval="preserveStartEnd"
+                  height={25}
+                />
+                <YAxis 
+                  tickLine={false} 
+                  axisLine={false} 
+                  width={35} 
+                  tick={{ fontSize: 9 }}
+                  tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`}
+                />
+                <Tooltip 
+                  contentStyle={{
+                    backgroundColor: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "8px",
+                    fontSize: "11px"
+                  }}
+                  formatter={(value: number) => value.toLocaleString()}
+                />
                 <Area type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" fill="hsl(var(--primary) / 0.2)" />
                 <Area type="monotone" dataKey="expenses" stroke="hsl(var(--brand))" fill="hsl(var(--brand) / 0.18)" />
               </AreaChart>

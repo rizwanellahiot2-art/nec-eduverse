@@ -88,9 +88,9 @@ export function StudentAttendanceStatsCard({ stats, loading }: StudentAttendance
                     <div className="flex items-center gap-2">
                       <Progress
                         value={student.attendance_percentage}
-                        className="h-2 flex-1"
+                        className="h-2 flex-1 min-w-[60px]"
                       />
-                      <AttendancePercentageBadge percentage={student.attendance_percentage} />
+                      <AttendancePercentageBadge percentage={Number(student.attendance_percentage.toFixed(2))} />
                     </div>
                   </TableCell>
                 </TableRow>

@@ -610,7 +610,10 @@ export function OwnerOverviewModule({ schoolId }: Props) {
           <CardContent>
             <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trendData || []}>
+                <AreaChart 
+                  data={trendData || []}
+                  margin={{ top: 10, right: 10, left: 0, bottom: 5 }}
+                >
                   <defs>
                     <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
@@ -621,13 +624,27 @@ export function OwnerOverviewModule({ schoolId }: Props) {
                       <stop offset="95%" stopColor="hsl(var(--destructive))" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <XAxis dataKey="month" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={formatCurrency} />
+                  <XAxis 
+                    dataKey="month" 
+                    fontSize={10} 
+                    tickLine={false} 
+                    axisLine={false}
+                    interval="preserveStartEnd"
+                    height={30}
+                  />
+                  <YAxis 
+                    fontSize={10} 
+                    tickLine={false} 
+                    axisLine={false} 
+                    tickFormatter={formatCurrency}
+                    width={45}
+                  />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "hsl(var(--background))",
                       border: "1px solid hsl(var(--border))",
                       borderRadius: "0.75rem",
+                      fontSize: "12px"
                     }}
                     formatter={(value: number) => formatCurrency(value)}
                   />
