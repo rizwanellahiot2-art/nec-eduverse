@@ -15,6 +15,44 @@ import ParentTimetableModule from "./parent-modules/ParentTimetableModule";
 import ParentNotificationsModule from "./parent-modules/ParentNotificationsModule";
 import ParentSupportModule from "./parent-modules/ParentSupportModule";
 
+// Cache key for parent auth
+const PARENT_AUTHZ_CACHE = "eduverse_parent_authz_cache";
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+
+interface CachedParentAuthz {
+  schoolId: string;
+  userId: string;
+  authorized: boolean;
+  timestamp: number;
+}
+
+function getCachedParentAuthz(schoolId: string, userId: string): boolean | null {
+  try {
+    const cached = localStorage.getItem(PARENT_AUTHZ_CACHE);
+    if (!cached) return null;
+    const data: CachedParentAuthz = JSON.parse(cached);
+    if (
+      data.schoolId === schoolId &&
+      data.userId === userId &&
+      Date.now() - data.timestamp < CACHE_DURATION
+    ) {
+      return data.authorized;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedParentAuthz(schoolId: string, userId: string, authorized: boolean) {
+  try {
+    const data: CachedParentAuthz = { schoolId, userId, authorized, timestamp: Date.now() };
+    localStorage.setItem(PARENT_AUTHZ_CACHE, JSON.stringify(data));
+  } catch {
+    // Ignore
+  }
+}
+
 const ParentDashboard = () => {
   const { schoolSlug } = useParams<{ schoolSlug: string }>();
   const navigate = useNavigate();
@@ -27,6 +65,19 @@ const ParentDashboard = () => {
   const [selectedChild, setSelectedChild] = useState<ChildInfo | null>(null);
   const [authzState, setAuthzState] = useState<"checking" | "ok" | "denied">("checking");
   const [authzMessage, setAuthzMessage] = useState<string | null>(null);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  // Monitor online status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
 
   // Authorization check
   useEffect(() => {
@@ -42,33 +93,76 @@ const ParentDashboard = () => {
       return;
     }
 
-    const checkAuth = async () => {
-      // Check if user has 'parent' role in this school
-      const { data: roles, error } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("school_id", tenant.schoolId)
-        .eq("user_id", session.user.id)
-        .eq("role", "parent")
-        .limit(1);
+    const userId = session.user.id;
+    const schoolIdVal = tenant.schoolId;
 
-      if (error) {
-        setAuthzState("denied");
-        setAuthzMessage("Authorization check failed.");
-        return;
-      }
-
-      if (!roles || roles.length === 0) {
-        setAuthzState("denied");
+    // Check cache first
+    const cachedAuth = getCachedParentAuthz(schoolIdVal, userId);
+    
+    // If offline and we have cache, use it immediately
+    if (!navigator.onLine && cachedAuth !== null) {
+      setAuthzState(cachedAuth ? "ok" : "denied");
+      if (!cachedAuth) {
         setAuthzMessage("You do not have parent access to this school.");
-        return;
       }
+      return;
+    }
 
+    // If we have valid cache, use it while we verify in background
+    if (cachedAuth === true) {
       setAuthzState("ok");
+      if (!navigator.onLine) return;
+    } else if (cachedAuth === false) {
+      setAuthzState("denied");
+      setAuthzMessage("You do not have parent access to this school.");
+      if (!navigator.onLine) return;
+    } else {
+      setAuthzState("checking");
+    }
+
+    // Skip network check if offline
+    if (!navigator.onLine) {
+      return;
+    }
+
+    const checkAuth = async () => {
+      try {
+        // Check if user has 'parent' role in this school
+        const { data: roles, error } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("school_id", schoolIdVal)
+          .eq("user_id", userId)
+          .eq("role", "parent")
+          .limit(1);
+
+        if (error) {
+          // On error, use cache if available
+          if (cachedAuth !== null) {
+            setAuthzState(cachedAuth ? "ok" : "denied");
+          } else {
+            setAuthzState("denied");
+            setAuthzMessage("Authorization check failed.");
+          }
+          return;
+        }
+
+        const authorized = roles && roles.length > 0;
+        setAuthzState(authorized ? "ok" : "denied");
+        if (!authorized) {
+          setAuthzMessage("You do not have parent access to this school.");
+        }
+        setCachedParentAuthz(schoolIdVal, userId, authorized);
+      } catch {
+        // On network error, use cache if available
+        if (cachedAuth !== null) {
+          setAuthzState(cachedAuth ? "ok" : "denied");
+        }
+      }
     };
 
     checkAuth();
-  }, [session, sessionLoading, tenant]);
+  }, [session, sessionLoading, tenant, isOnline]);
 
   // Auto-select first child when loaded
   useEffect(() => {
@@ -83,7 +177,7 @@ const ParentDashboard = () => {
   };
 
   // Loading states
-  if (sessionLoading || tenant.status === "loading" || authzState === "checking") {
+  if (sessionLoading || tenant.status === "loading" || (authzState === "checking" && !getCachedParentAuthz(schoolId || "", session?.user?.id || ""))) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
