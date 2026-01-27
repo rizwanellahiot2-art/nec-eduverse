@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
+import { useOfflineInvoices } from "@/hooks/useOfflineData";
 import { ChildInfo } from "@/hooks/useMyChildren";
 import { format } from "date-fns";
+import { WifiOff } from "lucide-react";
 
 interface ParentFeesModuleProps {
   child: ChildInfo | null;
@@ -23,9 +25,35 @@ interface InvoiceRecord {
 const ParentFeesModule = ({ child, schoolId }: ParentFeesModuleProps) => {
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const isOffline = typeof navigator !== 'undefined' ? !navigator.onLine : false;
+
+  // Offline data hook
+  const { data: cachedInvoices, isUsingCache } = useOfflineInvoices(schoolId);
+
+  // Filter cached invoices for this child
+  const childCachedInvoices = useMemo(() => {
+    if (!child) return [];
+    return cachedInvoices
+      .filter(inv => inv.studentId === child.student_id)
+      .map(inv => ({
+        id: inv.id,
+        invoice_no: inv.invoiceNo,
+        issue_date: inv.issueDate,
+        due_date: inv.dueDate,
+        total: inv.total,
+        status: inv.status,
+      }));
+  }, [cachedInvoices, child]);
 
   useEffect(() => {
     if (!child || !schoolId) return;
+
+    // If offline, use cached data
+    if (isOffline && childCachedInvoices.length > 0) {
+      setInvoices(childCachedInvoices);
+      setLoading(false);
+      return;
+    }
 
     const fetchInvoices = async () => {
       setLoading(true);
@@ -39,6 +67,10 @@ const ParentFeesModule = ({ child, schoolId }: ParentFeesModuleProps) => {
 
       if (error) {
         console.error("Failed to fetch invoices:", error);
+        // Fallback to cache on error
+        if (childCachedInvoices.length > 0) {
+          setInvoices(childCachedInvoices);
+        }
         setLoading(false);
         return;
       }
@@ -47,8 +79,10 @@ const ParentFeesModule = ({ child, schoolId }: ParentFeesModuleProps) => {
       setLoading(false);
     };
 
-    fetchInvoices();
-  }, [child, schoolId]);
+    if (!isOffline) {
+      fetchInvoices();
+    }
+  }, [child, schoolId, isOffline, childCachedInvoices]);
 
   if (!child) {
     return (
@@ -94,12 +128,20 @@ const ParentFeesModule = ({ child, schoolId }: ParentFeesModuleProps) => {
         </Card>
       )}
 
+      {/* Offline Banner */}
+      {isOffline && (
+        <div className="rounded-2xl bg-warning/10 border border-warning/20 p-3 text-sm text-warning text-center">
+          <WifiOff className="inline-block h-4 w-4 mr-2" />
+          Offline Mode — Showing cached data
+        </div>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Invoices</CardTitle>
         </CardHeader>
         <CardContent>
-          {loading ? (
+          {loading && !isOffline ? (
             <p className="text-muted-foreground">Loading...</p>
           ) : invoices.length === 0 ? (
             <p className="text-muted-foreground">No invoices found.</p>

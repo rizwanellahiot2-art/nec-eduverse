@@ -10,6 +10,9 @@ export { OfflineSyncBanner } from './OfflineSyncBanner';
 // Data Banner
 export { OfflineDataBanner, OfflineAwareLoading } from './OfflineDataBanner';
 
+// Module Wrapper
+export { OfflineAwareModule, OfflineBanner, OfflineLoadingState } from './OfflineAwareModule';
+
 // Dialogs and Panels
 export { SyncSettingsDialog } from './SyncSettingsDialog';
 export { OfflineSearchDialog } from './OfflineSearchDialog';

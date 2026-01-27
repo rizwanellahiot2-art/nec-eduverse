@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { Calendar, Plus, Search, UserPlus } from "lucide-react";
+import { Calendar, Plus, Search, UserPlus, WifiOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
+import { useOfflineStudents, useOfflineSections, useOfflineEnrollments, useOfflineTeacherAssignments } from "@/hooks/useOfflineData";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +46,15 @@ interface Guardian {
 export function TeacherStudentsModule() {
   const { schoolSlug } = useParams();
   const tenant = useTenant(schoolSlug);
+  const schoolId = useMemo(() => (tenant.status === "ready" ? tenant.schoolId : null), [tenant.status, tenant.schoolId]);
+  const isOffline = typeof navigator !== 'undefined' ? !navigator.onLine : false;
+
+  // Offline data hooks
+  const { data: cachedStudents, isUsingCache: studentsFromCache } = useOfflineStudents(schoolId);
+  const { data: cachedSections, isUsingCache: sectionsFromCache } = useOfflineSections(schoolId);
+  const { data: cachedEnrollments } = useOfflineEnrollments(schoolId);
+  const { data: cachedAssignments } = useOfflineTeacherAssignments(schoolId);
+
   const [sections, setSections] = useState<Section[]>([]);
   const [selectedSection, setSelectedSection] = useState<string>("");
   const [students, setStudents] = useState<Student[]>([]);
@@ -299,8 +309,43 @@ export function TeacherStudentsModule() {
     );
   });
 
-  if (loading) {
+  // Show offline fallback instead of loading
+  if (loading && !isOffline) {
     return <p className="text-sm text-muted-foreground">Loading...</p>;
+  }
+
+  // Offline mode with cached data
+  if (isOffline && sections.length === 0 && cachedSections.length > 0) {
+    // Build sections from cache
+    const mySectionIds = new Set(cachedAssignments.map(a => a.classSectionId));
+    const offlineSections = cachedSections
+      .filter(s => mySectionIds.has(s.id))
+      .map(s => ({ id: s.id, name: s.name, class_name: s.className }));
+
+    if (offlineSections.length > 0) {
+      setSections(offlineSections);
+      if (!selectedSection) setSelectedSection(offlineSections[0].id);
+    }
+  }
+
+  if (isOffline && students.length === 0 && selectedSection && cachedStudents.length > 0) {
+    // Build students from cache
+    const sectionEnrollments = cachedEnrollments.filter(e => e.classSectionId === selectedSection);
+    const studentIds = new Set(sectionEnrollments.map(e => e.studentId));
+    const section = sections.find(s => s.id === selectedSection);
+    const offlineStudents = cachedStudents
+      .filter(s => studentIds.has(s.id))
+      .map(s => ({
+        id: s.id,
+        first_name: s.firstName,
+        last_name: s.lastName,
+        parent_name: null,
+        student_code: null,
+        status: s.status || 'enrolled',
+        section_id: selectedSection,
+        section_name: section?.name || '',
+      }));
+    setStudents(offlineStudents);
   }
 
   if (sections.length === 0) {
@@ -315,6 +360,14 @@ export function TeacherStudentsModule() {
 
   return (
     <div className="space-y-4">
+      {/* Offline Banner */}
+      {isOffline && (
+        <div className="rounded-2xl bg-warning/10 border border-warning/20 p-3 text-sm text-warning text-center">
+          <WifiOff className="inline-block h-4 w-4 mr-2" />
+          Offline Mode — Showing cached data. Some actions are disabled.
+        </div>
+      )}
+
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-3">
         <Select value={selectedSection} onValueChange={setSelectedSection}>
