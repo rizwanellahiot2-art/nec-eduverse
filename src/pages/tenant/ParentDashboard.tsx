@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { Routes, Route, Navigate, useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
-import { useTenant } from "@/hooks/useTenant";
+import { useTenantOptimized } from "@/hooks/useTenantOptimized";
 import { useMyChildren, ChildInfo } from "@/hooks/useMyChildren";
+import { useUniversalPrefetch } from "@/hooks/useUniversalPrefetch";
 import { ParentShell } from "@/components/tenant/ParentShell";
 
 import ParentHomeModule from "./parent-modules/ParentHomeModule";
@@ -56,8 +57,8 @@ function setCachedParentAuthz(schoolId: string, userId: string, authorized: bool
 const ParentDashboard = () => {
   const { schoolSlug } = useParams<{ schoolSlug: string }>();
   const navigate = useNavigate();
-  const { session, loading: sessionLoading } = useSession();
-  const tenant = useTenant(schoolSlug);
+  const { user, loading: sessionLoading } = useSession();
+  const tenant = useTenantOptimized(schoolSlug);
 
   const schoolId = tenant.status === "ready" ? tenant.schoolId : null;
   const { children: childList, loading: childrenLoading } = useMyChildren(schoolId);
@@ -66,6 +67,14 @@ const ParentDashboard = () => {
   const [authzState, setAuthzState] = useState<"checking" | "ok" | "denied">("checking");
   const [authzMessage, setAuthzMessage] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  // Universal prefetch for offline support
+  useUniversalPrefetch({
+    schoolId,
+    userId: user?.id ?? null,
+    role: 'parent',
+    enabled: !!schoolId && !!user && authzState === 'ok',
+  });
 
   // Monitor online status
   useEffect(() => {
@@ -82,7 +91,7 @@ const ParentDashboard = () => {
   // Authorization check
   useEffect(() => {
     if (sessionLoading || tenant.status === "loading") return;
-    if (!session) {
+    if (!user) {
       setAuthzState("denied");
       setAuthzMessage("Please sign in to access the Parent Portal.");
       return;
@@ -93,7 +102,7 @@ const ParentDashboard = () => {
       return;
     }
 
-    const userId = session.user.id;
+    const userId = user.id;
     const schoolIdVal = tenant.schoolId;
 
     // Check cache first
@@ -162,7 +171,7 @@ const ParentDashboard = () => {
     };
 
     checkAuth();
-  }, [session, sessionLoading, tenant, isOnline]);
+  }, [user, sessionLoading, tenant, isOnline]);
 
   // Auto-select first child when loaded
   useEffect(() => {
@@ -176,8 +185,18 @@ const ParentDashboard = () => {
     navigate(`/${schoolSlug}/auth`);
   };
 
-  // Loading states
-  if (sessionLoading || tenant.status === "loading" || (authzState === "checking" && !getCachedParentAuthz(schoolId || "", session?.user?.id || ""))) {
+  // Don't show loading if we have cached user and auth
+  const cachedAuth = schoolId && user ? getCachedParentAuthz(schoolId, user.id) : null;
+  if (sessionLoading && !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  // Show loading only if truly checking (no cache)
+  if (tenant.status === "loading" || (authzState === "checking" && cachedAuth === null)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="animate-pulse text-muted-foreground">Loading...</div>

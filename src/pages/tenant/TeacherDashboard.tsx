@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
 import { useTenantOptimized } from "@/hooks/useTenantOptimized";
 import { useAuthz } from "@/hooks/useAuthz";
-import { useDataPrefetch } from "@/hooks/useDataPrefetch";
+import { useUniversalPrefetch } from "@/hooks/useUniversalPrefetch";
 import { TeacherShell } from "@/components/tenant/TeacherShell";
 import { Button } from "@/components/ui/button";
 
@@ -47,8 +47,8 @@ const TeacherDashboard = () => {
   const authzState = authz.state;
   const authzMessage = authz.message;
 
-  // Automatic background data prefetch for offline use
-  useDataPrefetch({
+  // Universal background data prefetch for offline use
+  useUniversalPrefetch({
     schoolId,
     userId: user?.id ?? null,
     role: 'teacher',

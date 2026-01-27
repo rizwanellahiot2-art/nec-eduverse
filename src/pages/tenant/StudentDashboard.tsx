@@ -3,8 +3,9 @@ import { Navigate, Route, Routes, useParams } from "react-router-dom";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
-import { useTenant } from "@/hooks/useTenant";
+import { useTenantOptimized } from "@/hooks/useTenantOptimized";
 import { useMyStudentId } from "@/hooks/useMyStudentId";
+import { useUniversalPrefetch } from "@/hooks/useUniversalPrefetch";
 import { StudentShell } from "@/components/tenant/StudentShell";
 import { StudentHomeModule } from "@/pages/tenant/student-modules/StudentHomeModule";
 import { StudentAttendanceModule } from "@/pages/tenant/student-modules/StudentAttendanceModule";
@@ -56,12 +57,21 @@ function setCachedStudentAuthz(schoolId: string, userId: string, authorized: boo
 
 const StudentDashboard = () => {
   const { schoolSlug } = useParams();
-  const tenant = useTenant(schoolSlug);
+  const tenant = useTenantOptimized(schoolSlug);
   const { user, loading } = useSession();
   const [authzState, setAuthzState] = useState<"checking" | "ok" | "denied">("checking");
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
-  const myStudent = useMyStudentId(tenant.status === "ready" ? tenant.schoolId : null);
+  const schoolId = tenant.status === "ready" ? tenant.schoolId : null;
+  const myStudent = useMyStudentId(schoolId);
+
+  // Universal prefetch for offline support
+  useUniversalPrefetch({
+    schoolId,
+    userId: user?.id ?? null,
+    role: 'student',
+    enabled: !!schoolId && !!user && authzState === 'ok',
+  });
 
   // Monitor online status
   useEffect(() => {
@@ -79,11 +89,11 @@ const StudentDashboard = () => {
     if (tenant.status !== "ready") return;
     if (!user) return;
 
-    const schoolId = tenant.schoolId;
+    const schoolIdVal = tenant.schoolId;
     const userId = user.id;
 
     // Check cache first
-    const cachedAuth = getCachedStudentAuthz(schoolId, userId);
+    const cachedAuth = getCachedStudentAuthz(schoolIdVal, userId);
     
     // If offline and we have cache, use it immediately
     if (!navigator.onLine && cachedAuth !== null) {
@@ -120,21 +130,21 @@ const StudentDashboard = () => {
         if (cancelled) return;
         if (psa?.user_id) {
           setAuthzState("ok");
-          setCachedStudentAuthz(schoolId, userId, true);
+          setCachedStudentAuthz(schoolIdVal, userId, true);
           return;
         }
 
         const { data: roleRow } = await supabase
           .from("user_roles")
           .select("id")
-          .eq("school_id", schoolId)
+          .eq("school_id", schoolIdVal)
           .eq("user_id", userId)
           .eq("role", "student")
           .maybeSingle();
         if (cancelled) return;
         const authorized = !!roleRow;
         setAuthzState(authorized ? "ok" : "denied");
-        setCachedStudentAuthz(schoolId, userId, authorized);
+        setCachedStudentAuthz(schoolIdVal, userId, authorized);
       } catch {
         // On network error, use cache if available
         if (cachedAuth !== null) {
@@ -148,7 +158,8 @@ const StudentDashboard = () => {
     };
   }, [tenant.status, tenant.schoolId, user, isOnline]);
 
-  if (loading) {
+  // Don't show loading if we have cached user
+  if (loading && !user) {
     return (
       <div className="min-h-screen bg-background p-8">
         <div className="rounded-3xl bg-surface p-6 shadow-elevated">
@@ -177,13 +188,13 @@ const StudentDashboard = () => {
     <StudentShell title={title} subtitle="Read-only student portal" schoolSlug={tenant.slug}>
       <Routes>
         <Route index element={<StudentHomeModule myStudent={myStudent} />} />
-        <Route path="attendance" element={<StudentAttendanceModule myStudent={myStudent} schoolId={tenant.schoolId} />} />
-        <Route path="grades" element={<StudentGradesModule myStudent={myStudent} schoolId={tenant.schoolId} />} />
-        <Route path="timetable" element={<StudentTimetableModule myStudent={myStudent} schoolId={tenant.schoolId} />} />
-        <Route path="assignments" element={<StudentAssignmentsModule myStudent={myStudent} schoolId={tenant.schoolId} />} />
-        <Route path="certificates" element={<StudentCertificatesModule myStudent={myStudent} schoolId={tenant.schoolId} />} />
+        <Route path="attendance" element={<StudentAttendanceModule myStudent={myStudent} schoolId={schoolId} />} />
+        <Route path="grades" element={<StudentGradesModule myStudent={myStudent} schoolId={schoolId} />} />
+        <Route path="timetable" element={<StudentTimetableModule myStudent={myStudent} schoolId={schoolId} />} />
+        <Route path="assignments" element={<StudentAssignmentsModule myStudent={myStudent} schoolId={schoolId} />} />
+        <Route path="certificates" element={<StudentCertificatesModule myStudent={myStudent} schoolId={schoolId} />} />
         <Route path="messages" element={<StudentMessagesModule />} />
-        <Route path="support" element={<StudentSupportModule myStudent={myStudent} schoolId={tenant.schoolId} />} />
+        <Route path="support" element={<StudentSupportModule myStudent={myStudent} schoolId={schoolId} />} />
         <Route path="*" element={<Navigate to={`/${tenant.slug}/student`} replace />} />
       </Routes>
     </StudentShell>

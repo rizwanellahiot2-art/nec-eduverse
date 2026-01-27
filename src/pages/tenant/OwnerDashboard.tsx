@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Navigate, Route, Routes, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
-import { useTenant } from "@/hooks/useTenant";
+import { useTenantOptimized } from "@/hooks/useTenantOptimized";
+import { useUniversalPrefetch } from "@/hooks/useUniversalPrefetch";
 import { OwnerShell } from "@/components/tenant/OwnerShell";
 
 // Import all owner modules
@@ -20,9 +21,47 @@ import { OwnerSupportModule } from "@/pages/tenant/owner-modules/OwnerSupportMod
 import { OwnerAdvisorModule } from "@/pages/tenant/owner-modules/OwnerAdvisorModule";
 import { MessagesModule } from "@/pages/tenant/modules/MessagesModule";
 
+// Cache key for owner auth
+const OWNER_AUTHZ_CACHE = "eduverse_owner_authz_cache";
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+
+interface CachedOwnerAuthz {
+  schoolId: string;
+  userId: string;
+  authorized: boolean;
+  timestamp: number;
+}
+
+function getCachedOwnerAuthz(schoolId: string, userId: string): boolean | null {
+  try {
+    const cached = localStorage.getItem(OWNER_AUTHZ_CACHE);
+    if (!cached) return null;
+    const data: CachedOwnerAuthz = JSON.parse(cached);
+    if (
+      data.schoolId === schoolId &&
+      data.userId === userId &&
+      Date.now() - data.timestamp < CACHE_DURATION
+    ) {
+      return data.authorized;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedOwnerAuthz(schoolId: string, userId: string, authorized: boolean) {
+  try {
+    const data: CachedOwnerAuthz = { schoolId, userId, authorized, timestamp: Date.now() };
+    localStorage.setItem(OWNER_AUTHZ_CACHE, JSON.stringify(data));
+  } catch {
+    // Ignore
+  }
+}
+
 export default function OwnerDashboard() {
   const { schoolSlug } = useParams();
-  const tenant = useTenant(schoolSlug);
+  const tenant = useTenantOptimized(schoolSlug);
   const { user, loading } = useSession();
 
   const schoolId = useMemo(
@@ -38,24 +77,62 @@ export default function OwnerDashboard() {
     return "EDUVERSE • Owner";
   }, [tenant.status, tenant.school]);
 
+  // Universal prefetch for offline support
+  useUniversalPrefetch({
+    schoolId,
+    userId: user?.id ?? null,
+    role: 'school_owner',
+    enabled: !!schoolId && !!user && authzState === 'ok',
+  });
+
   useEffect(() => {
     if (tenant.status !== "ready") return;
     if (!user) return;
 
+    const schoolIdVal = tenant.schoolId;
+    const userId = user.id;
+
+    // Check cache first
+    const cachedAuth = getCachedOwnerAuthz(schoolIdVal, userId);
+    
+    // If offline and we have cache, use it immediately
+    if (!navigator.onLine && cachedAuth !== null) {
+      setAuthzState(cachedAuth ? "ok" : "denied");
+      if (!cachedAuth) {
+        setAuthzMessage("You do not have the School Owner role for this institution.");
+      }
+      return;
+    }
+
+    // If we have valid cache, use it while we verify in background
+    if (cachedAuth === true) {
+      setAuthzState("ok");
+      if (!navigator.onLine) return;
+    } else {
+      setAuthzState("checking");
+    }
+
+    // Skip network check if offline
+    if (!navigator.onLine) {
+      if (cachedAuth !== null) {
+        setAuthzState(cachedAuth ? "ok" : "denied");
+      }
+      return;
+    }
+
     let cancelled = false;
-    setAuthzState("checking");
-    setAuthzMessage(null);
 
     (async () => {
       // Check platform super admin
       const { data: psa } = await supabase
         .from("platform_super_admins")
         .select("user_id")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .maybeSingle();
       if (cancelled) return;
       if (psa?.user_id) {
         setAuthzState("ok");
+        setCachedOwnerAuthz(schoolIdVal, userId, true);
         return;
       }
 
@@ -63,8 +140,8 @@ export default function OwnerDashboard() {
       const { data: roleRow, error: roleErr } = await supabase
         .from("user_roles")
         .select("id")
-        .eq("school_id", tenant.schoolId)
-        .eq("user_id", user.id)
+        .eq("school_id", schoolIdVal)
+        .eq("user_id", userId)
         .eq("role", "school_owner")
         .maybeSingle();
 
@@ -72,15 +149,18 @@ export default function OwnerDashboard() {
       if (roleErr) {
         setAuthzState("denied");
         setAuthzMessage(roleErr.message);
+        setCachedOwnerAuthz(schoolIdVal, userId, false);
         return;
       }
       if (!roleRow) {
         setAuthzState("denied");
         setAuthzMessage("You do not have the School Owner role for this institution.");
+        setCachedOwnerAuthz(schoolIdVal, userId, false);
         return;
       }
 
       setAuthzState("ok");
+      setCachedOwnerAuthz(schoolIdVal, userId, true);
     })();
 
     return () => {
@@ -88,7 +168,8 @@ export default function OwnerDashboard() {
     };
   }, [tenant.status, tenant.schoolId, user]);
 
-  if (loading) {
+  // Don't show loading if we have cached user
+  if (loading && !user) {
     return (
       <div className="min-h-screen bg-background p-8 flex items-center justify-center">
         <div className="rounded-3xl bg-surface p-6 shadow-elevated text-center">
@@ -128,7 +209,7 @@ export default function OwnerDashboard() {
 
   return (
     <OwnerShell title={title} subtitle="Executive Command Center" schoolSlug={tenant.slug}>
-      {authzState === "checking" ? (
+      {authzState === "checking" && !getCachedOwnerAuthz(schoolId || "", user?.id || "") ? (
         <div className="rounded-3xl bg-surface p-8 shadow-elevated text-center">
           <div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto" />
           <p className="mt-3 text-sm text-muted-foreground">Verifying executive access…</p>
