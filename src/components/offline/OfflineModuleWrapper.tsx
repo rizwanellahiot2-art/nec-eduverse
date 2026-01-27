@@ -35,7 +35,7 @@ export function OfflineModuleWrapper({
   if (!hasData && !loading) {
     return (
       <div className="space-y-4">
-        {isOffline && <OfflineDataBanner />}
+        {isOffline && <OfflineDataBanner isOffline={isOffline} isUsingCache={true} />}
         <div className="rounded-2xl border bg-surface p-8 text-center">
           <WifiOff className="mx-auto h-8 w-8 text-muted-foreground" />
           <p className="mt-3 text-sm text-muted-foreground">
@@ -51,7 +51,7 @@ export function OfflineModuleWrapper({
 
   return (
     <div className="space-y-4">
-      {isUsingCache && <OfflineDataBanner />}
+      {isUsingCache && <OfflineDataBanner isOffline={isOffline} isUsingCache={isUsingCache} />}
       {children}
     </div>
   );

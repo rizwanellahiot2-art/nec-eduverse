@@ -2,19 +2,13 @@
 
 // Status and Indicators
 export { OfflineStatusIndicator } from './OfflineStatusIndicator';
-export { OfflineDataBanner } from './OfflineDataBanner';
-export { OfflineModuleWrapper, OfflineLoadingState } from './OfflineModuleWrapper';
-export { OfflineAwareModule } from './OfflineAwareModule';
+export { OfflineDataBanner, OfflineAwareLoading } from './OfflineDataBanner';
+export { OfflineModuleWrapper } from './OfflineModuleWrapper';
+export { OfflineAwareModule, OfflineBanner, OfflineLoadingState } from './OfflineAwareModule';
 export { EnhancedOfflineStatus } from './EnhancedOfflineStatus';
 export { ConnectionQualityBadge } from './ConnectionQualityBadge';
 export { PendingChangesCounter } from './PendingChangesCounter';
 export { OfflineSyncBanner } from './OfflineSyncBanner';
-
-// Data Banner
-export { OfflineDataBanner, OfflineAwareLoading } from './OfflineDataBanner';
-
-// Module Wrapper
-export { OfflineAwareModule, OfflineBanner, OfflineLoadingState } from './OfflineAwareModule';
 
 // Dialogs and Panels
 export { SyncSettingsDialog } from './SyncSettingsDialog';
