@@ -5,6 +5,8 @@ import { CalendarCheck, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useSession } from "@/hooks/useSession";
+import { useOfflineSections, useOfflineClasses, useOfflineTeacherAssignments, useOfflineStudents, useOfflineEnrollments } from "@/hooks/useOfflineData";
+import { OfflineDataBanner } from "@/components/offline/OfflineDataBanner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,6 +22,16 @@ export function AttendanceModule() {
   const { user } = useSession();
   const schoolId = useMemo(() => (tenant.status === "ready" ? tenant.schoolId : null), [tenant.status, tenant.schoolId]);
 
+  // Offline data hooks
+  const offlineSections = useOfflineSections(schoolId);
+  const offlineClasses = useOfflineClasses(schoolId);
+  const offlineTeacherAssignments = useOfflineTeacherAssignments(schoolId);
+  const offlineStudents = useOfflineStudents(schoolId);
+  const offlineEnrollments = useOfflineEnrollments(schoolId);
+  
+  const isOffline = offlineSections.isOffline;
+  const isUsingCache = offlineSections.isUsingCache || offlineClasses.isUsingCache;
+
   const [sections, setSections] = useState<AssignedSection[]>([]);
   const [sectionId, setSectionId] = useState<string>("");
   const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10));
@@ -31,6 +43,24 @@ export function AttendanceModule() {
   useEffect(() => {
     const load = async () => {
       if (!schoolId || !user?.id) return;
+
+      // If offline, use cached data
+      if (!navigator.onLine) {
+        const myAssignments = offlineTeacherAssignments.data.filter(a => a.teacherUserId === user.id);
+        const mySecIds = new Set(myAssignments.map(a => a.classSectionId));
+        const classMap = new Map(offlineClasses.data.map(c => [c.id, c.name]));
+        
+        const assignedSections = offlineSections.data
+          .filter(s => mySecIds.has(s.id))
+          .map(s => ({
+            class_section_id: s.id,
+            section_name: s.name,
+            class_name: classMap.get(s.classId) ?? "Class",
+          }));
+        setSections(assignedSections);
+        return;
+      }
+
       const { data: ta } = await supabase
         .from("teacher_assignments")
         .select("class_section_id")
@@ -57,7 +87,7 @@ export function AttendanceModule() {
       );
     };
     void load();
-  }, [schoolId, user?.id]);
+  }, [schoolId, user?.id, offlineSections.data, offlineClasses.data, offlineTeacherAssignments.data]);
 
   const start = async () => {
     if (!schoolId) return;
@@ -135,6 +165,11 @@ export function AttendanceModule() {
 
   return (
     <div className="space-y-4">
+      <OfflineDataBanner 
+        isOffline={isOffline} 
+        isUsingCache={isUsingCache} 
+      />
+      
       <Card className="shadow-elevated">
         <CardHeader>
           <CardTitle className="font-display text-xl">Attendance</CardTitle>

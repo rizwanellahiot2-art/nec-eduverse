@@ -7,6 +7,9 @@ export { ConnectionQualityBadge } from './ConnectionQualityBadge';
 export { PendingChangesCounter } from './PendingChangesCounter';
 export { OfflineSyncBanner } from './OfflineSyncBanner';
 
+// Data Banner
+export { OfflineDataBanner, OfflineAwareLoading } from './OfflineDataBanner';
+
 // Dialogs and Panels
 export { SyncSettingsDialog } from './SyncSettingsDialog';
 export { OfflineSearchDialog } from './OfflineSearchDialog';

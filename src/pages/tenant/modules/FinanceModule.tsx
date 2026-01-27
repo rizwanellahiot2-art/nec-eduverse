@@ -5,6 +5,15 @@ import { DollarSign, Plus, Receipt, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useSchoolPermissions } from "@/hooks/useSchoolPermissions";
+import { 
+  useOfflineFeePlans, 
+  useOfflineInvoices, 
+  useOfflinePayments, 
+  useOfflineExpenses,
+  useOfflinePaymentMethods,
+  useOfflineStudents 
+} from "@/hooks/useOfflineData";
+import { OfflineDataBanner } from "@/components/offline/OfflineDataBanner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +46,17 @@ export function FinanceModule() {
   const tenant = useTenant(schoolSlug);
   const schoolId = useMemo(() => (tenant.status === "ready" ? tenant.schoolId : null), [tenant.status, tenant.schoolId]);
   const perms = useSchoolPermissions(schoolId);
+
+  // Offline data hooks
+  const offlineFeePlans = useOfflineFeePlans(schoolId);
+  const offlineInvoices = useOfflineInvoices(schoolId);
+  const offlinePayments = useOfflinePayments(schoolId);
+  const offlineExpenses = useOfflineExpenses(schoolId);
+  const offlinePaymentMethods = useOfflinePaymentMethods(schoolId);
+  const offlineStudents = useOfflineStudents(schoolId);
+  
+  const isOffline = offlineFeePlans.isOffline;
+  const isUsingCache = offlineFeePlans.isUsingCache || offlineInvoices.isUsingCache;
 
   const [tab, setTab] = useState<"fee_plans" | "payment_methods" | "invoices" | "payments" | "expenses">("fee_plans");
 
@@ -75,6 +95,29 @@ export function FinanceModule() {
   const refresh = async () => {
     if (!schoolId) return;
 
+    // If offline, use cached data
+    if (!navigator.onLine) {
+      setFeePlans(offlineFeePlans.data.map(p => ({
+        id: p.id, name: p.name, currency: p.currency, is_active: p.isActive
+      })));
+      setPaymentMethods(offlinePaymentMethods.data.map(m => ({
+        id: m.id, name: m.name, type: m.type, is_active: m.isActive, instructions: null
+      })));
+      setInvoices(offlineInvoices.data.map(i => ({
+        id: i.id, invoice_no: i.invoiceNo, student_id: i.studentId, total: i.total, status: i.status, issue_date: i.issueDate
+      })));
+      setPayments(offlinePayments.data.map(p => ({
+        id: p.id, invoice_id: p.invoiceId, amount: p.amount, paid_at: p.paidAt, reference: p.reference
+      })));
+      setExpenses(offlineExpenses.data.map(e => ({
+        id: e.id, description: e.description, amount: e.amount, category: e.category, expense_date: e.expenseDate
+      })));
+      setStudents(offlineStudents.data.map(s => ({
+        id: s.id, first_name: s.firstName, last_name: s.lastName
+      })));
+      return;
+    }
+
     const [fp, pm, inv, pay, exp, st] = await Promise.all([
       supabase.from("fee_plans").select("id,name,currency,is_active").eq("school_id", schoolId).order("created_at", { ascending: false }).limit(200),
       supabase.from("finance_payment_methods").select("id,name,type,is_active,instructions").eq("school_id", schoolId).order("created_at", { ascending: false }).limit(200),
@@ -101,7 +144,7 @@ export function FinanceModule() {
   useEffect(() => {
     void refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schoolId]);
+  }, [schoolId, offlineFeePlans.data, offlineInvoices.data]);
 
   useEffect(() => {
     if (invoices.length > 0 && !payInvoiceId) setPayInvoiceId(invoices[0].id);
@@ -237,6 +280,12 @@ export function FinanceModule() {
 
   return (
     <div className="space-y-4">
+      <OfflineDataBanner 
+        isOffline={isOffline} 
+        isUsingCache={isUsingCache} 
+        onRefresh={refresh}
+      />
+      
       <Card className="shadow-elevated">
         <CardHeader>
           <CardTitle className="font-display text-xl">Finance</CardTitle>
@@ -246,7 +295,7 @@ export function FinanceModule() {
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <DollarSign className="h-4 w-4" /> Manual-first accounting (RLS enforced)
           </div>
-          <Button variant="soft" onClick={refresh}>
+          <Button variant="soft" onClick={refresh} disabled={isOffline}>
             Refresh
           </Button>
         </CardContent>

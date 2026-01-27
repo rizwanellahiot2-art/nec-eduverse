@@ -6,6 +6,8 @@ import { KanbanSquare, Plus, Star } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
+import { useOfflineLeads, useOfflineCrmStages } from "@/hooks/useOfflineData";
+import { OfflineDataBanner } from "@/components/offline/OfflineDataBanner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,6 +28,12 @@ export function CrmModule() {
 
   const perms = useSchoolPermissions(schoolId);
 
+  // Offline data hooks
+  const offlineLeads = useOfflineLeads(schoolId);
+  const offlineStages = useOfflineCrmStages(schoolId);
+  const isOffline = offlineLeads.isOffline;
+  const isUsingCache = offlineLeads.isUsingCache || offlineStages.isUsingCache;
+
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   const [pipelineId, setPipelineId] = useState<string | null>(null);
@@ -40,6 +48,28 @@ export function CrmModule() {
 
   const refresh = async () => {
     if (!schoolId) return;
+
+    // If offline, use cached data
+    if (!navigator.onLine) {
+      const cachedStages = offlineStages.data.map(s => ({
+        id: s.id,
+        name: s.name,
+        sort_order: s.sortOrder,
+      }));
+      const cachedLeads = offlineLeads.data.map(l => ({
+        id: l.id,
+        full_name: l.fullName,
+        score: l.score,
+        stage_id: l.stageId,
+        notes: l.notes ?? null,
+      }));
+      setStages(cachedStages);
+      setLeads(cachedLeads);
+      if (cachedStages.length > 0) {
+        setPipelineId(offlineStages.data[0]?.pipelineId ?? null);
+      }
+      return;
+    }
 
     // ensure defaults
     await supabase.rpc("ensure_default_crm_pipeline", { _school_id: schoolId });
@@ -74,7 +104,7 @@ export function CrmModule() {
   useEffect(() => {
     void refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schoolId]);
+  }, [schoolId, offlineLeads.data, offlineStages.data]);
 
   const createLead = async (stageId: string) => {
     if (!schoolId || !pipelineId) return;
@@ -132,6 +162,7 @@ export function CrmModule() {
 
   return (
     <div className="space-y-4">
+      <OfflineDataBanner isOffline={isOffline} isUsingCache={isUsingCache} onRefresh={refresh} />
       {!perms.loading && !perms.canWorkCrm && (
         <Card className="shadow-elevated">
           <CardHeader>
