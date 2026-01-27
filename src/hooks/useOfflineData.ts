@@ -864,3 +864,228 @@ export function useOfflineCrmPipelines(schoolId: string | null, enabled = true) 
     { enabled: enabled && !!schoolId }
   );
 }
+
+// ==================== Additional Hooks for Complete Coverage ====================
+
+export function useOfflineBehaviorNotes(schoolId: string | null, enabled = true) {
+  return useOfflineData<offlineDb.CachedBehaviorNote[]>(
+    async () => {
+      if (!schoolId) return [];
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data } = await supabase
+        .from('behavior_notes')
+        .select('id, student_id, teacher_user_id, title, content, note_type, is_shared_with_parents, created_at')
+        .eq('school_id', schoolId)
+        .order('created_at', { ascending: false })
+        .limit(200);
+      return (data ?? []).map((n: any) => ({
+        id: n.id,
+        schoolId,
+        studentId: n.student_id,
+        teacherUserId: n.teacher_user_id,
+        title: n.title,
+        content: n.content,
+        noteType: n.note_type,
+        isSharedWithParents: n.is_shared_with_parents,
+        createdAt: n.created_at,
+        cachedAt: Date.now(),
+      }));
+    },
+    () => schoolId ? offlineDb.getCachedBehaviorNotes(schoolId) : Promise.resolve([]),
+    [],
+    { enabled: enabled && !!schoolId }
+  );
+}
+
+export function useOfflineAssessments(schoolId: string | null, enabled = true) {
+  return useOfflineData<offlineDb.CachedAssessment[]>(
+    async () => {
+      if (!schoolId) return [];
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data } = await supabase
+        .from('academic_assessments')
+        .select('id, title, class_section_id, subject_id, assessment_date, max_marks, is_published, term_label')
+        .eq('school_id', schoolId)
+        .order('assessment_date', { ascending: false })
+        .limit(200);
+      return (data ?? []).map((a: any) => ({
+        id: a.id,
+        schoolId,
+        title: a.title,
+        classSectionId: a.class_section_id,
+        subjectId: a.subject_id,
+        assessmentDate: a.assessment_date,
+        maxMarks: a.max_marks,
+        isPublished: a.is_published,
+        termLabel: a.term_label,
+        cachedAt: Date.now(),
+      }));
+    },
+    () => schoolId ? offlineDb.getCachedAssessments(schoolId) : Promise.resolve([]),
+    [],
+    { enabled: enabled && !!schoolId }
+  );
+}
+
+export function useOfflineStudentMarks(schoolId: string | null, enabled = true) {
+  return useOfflineData<offlineDb.CachedStudentMark[]>(
+    async () => {
+      if (!schoolId) return [];
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data } = await supabase
+        .from('student_marks')
+        .select('id, student_id, assessment_id, marks, computed_grade, grade_points')
+        .eq('school_id', schoolId)
+        .limit(1000);
+      return (data ?? []).map((m: any) => ({
+        id: m.id,
+        schoolId,
+        studentId: m.student_id,
+        assessmentId: m.assessment_id,
+        marks: m.marks,
+        computedGrade: m.computed_grade,
+        gradePoints: m.grade_points,
+        cachedAt: Date.now(),
+      }));
+    },
+    () => schoolId ? offlineDb.getCachedStudentMarks(schoolId) : Promise.resolve([]),
+    [],
+    { enabled: enabled && !!schoolId }
+  );
+}
+
+export function useOfflineStudentGuardians(schoolId: string | null, enabled = true) {
+  return useOfflineData<offlineDb.CachedStudentGuardian[]>(
+    async () => {
+      if (!schoolId) return [];
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data } = await supabase
+        .from('student_guardians')
+        .select('id, student_id, user_id, relationship, phone, email')
+        .limit(500);
+      return (data ?? []).map((g: any) => ({
+        id: g.id,
+        schoolId,
+        studentId: g.student_id,
+        userId: g.user_id,
+        relationship: g.relationship,
+        phone: g.phone,
+        email: g.email,
+        cachedAt: Date.now(),
+      }));
+    },
+    () => schoolId ? offlineDb.getCachedStudentGuardians(schoolId) : Promise.resolve([]),
+    [],
+    { enabled: enabled && !!schoolId }
+  );
+}
+
+export function useOfflineCallLogs(schoolId: string | null, enabled = true) {
+  return useOfflineData<offlineDb.CachedCallLog[]>(
+    async () => {
+      if (!schoolId) return [];
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data } = await supabase
+        .from('crm_call_logs')
+        .select('id, lead_id, called_at, duration_seconds, outcome, notes')
+        .eq('school_id', schoolId)
+        .order('called_at', { ascending: false })
+        .limit(200);
+      return (data ?? []).map((c: any) => ({
+        id: c.id,
+        schoolId,
+        leadId: c.lead_id,
+        calledAt: c.called_at,
+        durationSeconds: c.duration_seconds,
+        outcome: c.outcome,
+        notes: c.notes,
+        cachedAt: Date.now(),
+      }));
+    },
+    () => schoolId ? offlineDb.getCachedCallLogs(schoolId) : Promise.resolve([]),
+    [],
+    { enabled: enabled && !!schoolId }
+  );
+}
+
+export function useOfflineCrmActivities(schoolId: string | null, enabled = true) {
+  return useOfflineData<offlineDb.CachedCrmActivity[]>(
+    async () => {
+      if (!schoolId) return [];
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data } = await supabase
+        .from('crm_activities')
+        .select('id, lead_id, activity_type, summary, due_at, completed_at')
+        .eq('school_id', schoolId)
+        .order('created_at', { ascending: false })
+        .limit(200);
+      return (data ?? []).map((a: any) => ({
+        id: a.id,
+        schoolId,
+        leadId: a.lead_id,
+        activityType: a.activity_type,
+        summary: a.summary,
+        dueAt: a.due_at,
+        completedAt: a.completed_at,
+        cachedAt: Date.now(),
+      }));
+    },
+    () => schoolId ? offlineDb.getCachedCrmActivities(schoolId) : Promise.resolve([]),
+    [],
+    { enabled: enabled && !!schoolId }
+  );
+}
+
+export function useOfflineHrDocuments(schoolId: string | null, enabled = true) {
+  return useOfflineData<offlineDb.CachedHrDocument[]>(
+    async () => {
+      if (!schoolId) return [];
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data } = await supabase
+        .from('hr_documents')
+        .select('id, user_id, document_name, document_type, file_url')
+        .eq('school_id', schoolId)
+        .order('created_at', { ascending: false })
+        .limit(200);
+      return (data ?? []).map((d: any) => ({
+        id: d.id,
+        schoolId,
+        userId: d.user_id,
+        documentName: d.document_name,
+        documentType: d.document_type,
+        fileUrl: d.file_url,
+        cachedAt: Date.now(),
+      }));
+    },
+    () => schoolId ? offlineDb.getCachedHrDocuments(schoolId) : Promise.resolve([]),
+    [],
+    { enabled: enabled && !!schoolId }
+  );
+}
+
+export function useOfflineGradeThresholds(schoolId: string | null, enabled = true) {
+  return useOfflineData<offlineDb.CachedGradeThreshold[]>(
+    async () => {
+      if (!schoolId) return [];
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data } = await supabase
+        .from('grade_thresholds')
+        .select('id, grade_label, min_percentage, max_percentage, grade_points, sort_order')
+        .eq('school_id', schoolId)
+        .order('sort_order');
+      return (data ?? []).map((g: any) => ({
+        id: g.id,
+        schoolId,
+        gradeLabel: g.grade_label,
+        minPercentage: g.min_percentage,
+        maxPercentage: g.max_percentage,
+        gradePoints: g.grade_points,
+        sortOrder: g.sort_order,
+        cachedAt: Date.now(),
+      }));
+    },
+    () => schoolId ? offlineDb.getCachedGradeThresholds(schoolId) : Promise.resolve([]),
+    [],
+    { enabled: enabled && !!schoolId }
+  );
+}

@@ -2,6 +2,9 @@
 
 // Status and Indicators
 export { OfflineStatusIndicator } from './OfflineStatusIndicator';
+export { OfflineDataBanner } from './OfflineDataBanner';
+export { OfflineModuleWrapper, OfflineLoadingState } from './OfflineModuleWrapper';
+export { OfflineAwareModule } from './OfflineAwareModule';
 export { EnhancedOfflineStatus } from './EnhancedOfflineStatus';
 export { ConnectionQualityBadge } from './ConnectionQualityBadge';
 export { PendingChangesCounter } from './PendingChangesCounter';
