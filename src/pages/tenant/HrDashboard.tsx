@@ -41,7 +41,6 @@ const HrDashboard = () => {
   useUniversalPrefetch({
     schoolId,
     userId: user?.id ?? null,
-    role: 'hr_manager',
     enabled: !!schoolId && !!user && authzState === 'ok',
   });
 

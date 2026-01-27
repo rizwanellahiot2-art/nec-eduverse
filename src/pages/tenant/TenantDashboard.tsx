@@ -59,20 +59,11 @@ const TenantDashboard = () => {
   const authzState = authz.state;
   const authzMessage = authz.message;
 
-  // Map role to prefetch role type
-  const prefetchRole = useMemo(() => {
-    if (!role) return null;
-    if (role === 'principal' || role === 'vice_principal' || role === 'academic_coordinator') {
-      return role;
-    }
-    return role as any;
-  }, [role]);
 
   // Universal prefetch for offline support
   useUniversalPrefetch({
     schoolId,
     userId: user?.id ?? null,
-    role: prefetchRole,
     enabled: !!schoolId && !!user && authzState === 'ok',
   });
 
