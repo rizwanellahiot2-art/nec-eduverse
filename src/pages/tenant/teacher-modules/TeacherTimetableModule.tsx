@@ -3,6 +3,8 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useRealtimeTable } from "@/hooks/useRealtime";
+import { useOfflineTimetable, useOfflineTimetablePeriods } from "@/hooks/useOfflineData";
+import { OfflineBanner } from "@/components/offline/OfflineAwareModule";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PeriodTimetableGrid, type PeriodTimetableEntry } from "@/components/timetable/PeriodTimetableGrid";
 import { TimetableConflictAlert } from "@/components/timetable/TimetableConflictAlert";
@@ -367,12 +369,17 @@ export function TeacherTimetableModule() {
       }) satisfies PeriodTimetableEntry);
   }, [selectedSectionForView, allSchoolEntries, teacherLabelByUserId]);
 
-  if (loading) {
+  const isOffline = typeof navigator !== 'undefined' ? !navigator.onLine : false;
+
+  if (loading && !isOffline) {
     return <p className="text-sm text-muted-foreground">Loading...</p>;
   }
 
   return (
     <div className="space-y-4">
+      {/* Offline Banner */}
+      {isOffline && <OfflineBanner isUsingCache={true} />}
+
       {/* Current Period Indicator */}
       <CurrentPeriodIndicator periods={periods} className="no-print" />
 

@@ -543,3 +543,324 @@ export function useOfflineConversations(schoolId: string | null, enabled = true)
     { enabled: enabled && !!schoolId }
   );
 }
+
+// ==================== Additional Offline Hooks ====================
+
+export function useOfflineAssignments(schoolId: string | null, enabled = true) {
+  return useOfflineData<offlineDb.CachedAssignment[]> (
+    async () => {
+      if (!schoolId) return [];
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data } = await supabase
+        .from('assignments')
+        .select('id, title, description, due_date, max_marks, status, teacher_user_id, class_section_id')
+        .eq('school_id', schoolId)
+        .order('due_date', { ascending: false })
+        .limit(200);
+      return (data ?? []).map((a: any) => ({
+        id: a.id,
+        schoolId,
+        title: a.title,
+        description: a.description,
+        dueDate: a.due_date,
+        maxMarks: a.max_marks,
+        status: a.status,
+        teacherUserId: a.teacher_user_id,
+        classSectionId: a.class_section_id,
+        sectionLabel: '',
+        cachedAt: Date.now(),
+      }));
+    },
+    () => schoolId ? offlineDb.getCachedAssignments(schoolId) : Promise.resolve([]),
+    [],
+    { enabled: enabled && !!schoolId }
+  );
+}
+
+export function useOfflineHomework(schoolId: string | null, enabled = true) {
+  return useOfflineData<offlineDb.CachedHomework[]> (
+    async () => {
+      if (!schoolId) return [];
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data } = await supabase
+        .from('homework')
+        .select('id, title, description, due_date, status, teacher_user_id, class_section_id')
+        .eq('school_id', schoolId)
+        .order('due_date', { ascending: false })
+        .limit(200);
+      return (data ?? []).map((h: any) => ({
+        id: h.id,
+        schoolId,
+        title: h.title,
+        description: h.description,
+        dueDate: h.due_date,
+        status: h.status,
+        teacherUserId: h.teacher_user_id,
+        classSectionId: h.class_section_id,
+        sectionLabel: '',
+        cachedAt: Date.now(),
+      }));
+    },
+    () => schoolId ? offlineDb.getCachedHomework(schoolId) : Promise.resolve([]),
+    [],
+    { enabled: enabled && !!schoolId }
+  );
+}
+
+export function useOfflineAttendanceSessions(schoolId: string | null, enabled = true) {
+  return useOfflineData<offlineDb.CachedAttendanceSession[]> (
+    async () => {
+      if (!schoolId) return [];
+      const { supabase } = await import('@/integrations/supabase/client');
+      const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const { data } = await supabase
+        .from('attendance_sessions')
+        .select('id, session_date, period_label, class_section_id')
+        .eq('school_id', schoolId)
+        .gte('session_date', cutoff)
+        .order('session_date', { ascending: false });
+      return (data ?? []).map((s: any) => ({
+        id: s.id,
+        schoolId,
+        sessionDate: s.session_date,
+        periodLabel: s.period_label,
+        classSectionId: s.class_section_id,
+        cachedAt: Date.now(),
+      }));
+    },
+    () => schoolId ? offlineDb.getCachedAttendanceSessions(schoolId) : Promise.resolve([]),
+    [],
+    { enabled: enabled && !!schoolId }
+  );
+}
+
+export function useOfflineAttendanceEntries(schoolId: string | null, enabled = true) {
+  return useOfflineData<offlineDb.CachedAttendance[]> (
+    async () => {
+      if (!schoolId) return [];
+      const { supabase } = await import('@/integrations/supabase/client');
+      const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const { data } = await supabase
+        .from('attendance_entries')
+        .select('id, student_id, session_id, status, note, attendance_sessions!inner(session_date, period_label, class_section_id)')
+        .eq('school_id', schoolId)
+        .gte('attendance_sessions.session_date', cutoff)
+        .limit(1000);
+      return (data ?? []).map((e: any) => ({
+        id: e.id,
+        schoolId,
+        studentId: e.student_id,
+        sessionId: e.session_id,
+        status: e.status,
+        note: e.note,
+        sessionDate: e.attendance_sessions?.session_date || '',
+        periodLabel: e.attendance_sessions?.period_label || '',
+        classSectionId: e.attendance_sessions?.class_section_id || '',
+        cachedAt: Date.now(),
+      }));
+    },
+    () => schoolId ? offlineDb.getCachedAttendance(schoolId) : Promise.resolve([]),
+    [],
+    { enabled: enabled && !!schoolId }
+  );
+}
+
+export function useOfflineLeaveRequests(schoolId: string | null, enabled = true) {
+  return useOfflineData<offlineDb.CachedLeaveRequest[]> (
+    async () => {
+      if (!schoolId) return [];
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data } = await supabase
+        .from('hr_leave_requests')
+        .select('id, user_id, leave_type_id, start_date, end_date, days_count, status, reason')
+        .eq('school_id', schoolId)
+        .order('created_at', { ascending: false })
+        .limit(200);
+      return (data ?? []).map((r: any) => ({
+        id: r.id,
+        schoolId,
+        userId: r.user_id,
+        leaveTypeId: r.leave_type_id,
+        startDate: r.start_date,
+        endDate: r.end_date,
+        daysCount: r.days_count,
+        status: r.status,
+        reason: r.reason,
+        cachedAt: Date.now(),
+      }));
+    },
+    () => schoolId ? offlineDb.getCachedLeaveRequests(schoolId) : Promise.resolve([]),
+    [],
+    { enabled: enabled && !!schoolId }
+  );
+}
+
+export function useOfflineContracts(schoolId: string | null, enabled = true) {
+  return useOfflineData<offlineDb.CachedContract[]> (
+    async () => {
+      if (!schoolId) return [];
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data } = await supabase
+        .from('hr_contracts')
+        .select('id, user_id, contract_type, start_date, end_date, position, department, status')
+        .eq('school_id', schoolId)
+        .order('created_at', { ascending: false });
+      return (data ?? []).map((c: any) => ({
+        id: c.id,
+        schoolId,
+        userId: c.user_id,
+        contractType: c.contract_type,
+        startDate: c.start_date,
+        endDate: c.end_date,
+        position: c.position,
+        department: c.department,
+        status: c.status,
+        cachedAt: Date.now(),
+      }));
+    },
+    () => schoolId ? offlineDb.getCachedContracts(schoolId) : Promise.resolve([]),
+    [],
+    { enabled: enabled && !!schoolId }
+  );
+}
+
+export function useOfflineSalaryRecords(schoolId: string | null, enabled = true) {
+  return useOfflineData<offlineDb.CachedSalaryRecord[]> (
+    async () => {
+      if (!schoolId) return [];
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data } = await supabase
+        .from('hr_salary_records')
+        .select('id, user_id, base_salary, month, year, status')
+        .eq('school_id', schoolId)
+        .order('year', { ascending: false })
+        .order('month', { ascending: false })
+        .limit(200);
+      return (data ?? []).map((s: any) => ({
+        id: s.id,
+        schoolId,
+        userId: s.user_id,
+        baseSalary: s.base_salary,
+        month: s.month,
+        year: s.year,
+        status: s.status,
+        cachedAt: Date.now(),
+      }));
+    },
+    () => schoolId ? offlineDb.getCachedSalaryRecords(schoolId) : Promise.resolve([]),
+    [],
+    { enabled: enabled && !!schoolId }
+  );
+}
+
+export function useOfflineCampaigns(schoolId: string | null, enabled = true) {
+  return useOfflineData<offlineDb.CachedCampaign[]> (
+    async () => {
+      if (!schoolId) return [];
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data } = await supabase
+        .from('crm_campaigns')
+        .select('id, name, channel, status, budget, start_date, end_date')
+        .eq('school_id', schoolId)
+        .order('created_at', { ascending: false });
+      return (data ?? []).map((c: any) => ({
+        id: c.id,
+        schoolId,
+        name: c.name,
+        channel: c.channel,
+        status: c.status,
+        budget: c.budget,
+        startDate: c.start_date,
+        endDate: c.end_date,
+        cachedAt: Date.now(),
+      }));
+    },
+    () => schoolId ? offlineDb.getCachedCampaigns(schoolId) : Promise.resolve([]),
+    [],
+    { enabled: enabled && !!schoolId }
+  );
+}
+
+export function useOfflineNotifications(schoolId: string | null, userId: string | null, enabled = true) {
+  return useOfflineData<offlineDb.CachedNotification[]> (
+    async () => {
+      if (!schoolId || !userId) return [];
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data } = await supabase
+        .from('app_notifications')
+        .select('id, type, title, body, entity_type, entity_id, read_at, created_at')
+        .eq('school_id', schoolId)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(100);
+      return (data ?? []).map((n: any) => ({
+        id: n.id,
+        schoolId,
+        userId,
+        type: n.type,
+        title: n.title,
+        body: n.body,
+        entityType: n.entity_type,
+        entityId: n.entity_id,
+        readAt: n.read_at,
+        createdAt: n.created_at,
+        cachedAt: Date.now(),
+      }));
+    },
+    () => schoolId ? offlineDb.getCachedNotifications(schoolId) : Promise.resolve([]),
+    [],
+    { enabled: enabled && !!schoolId && !!userId }
+  );
+}
+
+export function useOfflineAdminMessages(schoolId: string | null, enabled = true) {
+  return useOfflineData<offlineDb.CachedAdminMessage[]> (
+    async () => {
+      if (!schoolId) return [];
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data } = await supabase
+        .from('admin_messages')
+        .select('id, sender_user_id, subject, content, status, priority, created_at')
+        .eq('school_id', schoolId)
+        .order('created_at', { ascending: false })
+        .limit(200);
+      return (data ?? []).map((m: any) => ({
+        id: m.id,
+        schoolId,
+        senderUserId: m.sender_user_id,
+        subject: m.subject,
+        content: m.content,
+        status: m.status,
+        priority: m.priority,
+        createdAt: m.created_at,
+        cachedAt: Date.now(),
+      }));
+    },
+    () => schoolId ? offlineDb.getCachedAdminMessages(schoolId) : Promise.resolve([]),
+    [],
+    { enabled: enabled && !!schoolId }
+  );
+}
+
+export function useOfflineCrmPipelines(schoolId: string | null, enabled = true) {
+  return useOfflineData<offlineDb.CachedCrmPipeline[]> (
+    async () => {
+      if (!schoolId) return [];
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data } = await supabase
+        .from('crm_pipelines')
+        .select('id, name, is_default')
+        .eq('school_id', schoolId);
+      return (data ?? []).map((p: any) => ({
+        id: p.id,
+        schoolId,
+        name: p.name,
+        isDefault: p.is_default,
+        cachedAt: Date.now(),
+      }));
+    },
+    () => schoolId ? offlineDb.getCachedCrmPipelines(schoolId) : Promise.resolve([]),
+    [],
+    { enabled: enabled && !!schoolId }
+  );
+}
