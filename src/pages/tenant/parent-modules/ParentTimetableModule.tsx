@@ -1,121 +1,87 @@
-import { useEffect, useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
+import { useMemo } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { ChildInfo } from "@/hooks/useMyChildren";
 import { PeriodTimetableGrid, type PeriodTimetableEntry } from "@/components/timetable/PeriodTimetableGrid";
 import { Button } from "@/components/ui/button";
-import { Printer } from "lucide-react";
+import { Printer, WifiOff, RefreshCw } from "lucide-react";
+import { useOfflineTimetable, useOfflineTimetablePeriods, useOfflineEnrollments, useOfflineStaffMembers } from "@/hooks/useOfflineData";
+import { OfflineDataBanner } from "@/components/offline/OfflineDataBanner";
 
 interface ParentTimetableModuleProps {
   child: ChildInfo | null;
   schoolId: string | null;
 }
 
-interface TimetableEntry {
-  id: string;
-  day_of_week: number;
-  period_id: string;
-  subject_name: string | null;
-  room: string | null;
-  teacher_user_id: string | null;
-}
-
-type Period = { id: string; label: string; sort_order: number; start_time: string | null; end_time: string | null };
-
 const ParentTimetableModule = ({ child, schoolId }: ParentTimetableModuleProps) => {
-  const [entries, setEntries] = useState<TimetableEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [sectionId, setSectionId] = useState<string | null>(null);
-  const [periods, setPeriods] = useState<Period[]>([]);
-  const [directory, setDirectory] = useState<Array<{ user_id: string; display_name: string | null; email: string }>>([]);
+  // Use offline-first hooks
+  const { 
+    data: cachedEntries, 
+    loading: entriesLoading, 
+    isOffline, 
+    isUsingCache: entriesFromCache,
+    refresh: refreshEntries 
+  } = useOfflineTimetable(schoolId);
+  
+  const { 
+    data: cachedPeriods, 
+    loading: periodsLoading,
+    isUsingCache: periodsFromCache 
+  } = useOfflineTimetablePeriods(schoolId);
+  
+  const { 
+    data: cachedEnrollments,
+    isUsingCache: enrollmentsFromCache 
+  } = useOfflineEnrollments(schoolId);
+  
+  const { 
+    data: cachedStaff,
+    isUsingCache: staffFromCache 
+  } = useOfflineStaffMembers(schoolId);
 
+  // Get child's section ID
+  const sectionId = useMemo(() => {
+    if (!child) return null;
+    const enrollment = cachedEnrollments.find(e => e.studentId === child.student_id);
+    return enrollment?.classSectionId || null;
+  }, [cachedEnrollments, child]);
+
+  // Filter entries for child's section
+  const childEntries = useMemo(() => {
+    if (!sectionId) return [];
+    return cachedEntries.filter(e => e.classSectionId === sectionId);
+  }, [cachedEntries, sectionId]);
+
+  // Build teacher lookup
   const teacherLabelByUserId = useMemo(() => {
     const m = new Map<string, string>();
-    for (const d of directory) m.set(d.user_id, d.display_name ?? d.email);
+    for (const s of cachedStaff) {
+      m.set(s.userId, s.displayName || s.email);
+    }
     return m;
-  }, [directory]);
+  }, [cachedStaff]);
 
+  // Convert periods to grid format
+  const periods = useMemo(() => {
+    return cachedPeriods.map(p => ({
+      id: p.id,
+      label: p.label,
+      sort_order: p.sortOrder,
+      start_time: p.startTime,
+      end_time: p.endTime,
+    }));
+  }, [cachedPeriods]);
+
+  // Convert entries to grid format
   const gridEntries = useMemo(() => {
-    return entries.map((e) =>
-      ({
-        id: e.id,
-        day_of_week: e.day_of_week,
-        period_id: e.period_id,
-        subject_name: e.subject_name,
-        room: e.room,
-        teacher_name: e.teacher_user_id ? teacherLabelByUserId.get(e.teacher_user_id) ?? null : null,
-      }) satisfies PeriodTimetableEntry
-    );
-  }, [entries, teacherLabelByUserId]);
-
-  // Fetch child's current section
-  useEffect(() => {
-    if (!child || !schoolId) return;
-
-    const fetchSection = async () => {
-      const { data } = await supabase
-        .from("student_enrollments")
-        .select("class_section_id")
-        .eq("student_id", child.student_id)
-        .is("end_date", null)
-        .order("start_date", { ascending: false })
-        .limit(1)
-        .single();
-
-      if (data) {
-        setSectionId(data.class_section_id);
-      }
-    };
-
-    fetchSection();
-  }, [child, schoolId]);
-
-  // Fetch timetable entries
-  useEffect(() => {
-    if (!sectionId || !schoolId) return;
-
-    const fetchTimetable = async () => {
-      setLoading(true);
-
-      const [{ data: p }, { data, error }, { data: dir }] = await Promise.all([
-        supabase
-          .from("timetable_periods")
-          .select("id,label,sort_order,start_time,end_time")
-          .eq("school_id", schoolId)
-          .order("sort_order", { ascending: true }),
-        supabase
-          .from("timetable_entries")
-          .select("id, day_of_week, period_id, subject_name, room, teacher_user_id")
-          .eq("school_id", schoolId)
-          .eq("class_section_id", sectionId)
-          .order("day_of_week")
-          .order("period_id"),
-        supabase.from("school_user_directory").select("user_id,display_name,email").eq("school_id", schoolId),
-      ]);
-
-      if (error) {
-        console.error("Failed to fetch timetable:", error);
-        setLoading(false);
-        return;
-      }
-
-      const formatted: TimetableEntry[] = (data || []).map((e: any) => ({
-        id: e.id,
-        day_of_week: e.day_of_week,
-        period_id: e.period_id,
-        subject_name: e.subject_name,
-        room: e.room,
-        teacher_user_id: e.teacher_user_id,
-      }));
-
-      setEntries(formatted);
-      setPeriods((p ?? []) as any);
-      setDirectory((dir ?? []) as any);
-      setLoading(false);
-    };
-
-    fetchTimetable();
-  }, [sectionId, schoolId]);
+    return childEntries.map((e) => ({
+      id: e.id,
+      day_of_week: e.dayOfWeek,
+      period_id: e.periodId,
+      subject_name: e.subjectName,
+      room: e.room,
+      teacher_name: e.teacherUserId ? teacherLabelByUserId.get(e.teacherUserId) ?? null : null,
+    }) satisfies PeriodTimetableEntry);
+  }, [childEntries, teacherLabelByUserId]);
 
   if (!child) {
     return (
@@ -125,29 +91,54 @@ const ParentTimetableModule = ({ child, schoolId }: ParentTimetableModuleProps) 
     );
   }
 
+  const loading = entriesLoading || periodsLoading;
+  const isUsingCache = entriesFromCache || periodsFromCache || enrollmentsFromCache || staffFromCache;
+
+  if (loading && !isUsingCache) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-end no-print">
-        <Button variant="outline" onClick={() => window.print()}>
-          <Printer className="mr-2 h-4 w-4" /> Print
-        </Button>
+      <OfflineDataBanner isOffline={isOffline} isUsingCache={isUsingCache} onRefresh={refreshEntries} />
+      
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-display text-2xl font-bold tracking-tight">Timetable</h1>
+          <p className="text-muted-foreground">
+            Weekly schedule for {child.first_name || "your child"}
+            {child.class_name && ` • ${child.class_name}`}
+            {child.section_name && ` / ${child.section_name}`}
+          </p>
+        </div>
+        <div className="flex gap-2 no-print">
+          {!isOffline && (
+            <Button variant="outline" size="sm" onClick={refreshEntries}>
+              <RefreshCw className="h-4 w-4 mr-1" />
+              Refresh
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={() => window.print()}>
+            <Printer className="mr-2 h-4 w-4" /> Print
+          </Button>
+        </div>
       </div>
 
-      <div>
-        <h1 className="font-display text-2xl font-bold tracking-tight">Timetable</h1>
-        <p className="text-muted-foreground">
-          Weekly schedule for {child.first_name || "your child"}
-          {child.class_name && ` • ${child.class_name}`}
-          {child.section_name && ` / ${child.section_name}`}
-        </p>
-      </div>
-
-      {loading ? (
-        <p className="text-muted-foreground">Loading...</p>
-      ) : entries.length === 0 ? (
+      {gridEntries.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            No timetable entries found for this section.
+            {isOffline ? (
+              <div className="flex flex-col items-center gap-2">
+                <WifiOff className="h-8 w-8" />
+                <p>No cached timetable available</p>
+              </div>
+            ) : (
+              "No timetable entries found for this section."
+            )}
           </CardContent>
         </Card>
       ) : (

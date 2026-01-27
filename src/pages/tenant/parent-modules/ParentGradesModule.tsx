@@ -1,75 +1,66 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
 import { ChildInfo } from "@/hooks/useMyChildren";
 import { format } from "date-fns";
+import { RefreshCw, WifiOff } from "lucide-react";
+import { useOfflineAssessments, useOfflineStudentMarks, useOfflineSubjects } from "@/hooks/useOfflineData";
+import { OfflineDataBanner } from "@/components/offline/OfflineDataBanner";
 
 interface ParentGradesModuleProps {
   child: ChildInfo | null;
   schoolId: string | null;
 }
 
-interface GradeRecord {
-  id: string;
-  marks: number;
-  max_marks: number;
-  assessment_title: string;
-  assessment_date: string;
-}
-
 const ParentGradesModule = ({ child, schoolId }: ParentGradesModuleProps) => {
-  const [grades, setGrades] = useState<GradeRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Use offline-first hooks
+  const { 
+    data: cachedAssessments, 
+    loading: assessmentsLoading, 
+    isOffline, 
+    isUsingCache: assessmentsFromCache,
+    refresh: refreshAssessments 
+  } = useOfflineAssessments(schoolId);
+  
+  const { 
+    data: cachedMarks, 
+    loading: marksLoading,
+    isUsingCache: marksFromCache,
+    refresh: refreshMarks 
+  } = useOfflineStudentMarks(schoolId);
+  
+  const { 
+    data: cachedSubjects,
+    isUsingCache: subjectsFromCache 
+  } = useOfflineSubjects(schoolId);
 
-  useEffect(() => {
-    if (!child || !schoolId) return;
-
-    const fetchGrades = async () => {
-      setLoading(true);
-
-      // Fetch marks first
-      const { data: marks, error } = await supabase
-        .from("student_marks")
-        .select("id, marks, assessment_id, graded_at")
-        .eq("student_id", child.student_id)
-        .order("graded_at", { ascending: false })
-        .limit(100);
-
-      if (error || !marks || marks.length === 0) {
-        setGrades([]);
-        setLoading(false);
-        return;
-      }
-
-      // Fetch assessment details
-      const assessmentIds = [...new Set(marks.map((m) => m.assessment_id))];
-      const { data: assessments } = await supabase
-        .from("academic_assessments")
-        .select("id, title, max_marks, assessment_date")
-        .in("id", assessmentIds);
-
-      const assessmentMap = new Map(
-        (assessments || []).map((a) => [a.id, a])
-      );
-
-      const formatted: GradeRecord[] = marks.map((m) => {
-        const assessment = assessmentMap.get(m.assessment_id);
+  // Filter marks for this child and only show published assessments
+  const childGrades = useMemo(() => {
+    if (!child) return [];
+    
+    const childMarks = cachedMarks.filter(m => m.studentId === child.student_id);
+    const publishedAssessments = cachedAssessments.filter(a => a.isPublished);
+    const subjectNameById = new Map(cachedSubjects.map(s => [s.id, s.name]));
+    
+    return childMarks
+      .map(mark => {
+        const assessment = publishedAssessments.find(a => a.id === mark.assessmentId);
+        if (!assessment) return null;
+        
         return {
-          id: m.id,
-          marks: Number(m.marks) || 0,
-          max_marks: Number(assessment?.max_marks) || 100,
-          assessment_title: assessment?.title || "Assessment",
-          assessment_date: assessment?.assessment_date || "",
+          id: mark.id,
+          marks: mark.marks || 0,
+          max_marks: assessment.maxMarks || 100,
+          assessment_title: assessment.title,
+          assessment_date: assessment.assessmentDate,
+          subject_name: assessment.subjectId ? subjectNameById.get(assessment.subjectId) : null,
+          computed_grade: mark.computedGrade,
         };
-      });
-
-      setGrades(formatted);
-      setLoading(false);
-    };
-
-    fetchGrades();
-  }, [child, schoolId]);
+      })
+      .filter(Boolean)
+      .sort((a, b) => new Date(b!.assessment_date).getTime() - new Date(a!.assessment_date).getTime());
+  }, [cachedMarks, cachedAssessments, cachedSubjects, child]);
 
   if (!child) {
     return (
@@ -79,13 +70,41 @@ const ParentGradesModule = ({ child, schoolId }: ParentGradesModuleProps) => {
     );
   }
 
+  const handleRefresh = () => {
+    if (!isOffline) {
+      refreshAssessments();
+      refreshMarks();
+    }
+  };
+
+  const loading = assessmentsLoading || marksLoading;
+  const isUsingCache = assessmentsFromCache || marksFromCache || subjectsFromCache;
+
+  if (loading && !isUsingCache) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-bold tracking-tight">Grades</h1>
-        <p className="text-muted-foreground">
-          View grades and assessment results for {child.first_name || "your child"}
-        </p>
+      <OfflineDataBanner isOffline={isOffline} isUsingCache={isUsingCache} onRefresh={handleRefresh} />
+      
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-display text-2xl font-bold tracking-tight">Grades</h1>
+          <p className="text-muted-foreground">
+            View grades and assessment results for {child.first_name || "your child"}
+          </p>
+        </div>
+        {!isOffline && (
+          <Button variant="outline" size="sm" onClick={handleRefresh}>
+            <RefreshCw className="h-4 w-4 mr-1" />
+            Refresh
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -93,26 +112,39 @@ const ParentGradesModule = ({ child, schoolId }: ParentGradesModuleProps) => {
           <CardTitle>Assessment Results</CardTitle>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <p className="text-muted-foreground">Loading...</p>
-          ) : grades.length === 0 ? (
-            <p className="text-muted-foreground">No grades recorded yet.</p>
+          {childGrades.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8">
+              {isOffline ? (
+                <div className="flex flex-col items-center gap-2">
+                  <WifiOff className="h-6 w-6" />
+                  <span>No cached grades available</span>
+                </div>
+              ) : (
+                "No grades recorded yet."
+              )}
+            </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Assessment</TableHead>
+                  <TableHead>Subject</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead className="text-right">Marks</TableHead>
+                  <TableHead>Grade</TableHead>
                   <TableHead className="text-right">Percentage</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {grades.map((grade) => {
+                {childGrades.map((grade) => {
+                  if (!grade) return null;
                   const percentage = Math.round((grade.marks / grade.max_marks) * 100);
                   return (
                     <TableRow key={grade.id}>
                       <TableCell className="font-medium">{grade.assessment_title}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {grade.subject_name || "—"}
+                      </TableCell>
                       <TableCell>
                         {grade.assessment_date
                           ? format(new Date(grade.assessment_date), "MMM d, yyyy")
@@ -120,6 +152,13 @@ const ParentGradesModule = ({ child, schoolId }: ParentGradesModuleProps) => {
                       </TableCell>
                       <TableCell className="text-right">
                         {grade.marks} / {grade.max_marks}
+                      </TableCell>
+                      <TableCell>
+                        {grade.computed_grade ? (
+                          <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                            {grade.computed_grade}
+                          </span>
+                        ) : "—"}
                       </TableCell>
                       <TableCell className="text-right font-medium">{percentage}%</TableCell>
                     </TableRow>

@@ -1,66 +1,36 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
 import { ChildInfo } from "@/hooks/useMyChildren";
 import { format } from "date-fns";
+import { RefreshCw, WifiOff } from "lucide-react";
+import { useOfflineAttendanceEntries } from "@/hooks/useOfflineData";
+import { OfflineDataBanner } from "@/components/offline/OfflineDataBanner";
 
 interface ParentAttendanceModuleProps {
   child: ChildInfo | null;
   schoolId: string | null;
 }
 
-interface AttendanceRecord {
-  id: string;
-  status: string;
-  note: string | null;
-  session_date: string;
-  period_label: string;
-}
-
 const ParentAttendanceModule = ({ child, schoolId }: ParentAttendanceModuleProps) => {
-  const [records, setRecords] = useState<AttendanceRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Use offline-first hook
+  const { 
+    data: cachedAttendance, 
+    loading, 
+    isOffline, 
+    isUsingCache,
+    refresh 
+  } = useOfflineAttendanceEntries(schoolId);
 
-  useEffect(() => {
-    if (!child || !schoolId) return;
-
-    const fetchAttendance = async () => {
-      setLoading(true);
-
-      const { data: entries, error } = await supabase
-        .from("attendance_entries")
-        .select(`
-          id,
-          status,
-          note,
-          session:attendance_sessions(session_date, period_label)
-        `)
-        .eq("student_id", child.student_id)
-        .order("created_at", { ascending: false })
-        .limit(100);
-
-      if (error) {
-        console.error("Failed to fetch attendance:", error);
-        setLoading(false);
-        return;
-      }
-
-      const formatted: AttendanceRecord[] = (entries || []).map((e) => ({
-        id: e.id,
-        status: e.status,
-        note: e.note,
-        session_date: (e.session as { session_date: string } | null)?.session_date || "",
-        period_label: (e.session as { period_label: string } | null)?.period_label || "",
-      }));
-
-      setRecords(formatted);
-      setLoading(false);
-    };
-
-    fetchAttendance();
-  }, [child, schoolId]);
+  // Filter for this child's attendance
+  const childAttendance = useMemo(() => {
+    if (!child) return [];
+    return cachedAttendance
+      .filter(a => a.studentId === child.student_id)
+      .sort((a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime());
+  }, [cachedAttendance, child]);
 
   if (!child) {
     return (
@@ -85,13 +55,31 @@ const ParentAttendanceModule = ({ child, schoolId }: ParentAttendanceModuleProps
     }
   };
 
+  if (loading && !isUsingCache) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-bold tracking-tight">Attendance</h1>
-        <p className="text-muted-foreground">
-          View attendance records for {child.first_name || "your child"}
-        </p>
+      <OfflineDataBanner isOffline={isOffline} isUsingCache={isUsingCache} onRefresh={refresh} />
+      
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-display text-2xl font-bold tracking-tight">Attendance</h1>
+          <p className="text-muted-foreground">
+            View attendance records for {child.first_name || "your child"}
+          </p>
+        </div>
+        {!isOffline && (
+          <Button variant="outline" size="sm" onClick={refresh}>
+            <RefreshCw className="h-4 w-4 mr-1" />
+            Refresh
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -99,10 +87,17 @@ const ParentAttendanceModule = ({ child, schoolId }: ParentAttendanceModuleProps
           <CardTitle>Attendance History</CardTitle>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <p className="text-muted-foreground">Loading...</p>
-          ) : records.length === 0 ? (
-            <p className="text-muted-foreground">No attendance records found.</p>
+          {childAttendance.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8">
+              {isOffline ? (
+                <div className="flex flex-col items-center gap-2">
+                  <WifiOff className="h-6 w-6" />
+                  <span>No cached attendance records available</span>
+                </div>
+              ) : (
+                "No attendance records found."
+              )}
+            </div>
           ) : (
             <Table>
               <TableHeader>
@@ -114,14 +109,14 @@ const ParentAttendanceModule = ({ child, schoolId }: ParentAttendanceModuleProps
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {records.map((record) => (
+                {childAttendance.map((record) => (
                   <TableRow key={record.id}>
                     <TableCell>
-                      {record.session_date
-                        ? format(new Date(record.session_date), "MMM d, yyyy")
+                      {record.sessionDate
+                        ? format(new Date(record.sessionDate), "MMM d, yyyy")
                         : "—"}
                     </TableCell>
-                    <TableCell>{record.period_label || "—"}</TableCell>
+                    <TableCell>{record.periodLabel || "—"}</TableCell>
                     <TableCell>
                       <Badge variant={statusColor(record.status)}>
                         {record.status}

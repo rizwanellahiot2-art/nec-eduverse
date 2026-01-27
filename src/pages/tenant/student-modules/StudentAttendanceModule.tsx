@@ -1,55 +1,100 @@
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useMemo } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-
-type Attendance = { id: string; status: string; note: string | null; created_at: string; session_id: string };
+import { Badge } from "@/components/ui/badge";
+import { RefreshCw, WifiOff } from "lucide-react";
+import { useOfflineAttendanceEntries } from "@/hooks/useOfflineData";
+import { OfflineDataBanner } from "@/components/offline/OfflineDataBanner";
 
 export function StudentAttendanceModule({ myStudent, schoolId }: { myStudent: any; schoolId: string }) {
-  const [rows, setRows] = useState<Attendance[]>([]);
+  // Use offline-first hook
+  const { 
+    data: cachedAttendance, 
+    loading, 
+    isOffline, 
+    isUsingCache,
+    refresh 
+  } = useOfflineAttendanceEntries(schoolId);
 
-  const refresh = async () => {
-    if (myStudent.status !== "ready") return;
-    const { data } = await supabase
-      .from("attendance_entries")
-      .select("id,status,note,created_at,session_id")
-      .eq("school_id", schoolId)
-      .eq("student_id", myStudent.studentId)
-      .order("created_at", { ascending: false })
-      .limit(200);
-    setRows((data ?? []) as Attendance[]);
+  // Filter for this student and sort by date
+  const studentAttendance = useMemo(() => {
+    if (myStudent.status !== "ready") return [];
+    return cachedAttendance
+      .filter(a => a.studentId === myStudent.studentId)
+      .sort((a, b) => new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime());
+  }, [cachedAttendance, myStudent]);
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "present":
+        return <Badge variant="default" className="bg-primary/10 text-primary">Present</Badge>;
+      case "absent":
+        return <Badge variant="destructive">Absent</Badge>;
+      case "late":
+        return <Badge variant="secondary">Late</Badge>;
+      case "excused":
+        return <Badge variant="outline">Excused</Badge>;
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
+    }
   };
 
-  useEffect(() => {
-    refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myStudent.status]);
+  if (loading && !isUsingCache) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
+      <OfflineDataBanner isOffline={isOffline} isUsingCache={isUsingCache} onRefresh={refresh} />
+      
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">Your attendance entries</p>
-        <Button variant="soft" onClick={refresh}>Refresh</Button>
+        {!isOffline && (
+          <Button variant="outline" size="sm" onClick={refresh}>
+            <RefreshCw className="h-4 w-4 mr-1" />
+            Refresh
+          </Button>
+        )}
       </div>
+      
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Date</TableHead>
+            <TableHead>Period</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Note</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map((r) => (
+          {studentAttendance.map((r) => (
             <TableRow key={r.id}>
-              <TableCell className="text-muted-foreground">{new Date(r.created_at).toLocaleString()}</TableCell>
-              <TableCell className="font-medium">{r.status}</TableCell>
+              <TableCell className="text-muted-foreground">
+                {new Date(r.sessionDate).toLocaleDateString()}
+              </TableCell>
+              <TableCell className="text-muted-foreground">
+                {r.periodLabel || "—"}
+              </TableCell>
+              <TableCell>{getStatusBadge(r.status)}</TableCell>
               <TableCell className="text-muted-foreground">{r.note ?? "—"}</TableCell>
             </TableRow>
           ))}
-          {rows.length === 0 && (
+          {studentAttendance.length === 0 && (
             <TableRow>
-              <TableCell colSpan={3} className="text-sm text-muted-foreground">No attendance found.</TableCell>
+              <TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-8">
+                {isOffline ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <WifiOff className="h-6 w-6" />
+                    <span>No cached attendance available</span>
+                  </div>
+                ) : (
+                  "No attendance found."
+                )}
+              </TableCell>
             </TableRow>
           )}
         </TableBody>
