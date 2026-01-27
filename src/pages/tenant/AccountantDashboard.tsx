@@ -39,7 +39,6 @@ const AccountantDashboard = () => {
   useUniversalPrefetch({
     schoolId,
     userId: user?.id ?? null,
-    role: 'accountant',
     enabled: !!schoolId && !!user && authzState === 'ok',
   });
 

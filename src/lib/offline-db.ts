@@ -35,6 +35,8 @@ export interface CachedStudent {
   classSectionId: string;
   classSectionName: string;
   className: string;
+  status?: string;
+  profileId?: string;
   cachedAt: number;
 }
 
@@ -50,6 +52,8 @@ export interface CachedTimetableEntry {
   room: string | null;
   startTime: string | null;
   endTime: string | null;
+  teacherUserId?: string | null;
+  teacherName?: string | null;
   sortOrder: number;
   cachedAt: number;
 }
@@ -64,6 +68,8 @@ export interface CachedAssignment {
   sectionLabel: string;
   maxMarks: number;
   status: string;
+  teacherUserId?: string;
+  subjectId?: string;
   cachedAt: number;
 }
 
@@ -85,6 +91,14 @@ export interface CachedClassSection {
   cachedAt: number;
 }
 
+export interface CachedAcademicClass {
+  id: string;
+  schoolId: string;
+  name: string;
+  gradeLevel: number | null;
+  cachedAt: number;
+}
+
 export interface CachedAttendance {
   id: string;
   schoolId: string;
@@ -98,6 +112,15 @@ export interface CachedAttendance {
   cachedAt: number;
 }
 
+export interface CachedAttendanceSession {
+  id: string;
+  schoolId: string;
+  classSectionId: string;
+  sessionDate: string;
+  periodLabel: string;
+  cachedAt: number;
+}
+
 export interface CachedHomework {
   id: string;
   schoolId: string;
@@ -107,6 +130,7 @@ export interface CachedHomework {
   status: string;
   classSectionId: string;
   sectionLabel: string;
+  teacherUserId?: string;
   cachedAt: number;
 }
 
@@ -119,7 +143,7 @@ export interface SyncMetadata {
 // ==================== Messaging Types ====================
 
 export interface CachedConversation {
-  id: string; // recipientId as key
+  id: string;
   schoolId: string;
   recipientId: string;
   recipientName: string;
@@ -135,7 +159,7 @@ export interface CachedConversation {
 export interface CachedMessage {
   id: string;
   schoolId: string;
-  conversationPartnerId: string; // for indexing
+  conversationPartnerId: string;
   content: string;
   senderUserId: string;
   createdAt: string;
@@ -145,8 +169,8 @@ export interface CachedMessage {
   subject: string | null;
   replyToId: string | null;
   cachedAt: number;
-  isPending?: boolean; // true if queued offline
-  localId?: string; // for matching with queue
+  isPending?: boolean;
+  localId?: string;
 }
 
 export interface CachedContact {
@@ -160,10 +184,331 @@ export interface CachedContact {
   cachedAt: number;
 }
 
+// ==================== HR Types ====================
+
+export interface CachedStaffMember {
+  id: string;
+  schoolId: string;
+  userId: string;
+  displayName: string;
+  email: string | null;
+  role: string | null;
+  department?: string | null;
+  status: string;
+  cachedAt: number;
+}
+
+export interface CachedLeaveRequest {
+  id: string;
+  schoolId: string;
+  userId: string;
+  leaveTypeId: string;
+  leaveTypeName?: string;
+  startDate: string;
+  endDate: string;
+  daysCount: number;
+  status: string;
+  reason: string | null;
+  cachedAt: number;
+}
+
+export interface CachedContract {
+  id: string;
+  schoolId: string;
+  userId: string;
+  contractType: string;
+  startDate: string;
+  endDate: string | null;
+  position: string | null;
+  department: string | null;
+  status: string;
+  cachedAt: number;
+}
+
+export interface CachedSalaryRecord {
+  id: string;
+  schoolId: string;
+  userId: string;
+  baseSalary: number;
+  month: number;
+  year: number;
+  status: string;
+  cachedAt: number;
+}
+
+export interface CachedHrDocument {
+  id: string;
+  schoolId: string;
+  userId: string;
+  documentName: string;
+  documentType: string;
+  fileUrl: string;
+  cachedAt: number;
+}
+
+// ==================== Finance Types ====================
+
+export interface CachedInvoice {
+  id: string;
+  schoolId: string;
+  studentId: string;
+  studentName?: string;
+  invoiceNo: string;
+  issueDate: string;
+  dueDate: string | null;
+  total: number;
+  subtotal: number;
+  status: string;
+  cachedAt: number;
+}
+
+export interface CachedPayment {
+  id: string;
+  schoolId: string;
+  studentId: string;
+  invoiceId: string;
+  amount: number;
+  paidAt: string;
+  reference: string | null;
+  methodId?: string | null;
+  cachedAt: number;
+}
+
+export interface CachedExpense {
+  id: string;
+  schoolId: string;
+  description: string;
+  amount: number;
+  category: string;
+  expenseDate: string;
+  vendor: string | null;
+  cachedAt: number;
+}
+
+export interface CachedFeePlan {
+  id: string;
+  schoolId: string;
+  name: string;
+  currency: string;
+  isActive: boolean;
+  cachedAt: number;
+}
+
+export interface CachedPaymentMethod {
+  id: string;
+  schoolId: string;
+  name: string;
+  type: string;
+  isActive: boolean;
+  cachedAt: number;
+}
+
+// ==================== Marketing/CRM Types ====================
+
+export interface CachedLead {
+  id: string;
+  schoolId: string;
+  fullName: string;
+  email: string | null;
+  phone: string | null;
+  source: string | null;
+  status: string;
+  stageId: string;
+  stageName?: string;
+  pipelineId: string;
+  score: number;
+  assignedTo: string | null;
+  nextFollowUpAt: string | null;
+  notes?: string | null;
+  cachedAt: number;
+}
+
+export interface CachedCrmStage {
+  id: string;
+  schoolId: string;
+  pipelineId: string;
+  name: string;
+  sortOrder: number;
+  cachedAt: number;
+}
+
+export interface CachedCrmPipeline {
+  id: string;
+  schoolId: string;
+  name: string;
+  isDefault: boolean;
+  cachedAt: number;
+}
+
+export interface CachedCampaign {
+  id: string;
+  schoolId: string;
+  name: string;
+  channel: string;
+  status: string;
+  budget: number;
+  startDate: string | null;
+  endDate: string | null;
+  cachedAt: number;
+}
+
+export interface CachedCrmActivity {
+  id: string;
+  schoolId: string;
+  leadId: string;
+  activityType: string;
+  summary: string;
+  dueAt: string | null;
+  completedAt: string | null;
+  cachedAt: number;
+}
+
+export interface CachedCallLog {
+  id: string;
+  schoolId: string;
+  leadId: string;
+  calledAt: string;
+  durationSeconds: number;
+  outcome: string;
+  notes: string | null;
+  cachedAt: number;
+}
+
+// ==================== Academic Types ====================
+
+export interface CachedAssessment {
+  id: string;
+  schoolId: string;
+  title: string;
+  classSectionId: string;
+  subjectId: string | null;
+  subjectName?: string | null;
+  assessmentDate: string;
+  maxMarks: number;
+  isPublished: boolean;
+  termLabel?: string | null;
+  cachedAt: number;
+}
+
+export interface CachedStudentMark {
+  id: string;
+  schoolId: string;
+  studentId: string;
+  assessmentId: string;
+  marks: number | null;
+  computedGrade: string | null;
+  gradePoints?: number | null;
+  cachedAt: number;
+}
+
+export interface CachedTeacherAssignment {
+  id: string;
+  schoolId: string;
+  teacherUserId: string;
+  teacherName?: string;
+  classSectionId: string;
+  sectionName?: string;
+  subjectId: string | null;
+  subjectName?: string | null;
+  cachedAt: number;
+}
+
+export interface CachedBehaviorNote {
+  id: string;
+  schoolId: string;
+  studentId: string;
+  teacherUserId: string;
+  title: string;
+  content: string;
+  noteType: string;
+  isSharedWithParents: boolean;
+  createdAt: string;
+  cachedAt: number;
+}
+
+export interface CachedGradeThreshold {
+  id: string;
+  schoolId: string;
+  gradeLabel: string;
+  minPercentage: number;
+  maxPercentage: number;
+  gradePoints: number | null;
+  sortOrder: number;
+  cachedAt: number;
+}
+
+// ==================== Notification Types ====================
+
+export interface CachedNotification {
+  id: string;
+  schoolId: string;
+  userId: string;
+  type: string;
+  title: string;
+  body: string | null;
+  entityType: string | null;
+  entityId: string | null;
+  readAt: string | null;
+  createdAt: string;
+  cachedAt: number;
+}
+
+// ==================== Student Guardian Types ====================
+
+export interface CachedStudentGuardian {
+  id: string;
+  schoolId: string;
+  studentId: string;
+  userId: string | null;
+  guardianName?: string;
+  relationship?: string;
+  phone?: string | null;
+  email?: string | null;
+  cachedAt: number;
+}
+
+// ==================== Enrollment Types ====================
+
+export interface CachedEnrollment {
+  id: string;
+  schoolId: string;
+  studentId: string;
+  classSectionId: string;
+  academicYear?: string;
+  cachedAt: number;
+}
+
+// ==================== Support/Admin Message Types ====================
+
+export interface CachedAdminMessage {
+  id: string;
+  schoolId: string;
+  senderUserId: string;
+  senderName?: string;
+  subject: string;
+  content: string;
+  status: string;
+  priority: string;
+  createdAt: string;
+  cachedAt: number;
+}
+
+// ==================== Timetable Period Types ====================
+
+export interface CachedTimetablePeriod {
+  id: string;
+  schoolId: string;
+  label: string;
+  startTime: string;
+  endTime: string;
+  sortOrder: number;
+  cachedAt: number;
+}
+
 // ==================== Database Instance ====================
 
 const DB_NAME = 'eduverse-offline-db';
-const DB_VERSION = 3; // Bumped for attendance and homework stores
+const DB_VERSION = 4; // Bumped for comprehensive stores
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
@@ -171,6 +516,8 @@ export async function getOfflineDB(): Promise<IDBPDatabase> {
   if (!dbPromise) {
     dbPromise = openDB(DB_NAME, DB_VERSION, {
       upgrade(db, oldVersion) {
+        // ==================== Core Stores ====================
+        
         // Offline Queue Store
         if (!db.objectStoreNames.contains('offlineQueue')) {
           const queueStore = db.createObjectStore('offlineQueue', { keyPath: 'id' });
@@ -178,30 +525,6 @@ export async function getOfflineDB(): Promise<IDBPDatabase> {
           queueStore.createIndex('by-type', 'type');
           queueStore.createIndex('by-priority', 'priority');
           queueStore.createIndex('by-timestamp', 'timestamp');
-        }
-
-        // Messaging stores (added in version 2)
-        if (oldVersion < 2) {
-          // Conversations Cache Store
-          if (!db.objectStoreNames.contains('conversations')) {
-            const convStore = db.createObjectStore('conversations', { keyPath: 'id' });
-            convStore.createIndex('by-school', 'schoolId');
-            convStore.createIndex('by-time', 'lastMessageTime');
-          }
-
-          // Messages Cache Store
-          if (!db.objectStoreNames.contains('messages')) {
-            const msgStore = db.createObjectStore('messages', { keyPath: 'id' });
-            msgStore.createIndex('by-school', 'schoolId');
-            msgStore.createIndex('by-partner', 'conversationPartnerId');
-            msgStore.createIndex('by-pending', 'isPending');
-          }
-
-          // Contacts Cache Store
-          if (!db.objectStoreNames.contains('contacts')) {
-            const contactStore = db.createObjectStore('contacts', { keyPath: 'id' });
-            contactStore.createIndex('by-school', 'schoolId');
-          }
         }
 
         // Students Cache Store
@@ -216,6 +539,7 @@ export async function getOfflineDB(): Promise<IDBPDatabase> {
           const timetableStore = db.createObjectStore('timetable', { keyPath: 'id' });
           timetableStore.createIndex('by-school', 'schoolId');
           timetableStore.createIndex('by-day', 'dayOfWeek');
+          timetableStore.createIndex('by-section', 'classSectionId');
         }
 
         // Assignments Cache Store
@@ -237,31 +561,259 @@ export async function getOfflineDB(): Promise<IDBPDatabase> {
           sectionsStore.createIndex('by-school', 'schoolId');
         }
 
+        // Academic Classes Store
+        if (!db.objectStoreNames.contains('academicClasses')) {
+          const classesStore = db.createObjectStore('academicClasses', { keyPath: 'id' });
+          classesStore.createIndex('by-school', 'schoolId');
+        }
+
         // Sync Metadata Store
         if (!db.objectStoreNames.contains('syncMetadata')) {
           db.createObjectStore('syncMetadata', { keyPath: 'key' });
         }
 
-        // Attendance Cache Store (added in version 3)
-        if (oldVersion < 3) {
-          if (!db.objectStoreNames.contains('attendance')) {
-            const attendanceStore = db.createObjectStore('attendance', { keyPath: 'id' });
-            attendanceStore.createIndex('by-school', 'schoolId');
-            attendanceStore.createIndex('by-student', 'studentId');
-            attendanceStore.createIndex('by-date', 'sessionDate');
-          }
+        // ==================== Messaging Stores ====================
+        
+        if (!db.objectStoreNames.contains('conversations')) {
+          const convStore = db.createObjectStore('conversations', { keyPath: 'id' });
+          convStore.createIndex('by-school', 'schoolId');
+          convStore.createIndex('by-time', 'lastMessageTime');
+        }
 
-          // Homework Cache Store
-          if (!db.objectStoreNames.contains('homework')) {
-            const homeworkStore = db.createObjectStore('homework', { keyPath: 'id' });
-            homeworkStore.createIndex('by-school', 'schoolId');
-            homeworkStore.createIndex('by-section', 'classSectionId');
-          }
+        if (!db.objectStoreNames.contains('messages')) {
+          const msgStore = db.createObjectStore('messages', { keyPath: 'id' });
+          msgStore.createIndex('by-school', 'schoolId');
+          msgStore.createIndex('by-partner', 'conversationPartnerId');
+          msgStore.createIndex('by-pending', 'isPending');
+        }
+
+        if (!db.objectStoreNames.contains('contacts')) {
+          const contactStore = db.createObjectStore('contacts', { keyPath: 'id' });
+          contactStore.createIndex('by-school', 'schoolId');
+        }
+
+        // ==================== Attendance Stores ====================
+        
+        if (!db.objectStoreNames.contains('attendance')) {
+          const attendanceStore = db.createObjectStore('attendance', { keyPath: 'id' });
+          attendanceStore.createIndex('by-school', 'schoolId');
+          attendanceStore.createIndex('by-student', 'studentId');
+          attendanceStore.createIndex('by-date', 'sessionDate');
+          attendanceStore.createIndex('by-session', 'sessionId');
+        }
+
+        if (!db.objectStoreNames.contains('attendanceSessions')) {
+          const sessionsStore = db.createObjectStore('attendanceSessions', { keyPath: 'id' });
+          sessionsStore.createIndex('by-school', 'schoolId');
+          sessionsStore.createIndex('by-section', 'classSectionId');
+          sessionsStore.createIndex('by-date', 'sessionDate');
+        }
+
+        if (!db.objectStoreNames.contains('homework')) {
+          const homeworkStore = db.createObjectStore('homework', { keyPath: 'id' });
+          homeworkStore.createIndex('by-school', 'schoolId');
+          homeworkStore.createIndex('by-section', 'classSectionId');
+        }
+
+        // ==================== HR Stores ====================
+        
+        if (!db.objectStoreNames.contains('staffMembers')) {
+          const staffStore = db.createObjectStore('staffMembers', { keyPath: 'id' });
+          staffStore.createIndex('by-school', 'schoolId');
+        }
+
+        if (!db.objectStoreNames.contains('leaveRequests')) {
+          const leaveStore = db.createObjectStore('leaveRequests', { keyPath: 'id' });
+          leaveStore.createIndex('by-school', 'schoolId');
+          leaveStore.createIndex('by-user', 'userId');
+        }
+
+        if (!db.objectStoreNames.contains('contracts')) {
+          const contractStore = db.createObjectStore('contracts', { keyPath: 'id' });
+          contractStore.createIndex('by-school', 'schoolId');
+          contractStore.createIndex('by-user', 'userId');
+        }
+
+        if (!db.objectStoreNames.contains('salaryRecords')) {
+          const salaryStore = db.createObjectStore('salaryRecords', { keyPath: 'id' });
+          salaryStore.createIndex('by-school', 'schoolId');
+          salaryStore.createIndex('by-user', 'userId');
+        }
+
+        if (!db.objectStoreNames.contains('hrDocuments')) {
+          const docStore = db.createObjectStore('hrDocuments', { keyPath: 'id' });
+          docStore.createIndex('by-school', 'schoolId');
+          docStore.createIndex('by-user', 'userId');
+        }
+
+        // ==================== Finance Stores ====================
+        
+        if (!db.objectStoreNames.contains('invoices')) {
+          const invStore = db.createObjectStore('invoices', { keyPath: 'id' });
+          invStore.createIndex('by-school', 'schoolId');
+          invStore.createIndex('by-student', 'studentId');
+          invStore.createIndex('by-status', 'status');
+        }
+
+        if (!db.objectStoreNames.contains('payments')) {
+          const payStore = db.createObjectStore('payments', { keyPath: 'id' });
+          payStore.createIndex('by-school', 'schoolId');
+          payStore.createIndex('by-student', 'studentId');
+        }
+
+        if (!db.objectStoreNames.contains('expenses')) {
+          const expStore = db.createObjectStore('expenses', { keyPath: 'id' });
+          expStore.createIndex('by-school', 'schoolId');
+          expStore.createIndex('by-date', 'expenseDate');
+        }
+
+        if (!db.objectStoreNames.contains('feePlans')) {
+          const feeStore = db.createObjectStore('feePlans', { keyPath: 'id' });
+          feeStore.createIndex('by-school', 'schoolId');
+        }
+
+        if (!db.objectStoreNames.contains('paymentMethods')) {
+          const pmStore = db.createObjectStore('paymentMethods', { keyPath: 'id' });
+          pmStore.createIndex('by-school', 'schoolId');
+        }
+
+        // ==================== CRM/Marketing Stores ====================
+        
+        if (!db.objectStoreNames.contains('leads')) {
+          const leadStore = db.createObjectStore('leads', { keyPath: 'id' });
+          leadStore.createIndex('by-school', 'schoolId');
+          leadStore.createIndex('by-stage', 'stageId');
+          leadStore.createIndex('by-status', 'status');
+        }
+
+        if (!db.objectStoreNames.contains('crmStages')) {
+          const stageStore = db.createObjectStore('crmStages', { keyPath: 'id' });
+          stageStore.createIndex('by-school', 'schoolId');
+          stageStore.createIndex('by-pipeline', 'pipelineId');
+        }
+
+        if (!db.objectStoreNames.contains('crmPipelines')) {
+          const pipeStore = db.createObjectStore('crmPipelines', { keyPath: 'id' });
+          pipeStore.createIndex('by-school', 'schoolId');
+        }
+
+        if (!db.objectStoreNames.contains('campaigns')) {
+          const campStore = db.createObjectStore('campaigns', { keyPath: 'id' });
+          campStore.createIndex('by-school', 'schoolId');
+        }
+
+        if (!db.objectStoreNames.contains('crmActivities')) {
+          const actStore = db.createObjectStore('crmActivities', { keyPath: 'id' });
+          actStore.createIndex('by-school', 'schoolId');
+          actStore.createIndex('by-lead', 'leadId');
+        }
+
+        if (!db.objectStoreNames.contains('callLogs')) {
+          const callStore = db.createObjectStore('callLogs', { keyPath: 'id' });
+          callStore.createIndex('by-school', 'schoolId');
+          callStore.createIndex('by-lead', 'leadId');
+        }
+
+        // ==================== Academic Stores ====================
+        
+        if (!db.objectStoreNames.contains('assessments')) {
+          const assStore = db.createObjectStore('assessments', { keyPath: 'id' });
+          assStore.createIndex('by-school', 'schoolId');
+          assStore.createIndex('by-section', 'classSectionId');
+        }
+
+        if (!db.objectStoreNames.contains('studentMarks')) {
+          const marksStore = db.createObjectStore('studentMarks', { keyPath: 'id' });
+          marksStore.createIndex('by-school', 'schoolId');
+          marksStore.createIndex('by-student', 'studentId');
+          marksStore.createIndex('by-assessment', 'assessmentId');
+        }
+
+        if (!db.objectStoreNames.contains('teacherAssignments')) {
+          const taStore = db.createObjectStore('teacherAssignments', { keyPath: 'id' });
+          taStore.createIndex('by-school', 'schoolId');
+          taStore.createIndex('by-teacher', 'teacherUserId');
+        }
+
+        if (!db.objectStoreNames.contains('behaviorNotes')) {
+          const bnStore = db.createObjectStore('behaviorNotes', { keyPath: 'id' });
+          bnStore.createIndex('by-school', 'schoolId');
+          bnStore.createIndex('by-student', 'studentId');
+        }
+
+        if (!db.objectStoreNames.contains('gradeThresholds')) {
+          const gtStore = db.createObjectStore('gradeThresholds', { keyPath: 'id' });
+          gtStore.createIndex('by-school', 'schoolId');
+        }
+
+        // ==================== Notification Store ====================
+        
+        if (!db.objectStoreNames.contains('notifications')) {
+          const notifStore = db.createObjectStore('notifications', { keyPath: 'id' });
+          notifStore.createIndex('by-school', 'schoolId');
+          notifStore.createIndex('by-user', 'userId');
+        }
+
+        // ==================== Guardian Store ====================
+        
+        if (!db.objectStoreNames.contains('studentGuardians')) {
+          const sgStore = db.createObjectStore('studentGuardians', { keyPath: 'id' });
+          sgStore.createIndex('by-school', 'schoolId');
+          sgStore.createIndex('by-student', 'studentId');
+        }
+
+        // ==================== Enrollment Store ====================
+        
+        if (!db.objectStoreNames.contains('enrollments')) {
+          const enStore = db.createObjectStore('enrollments', { keyPath: 'id' });
+          enStore.createIndex('by-school', 'schoolId');
+          enStore.createIndex('by-student', 'studentId');
+        }
+
+        // ==================== Admin Messages Store ====================
+        
+        if (!db.objectStoreNames.contains('adminMessages')) {
+          const amStore = db.createObjectStore('adminMessages', { keyPath: 'id' });
+          amStore.createIndex('by-school', 'schoolId');
+        }
+
+        // ==================== Timetable Periods Store ====================
+        
+        if (!db.objectStoreNames.contains('timetablePeriods')) {
+          const tpStore = db.createObjectStore('timetablePeriods', { keyPath: 'id' });
+          tpStore.createIndex('by-school', 'schoolId');
         }
       },
     });
   }
   return dbPromise;
+}
+
+// ==================== Generic Cache Helper ====================
+
+async function cacheToStore<T extends { id: string }>(storeName: string, items: T[]): Promise<void> {
+  const db = await getOfflineDB();
+  if (!db.objectStoreNames.contains(storeName)) return;
+  
+  const tx = db.transaction(storeName, 'readwrite');
+  const now = Date.now();
+  
+  for (const item of items) {
+    await tx.store.put({ ...item, cachedAt: now });
+  }
+  
+  await tx.done;
+  await updateSyncMetadata(storeName, items.length);
+}
+
+async function getFromStore<T>(storeName: string, indexName: string, key: string): Promise<T[]> {
+  const db = await getOfflineDB();
+  if (!db.objectStoreNames.contains(storeName)) return [];
+  return db.getAllFromIndex(storeName, indexName, key) as Promise<T[]>;
+}
+
+async function getAllFromStore<T>(storeName: string, schoolId: string): Promise<T[]> {
+  return getFromStore<T>(storeName, 'by-school', schoolId);
 }
 
 // ==================== Queue Operations ====================
@@ -284,7 +836,6 @@ export async function getPendingQueueItems(): Promise<OfflineQueueItem[]> {
   const db = await getOfflineDB();
   const allItems = await db.getAll('offlineQueue');
   const items = allItems.filter((item: OfflineQueueItem) => !item.synced);
-  // Sort by priority (high first) then timestamp (oldest first)
   return items.sort((a: OfflineQueueItem, b: OfflineQueueItem) => {
     const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
     if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
@@ -361,158 +912,340 @@ export async function clearSyncedItems(olderThanHours: number = 24): Promise<num
   return deleted;
 }
 
-// ==================== Cache Operations ====================
+// ==================== Student Cache ====================
 
 export async function cacheStudents(students: CachedStudent[]): Promise<void> {
-  const db = await getOfflineDB();
-  const tx = db.transaction('students', 'readwrite');
-  const now = Date.now();
-  
-  for (const student of students) {
-    await tx.store.put({ ...student, cachedAt: now });
-  }
-  
-  await tx.done;
-  await updateSyncMetadata('students', students.length);
+  await cacheToStore('students', students);
 }
 
 export async function getCachedStudents(schoolId: string, sectionId?: string): Promise<CachedStudent[]> {
-  const db = await getOfflineDB();
-  
   if (sectionId) {
-    return db.getAllFromIndex('students', 'by-section', sectionId);
+    return getFromStore<CachedStudent>('students', 'by-section', sectionId);
   }
-  
-  return db.getAllFromIndex('students', 'by-school', schoolId);
+  return getAllFromStore<CachedStudent>('students', schoolId);
 }
 
+// ==================== Timetable Cache ====================
+
 export async function cacheTimetable(entries: CachedTimetableEntry[]): Promise<void> {
-  const db = await getOfflineDB();
-  const tx = db.transaction('timetable', 'readwrite');
-  const now = Date.now();
-  
-  for (const entry of entries) {
-    await tx.store.put({ ...entry, cachedAt: now });
-  }
-  
-  await tx.done;
-  await updateSyncMetadata('timetable', entries.length);
+  await cacheToStore('timetable', entries);
 }
 
 export async function getCachedTimetable(schoolId: string, dayOfWeek?: number): Promise<CachedTimetableEntry[]> {
   const db = await getOfflineDB();
-  
   if (dayOfWeek !== undefined) {
     const entries = await db.getAllFromIndex('timetable', 'by-day', dayOfWeek);
-    return entries.filter(e => e.schoolId === schoolId);
+    return entries.filter((e: CachedTimetableEntry) => e.schoolId === schoolId);
   }
-  
-  return db.getAllFromIndex('timetable', 'by-school', schoolId);
+  return getAllFromStore<CachedTimetableEntry>('timetable', schoolId);
 }
 
+// ==================== Timetable Periods Cache ====================
+
+export async function cacheTimetablePeriods(periods: CachedTimetablePeriod[]): Promise<void> {
+  await cacheToStore('timetablePeriods', periods);
+}
+
+export async function getCachedTimetablePeriods(schoolId: string): Promise<CachedTimetablePeriod[]> {
+  return getAllFromStore<CachedTimetablePeriod>('timetablePeriods', schoolId);
+}
+
+// ==================== Assignment Cache ====================
+
 export async function cacheAssignments(assignments: CachedAssignment[]): Promise<void> {
-  const db = await getOfflineDB();
-  const tx = db.transaction('assignments', 'readwrite');
-  const now = Date.now();
-  
-  for (const assignment of assignments) {
-    await tx.store.put({ ...assignment, cachedAt: now });
-  }
-  
-  await tx.done;
-  await updateSyncMetadata('assignments', assignments.length);
+  await cacheToStore('assignments', assignments);
 }
 
 export async function getCachedAssignments(schoolId: string, sectionId?: string): Promise<CachedAssignment[]> {
-  const db = await getOfflineDB();
-  
   if (sectionId) {
-    return db.getAllFromIndex('assignments', 'by-section', sectionId);
+    return getFromStore<CachedAssignment>('assignments', 'by-section', sectionId);
   }
-  
-  return db.getAllFromIndex('assignments', 'by-school', schoolId);
+  return getAllFromStore<CachedAssignment>('assignments', schoolId);
 }
 
+// ==================== Subject Cache ====================
+
 export async function cacheSubjects(subjects: CachedSubject[]): Promise<void> {
-  const db = await getOfflineDB();
-  const tx = db.transaction('subjects', 'readwrite');
-  const now = Date.now();
-  
-  for (const subject of subjects) {
-    await tx.store.put({ ...subject, cachedAt: now });
-  }
-  
-  await tx.done;
-  await updateSyncMetadata('subjects', subjects.length);
+  await cacheToStore('subjects', subjects);
 }
 
 export async function getCachedSubjects(schoolId: string): Promise<CachedSubject[]> {
-  const db = await getOfflineDB();
-  return db.getAllFromIndex('subjects', 'by-school', schoolId);
+  return getAllFromStore<CachedSubject>('subjects', schoolId);
 }
 
+// ==================== Class Section Cache ====================
+
 export async function cacheClassSections(sections: CachedClassSection[]): Promise<void> {
-  const db = await getOfflineDB();
-  const tx = db.transaction('classSections', 'readwrite');
-  const now = Date.now();
-  
-  for (const section of sections) {
-    await tx.store.put({ ...section, cachedAt: now });
-  }
-  
-  await tx.done;
-  await updateSyncMetadata('classSections', sections.length);
+  await cacheToStore('classSections', sections);
 }
 
 export async function getCachedClassSections(schoolId: string): Promise<CachedClassSection[]> {
-  const db = await getOfflineDB();
-  return db.getAllFromIndex('classSections', 'by-school', schoolId);
+  return getAllFromStore<CachedClassSection>('classSections', schoolId);
 }
 
+// ==================== Academic Class Cache ====================
+
+export async function cacheAcademicClasses(classes: CachedAcademicClass[]): Promise<void> {
+  await cacheToStore('academicClasses', classes);
+}
+
+export async function getCachedAcademicClasses(schoolId: string): Promise<CachedAcademicClass[]> {
+  return getAllFromStore<CachedAcademicClass>('academicClasses', schoolId);
+}
+
+// ==================== Attendance Cache ====================
+
 export async function cacheAttendance(entries: CachedAttendance[]): Promise<void> {
-  const db = await getOfflineDB();
-  const tx = db.transaction('attendance', 'readwrite');
-  const now = Date.now();
-  
-  for (const entry of entries) {
-    await tx.store.put({ ...entry, cachedAt: now });
-  }
-  
-  await tx.done;
-  await updateSyncMetadata('attendance', entries.length);
+  await cacheToStore('attendance', entries);
 }
 
 export async function getCachedAttendance(schoolId: string, studentId?: string): Promise<CachedAttendance[]> {
-  const db = await getOfflineDB();
-  
   if (studentId) {
-    return db.getAllFromIndex('attendance', 'by-student', studentId);
+    return getFromStore<CachedAttendance>('attendance', 'by-student', studentId);
   }
-  
-  return db.getAllFromIndex('attendance', 'by-school', schoolId);
+  return getAllFromStore<CachedAttendance>('attendance', schoolId);
 }
 
+// ==================== Attendance Sessions Cache ====================
+
+export async function cacheAttendanceSessions(sessions: CachedAttendanceSession[]): Promise<void> {
+  await cacheToStore('attendanceSessions', sessions);
+}
+
+export async function getCachedAttendanceSessions(schoolId: string): Promise<CachedAttendanceSession[]> {
+  return getAllFromStore<CachedAttendanceSession>('attendanceSessions', schoolId);
+}
+
+// ==================== Homework Cache ====================
+
 export async function cacheHomework(homework: CachedHomework[]): Promise<void> {
-  const db = await getOfflineDB();
-  const tx = db.transaction('homework', 'readwrite');
-  const now = Date.now();
-  
-  for (const item of homework) {
-    await tx.store.put({ ...item, cachedAt: now });
-  }
-  
-  await tx.done;
-  await updateSyncMetadata('homework', homework.length);
+  await cacheToStore('homework', homework);
 }
 
 export async function getCachedHomework(schoolId: string, sectionId?: string): Promise<CachedHomework[]> {
-  const db = await getOfflineDB();
-  
   if (sectionId) {
-    return db.getAllFromIndex('homework', 'by-section', sectionId);
+    return getFromStore<CachedHomework>('homework', 'by-section', sectionId);
   }
-  
-  return db.getAllFromIndex('homework', 'by-school', schoolId);
+  return getAllFromStore<CachedHomework>('homework', schoolId);
+}
+
+// ==================== HR Cache Functions ====================
+
+export async function cacheStaffMembers(staff: CachedStaffMember[]): Promise<void> {
+  await cacheToStore('staffMembers', staff);
+}
+
+export async function getCachedStaffMembers(schoolId: string): Promise<CachedStaffMember[]> {
+  return getAllFromStore<CachedStaffMember>('staffMembers', schoolId);
+}
+
+export async function cacheLeaveRequests(requests: CachedLeaveRequest[]): Promise<void> {
+  await cacheToStore('leaveRequests', requests);
+}
+
+export async function getCachedLeaveRequests(schoolId: string): Promise<CachedLeaveRequest[]> {
+  return getAllFromStore<CachedLeaveRequest>('leaveRequests', schoolId);
+}
+
+export async function cacheContracts(contracts: CachedContract[]): Promise<void> {
+  await cacheToStore('contracts', contracts);
+}
+
+export async function getCachedContracts(schoolId: string): Promise<CachedContract[]> {
+  return getAllFromStore<CachedContract>('contracts', schoolId);
+}
+
+export async function cacheSalaryRecords(records: CachedSalaryRecord[]): Promise<void> {
+  await cacheToStore('salaryRecords', records);
+}
+
+export async function getCachedSalaryRecords(schoolId: string): Promise<CachedSalaryRecord[]> {
+  return getAllFromStore<CachedSalaryRecord>('salaryRecords', schoolId);
+}
+
+export async function cacheHrDocuments(docs: CachedHrDocument[]): Promise<void> {
+  await cacheToStore('hrDocuments', docs);
+}
+
+export async function getCachedHrDocuments(schoolId: string): Promise<CachedHrDocument[]> {
+  return getAllFromStore<CachedHrDocument>('hrDocuments', schoolId);
+}
+
+// ==================== Finance Cache Functions ====================
+
+export async function cacheInvoices(invoices: CachedInvoice[]): Promise<void> {
+  await cacheToStore('invoices', invoices);
+}
+
+export async function getCachedInvoices(schoolId: string): Promise<CachedInvoice[]> {
+  return getAllFromStore<CachedInvoice>('invoices', schoolId);
+}
+
+export async function cachePayments(payments: CachedPayment[]): Promise<void> {
+  await cacheToStore('payments', payments);
+}
+
+export async function getCachedPayments(schoolId: string): Promise<CachedPayment[]> {
+  return getAllFromStore<CachedPayment>('payments', schoolId);
+}
+
+export async function cacheExpenses(expenses: CachedExpense[]): Promise<void> {
+  await cacheToStore('expenses', expenses);
+}
+
+export async function getCachedExpenses(schoolId: string): Promise<CachedExpense[]> {
+  return getAllFromStore<CachedExpense>('expenses', schoolId);
+}
+
+export async function cacheFeePlans(plans: CachedFeePlan[]): Promise<void> {
+  await cacheToStore('feePlans', plans);
+}
+
+export async function getCachedFeePlans(schoolId: string): Promise<CachedFeePlan[]> {
+  return getAllFromStore<CachedFeePlan>('feePlans', schoolId);
+}
+
+export async function cachePaymentMethods(methods: CachedPaymentMethod[]): Promise<void> {
+  await cacheToStore('paymentMethods', methods);
+}
+
+export async function getCachedPaymentMethods(schoolId: string): Promise<CachedPaymentMethod[]> {
+  return getAllFromStore<CachedPaymentMethod>('paymentMethods', schoolId);
+}
+
+// ==================== CRM Cache Functions ====================
+
+export async function cacheLeads(leads: CachedLead[]): Promise<void> {
+  await cacheToStore('leads', leads);
+}
+
+export async function getCachedLeads(schoolId: string): Promise<CachedLead[]> {
+  return getAllFromStore<CachedLead>('leads', schoolId);
+}
+
+export async function cacheCrmStages(stages: CachedCrmStage[]): Promise<void> {
+  await cacheToStore('crmStages', stages);
+}
+
+export async function getCachedCrmStages(schoolId: string): Promise<CachedCrmStage[]> {
+  return getAllFromStore<CachedCrmStage>('crmStages', schoolId);
+}
+
+export async function cacheCrmPipelines(pipelines: CachedCrmPipeline[]): Promise<void> {
+  await cacheToStore('crmPipelines', pipelines);
+}
+
+export async function getCachedCrmPipelines(schoolId: string): Promise<CachedCrmPipeline[]> {
+  return getAllFromStore<CachedCrmPipeline>('crmPipelines', schoolId);
+}
+
+export async function cacheCampaigns(campaigns: CachedCampaign[]): Promise<void> {
+  await cacheToStore('campaigns', campaigns);
+}
+
+export async function getCachedCampaigns(schoolId: string): Promise<CachedCampaign[]> {
+  return getAllFromStore<CachedCampaign>('campaigns', schoolId);
+}
+
+export async function cacheCrmActivities(activities: CachedCrmActivity[]): Promise<void> {
+  await cacheToStore('crmActivities', activities);
+}
+
+export async function getCachedCrmActivities(schoolId: string): Promise<CachedCrmActivity[]> {
+  return getAllFromStore<CachedCrmActivity>('crmActivities', schoolId);
+}
+
+export async function cacheCallLogs(logs: CachedCallLog[]): Promise<void> {
+  await cacheToStore('callLogs', logs);
+}
+
+export async function getCachedCallLogs(schoolId: string): Promise<CachedCallLog[]> {
+  return getAllFromStore<CachedCallLog>('callLogs', schoolId);
+}
+
+// ==================== Academic Cache Functions ====================
+
+export async function cacheAssessments(assessments: CachedAssessment[]): Promise<void> {
+  await cacheToStore('assessments', assessments);
+}
+
+export async function getCachedAssessments(schoolId: string): Promise<CachedAssessment[]> {
+  return getAllFromStore<CachedAssessment>('assessments', schoolId);
+}
+
+export async function cacheStudentMarks(marks: CachedStudentMark[]): Promise<void> {
+  await cacheToStore('studentMarks', marks);
+}
+
+export async function getCachedStudentMarks(schoolId: string): Promise<CachedStudentMark[]> {
+  return getAllFromStore<CachedStudentMark>('studentMarks', schoolId);
+}
+
+export async function cacheTeacherAssignments(assignments: CachedTeacherAssignment[]): Promise<void> {
+  await cacheToStore('teacherAssignments', assignments);
+}
+
+export async function getCachedTeacherAssignments(schoolId: string): Promise<CachedTeacherAssignment[]> {
+  return getAllFromStore<CachedTeacherAssignment>('teacherAssignments', schoolId);
+}
+
+export async function cacheBehaviorNotes(notes: CachedBehaviorNote[]): Promise<void> {
+  await cacheToStore('behaviorNotes', notes);
+}
+
+export async function getCachedBehaviorNotes(schoolId: string): Promise<CachedBehaviorNote[]> {
+  return getAllFromStore<CachedBehaviorNote>('behaviorNotes', schoolId);
+}
+
+export async function cacheGradeThresholds(thresholds: CachedGradeThreshold[]): Promise<void> {
+  await cacheToStore('gradeThresholds', thresholds);
+}
+
+export async function getCachedGradeThresholds(schoolId: string): Promise<CachedGradeThreshold[]> {
+  return getAllFromStore<CachedGradeThreshold>('gradeThresholds', schoolId);
+}
+
+// ==================== Notification Cache ====================
+
+export async function cacheNotifications(notifications: CachedNotification[]): Promise<void> {
+  await cacheToStore('notifications', notifications);
+}
+
+export async function getCachedNotifications(schoolId: string, userId?: string): Promise<CachedNotification[]> {
+  if (userId) {
+    return getFromStore<CachedNotification>('notifications', 'by-user', userId);
+  }
+  return getAllFromStore<CachedNotification>('notifications', schoolId);
+}
+
+// ==================== Guardian Cache ====================
+
+export async function cacheStudentGuardians(guardians: CachedStudentGuardian[]): Promise<void> {
+  await cacheToStore('studentGuardians', guardians);
+}
+
+export async function getCachedStudentGuardians(schoolId: string): Promise<CachedStudentGuardian[]> {
+  return getAllFromStore<CachedStudentGuardian>('studentGuardians', schoolId);
+}
+
+// ==================== Enrollment Cache ====================
+
+export async function cacheEnrollments(enrollments: CachedEnrollment[]): Promise<void> {
+  await cacheToStore('enrollments', enrollments);
+}
+
+export async function getCachedEnrollments(schoolId: string): Promise<CachedEnrollment[]> {
+  return getAllFromStore<CachedEnrollment>('enrollments', schoolId);
+}
+
+// ==================== Admin Message Cache ====================
+
+export async function cacheAdminMessages(messages: CachedAdminMessage[]): Promise<void> {
+  await cacheToStore('adminMessages', messages);
+}
+
+export async function getCachedAdminMessages(schoolId: string): Promise<CachedAdminMessage[]> {
+  return getAllFromStore<CachedAdminMessage>('adminMessages', schoolId);
 }
 
 // ==================== Sync Metadata ====================
@@ -578,15 +1311,9 @@ export async function getStorageEstimate(): Promise<{
 
 export async function clearAllOfflineData(): Promise<void> {
   const db = await getOfflineDB();
-  const storeNames = [
-    'offlineQueue', 'students', 'timetable', 'assignments', 
-    'subjects', 'classSections', 'syncMetadata',
-    'conversations', 'messages', 'contacts',
-    'attendance', 'homework'
-  ].filter(name => db.objectStoreNames.contains(name));
+  const storeNames = Array.from(db.objectStoreNames);
   
   const tx = db.transaction(storeNames, 'readwrite');
-  
   await Promise.all(storeNames.map(name => tx.objectStore(name).clear()));
   await tx.done;
 }
@@ -594,28 +1321,12 @@ export async function clearAllOfflineData(): Promise<void> {
 // ==================== Messaging Cache Operations ====================
 
 export async function cacheConversations(conversations: CachedConversation[]): Promise<void> {
-  const db = await getOfflineDB();
-  if (!db.objectStoreNames.contains('conversations')) return;
-  
-  const tx = db.transaction('conversations', 'readwrite');
-  const now = Date.now();
-  
-  for (const conv of conversations) {
-    await tx.store.put({ ...conv, cachedAt: now });
-  }
-  
-  await tx.done;
-  await updateSyncMetadata('conversations', conversations.length);
+  await cacheToStore('conversations', conversations);
 }
 
 export async function getCachedConversations(schoolId: string): Promise<CachedConversation[]> {
-  const db = await getOfflineDB();
-  if (!db.objectStoreNames.contains('conversations')) return [];
-  
-  const all = await db.getAllFromIndex('conversations', 'by-school', schoolId);
-  return (all as CachedConversation[]).sort(
-    (a, b) => new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime()
-  );
+  const all = await getAllFromStore<CachedConversation>('conversations', schoolId);
+  return all.sort((a, b) => new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime());
 }
 
 export async function updateCachedConversation(conv: Partial<CachedConversation> & { id: string; schoolId: string }): Promise<void> {
@@ -631,17 +1342,7 @@ export async function updateCachedConversation(conv: Partial<CachedConversation>
 }
 
 export async function cacheMessages(messages: CachedMessage[]): Promise<void> {
-  const db = await getOfflineDB();
-  if (!db.objectStoreNames.contains('messages')) return;
-  
-  const tx = db.transaction('messages', 'readwrite');
-  const now = Date.now();
-  
-  for (const msg of messages) {
-    await tx.store.put({ ...msg, cachedAt: now });
-  }
-  
-  await tx.done;
+  await cacheToStore('messages', messages);
 }
 
 export async function getCachedMessages(schoolId: string, partnerId: string): Promise<CachedMessage[]> {
@@ -657,7 +1358,6 @@ export async function getCachedMessages(schoolId: string, partnerId: string): Pr
 export async function addPendingMessage(message: CachedMessage): Promise<void> {
   const db = await getOfflineDB();
   if (!db.objectStoreNames.contains('messages')) return;
-  
   await db.put('messages', { ...message, isPending: true, cachedAt: Date.now() });
 }
 
@@ -681,25 +1381,11 @@ export async function getPendingMessages(schoolId: string): Promise<CachedMessag
 }
 
 export async function cacheContacts(contacts: CachedContact[]): Promise<void> {
-  const db = await getOfflineDB();
-  if (!db.objectStoreNames.contains('contacts')) return;
-  
-  const tx = db.transaction('contacts', 'readwrite');
-  const now = Date.now();
-  
-  for (const contact of contacts) {
-    await tx.store.put({ ...contact, cachedAt: now });
-  }
-  
-  await tx.done;
-  await updateSyncMetadata('contacts', contacts.length);
+  await cacheToStore('contacts', contacts);
 }
 
 export async function getCachedContacts(schoolId: string): Promise<CachedContact[]> {
-  const db = await getOfflineDB();
-  if (!db.objectStoreNames.contains('contacts')) return [];
-  
-  return db.getAllFromIndex('contacts', 'by-school', schoolId) as Promise<CachedContact[]>;
+  return getAllFromStore<CachedContact>('contacts', schoolId);
 }
 
 export async function clearMessagesForConversation(schoolId: string, partnerId: string): Promise<void> {

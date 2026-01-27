@@ -72,7 +72,6 @@ const ParentDashboard = () => {
   useUniversalPrefetch({
     schoolId,
     userId: user?.id ?? null,
-    role: 'parent',
     enabled: !!schoolId && !!user && authzState === 'ok',
   });
 

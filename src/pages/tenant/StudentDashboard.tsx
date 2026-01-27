@@ -69,7 +69,6 @@ const StudentDashboard = () => {
   useUniversalPrefetch({
     schoolId,
     userId: user?.id ?? null,
-    role: 'student',
     enabled: !!schoolId && !!user && authzState === 'ok',
   });
 

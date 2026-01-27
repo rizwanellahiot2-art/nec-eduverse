@@ -81,7 +81,6 @@ export default function OwnerDashboard() {
   useUniversalPrefetch({
     schoolId,
     userId: user?.id ?? null,
-    role: 'school_owner',
     enabled: !!schoolId && !!user && authzState === 'ok',
   });
 

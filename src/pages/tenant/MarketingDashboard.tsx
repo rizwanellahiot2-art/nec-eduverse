@@ -40,7 +40,6 @@ const MarketingDashboard = () => {
   useUniversalPrefetch({
     schoolId,
     userId: user?.id ?? null,
-    role: 'marketing_staff',
     enabled: !!schoolId && !!user && authzState === 'ok',
   });
 

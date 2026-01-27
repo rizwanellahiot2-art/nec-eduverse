@@ -51,7 +51,6 @@ const TeacherDashboard = () => {
   useUniversalPrefetch({
     schoolId,
     userId: user?.id ?? null,
-    role: 'teacher',
     enabled: !!schoolId && !!user && authzState === 'ok',
   });
 
