@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, Edit, DollarSign } from "lucide-react";
+import { Plus, Trash2, Edit, DollarSign, WifiOff, RefreshCw } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
+import { useOfflineFeePlans } from "@/hooks/useOfflineData";
+import { OfflineDataBanner } from "@/components/offline/OfflineDataBanner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -59,6 +61,9 @@ export function AccountantFeesModule() {
   const tenant = useTenant(schoolSlug);
   const queryClient = useQueryClient();
   const schoolId = tenant.status === "ready" ? tenant.schoolId : null;
+
+  // Offline hook for fee plans
+  const { isOffline, isUsingCache, refresh: refreshOffline } = useOfflineFeePlans(schoolId);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<FeePlan | null>(null);
@@ -229,12 +234,17 @@ export function AccountantFeesModule() {
 
   const getInstallmentsForPlan = (planId: string) => installments.filter((i) => i.fee_plan_id === planId);
 
-  if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading fee plans...</p>;
+  if (isLoading && !isUsingCache) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
+      <OfflineDataBanner isOffline={isOffline} isUsingCache={isUsingCache} onRefresh={refreshOffline} />
       <Card className="shadow-elevated">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
