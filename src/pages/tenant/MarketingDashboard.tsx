@@ -4,6 +4,7 @@ import { Navigate, Route, Routes, useParams } from "react-router-dom";
 import { useSession } from "@/hooks/useSession";
 import { useTenantOptimized } from "@/hooks/useTenantOptimized";
 import { useAuthz } from "@/hooks/useAuthz";
+import { useUniversalPrefetch } from "@/hooks/useUniversalPrefetch";
 import { MarketingShell } from "@/components/tenant/MarketingShell";
 import { MarketingHomeModule } from "@/pages/tenant/marketing-modules/MarketingHomeModule";
 import { MarketingLeadsModule } from "@/pages/tenant/marketing-modules/MarketingLeadsModule";
@@ -35,7 +36,16 @@ const MarketingDashboard = () => {
   });
   const authzState = authz.state;
 
-  if (loading) {
+  // Universal prefetch for offline support
+  useUniversalPrefetch({
+    schoolId,
+    userId: user?.id ?? null,
+    role: 'marketing_staff',
+    enabled: !!schoolId && !!user && authzState === 'ok',
+  });
+
+  // Don't show loading if we have cached user
+  if (loading && !user) {
     return (
       <div className="min-h-screen bg-background p-8">
         <div className="rounded-3xl bg-surface p-6 shadow-elevated">

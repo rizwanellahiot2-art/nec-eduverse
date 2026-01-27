@@ -8,6 +8,7 @@ import { useSession } from "@/hooks/useSession";
 import { useTenantOptimized } from "@/hooks/useTenantOptimized";
 import { useAuthz } from "@/hooks/useAuthz";
 import { useRealtimeTable } from "@/hooks/useRealtime";
+import { useUniversalPrefetch, getCachedStats } from "@/hooks/useUniversalPrefetch";
 import { isEduverseRole, roleLabel, type EduverseRole } from "@/lib/eduverse-roles";
 import { TenantShell } from "@/components/tenant/TenantShell";
 import { Button } from "@/components/ui/button";
@@ -58,6 +59,23 @@ const TenantDashboard = () => {
   const authzState = authz.state;
   const authzMessage = authz.message;
 
+  // Map role to prefetch role type
+  const prefetchRole = useMemo(() => {
+    if (!role) return null;
+    if (role === 'principal' || role === 'vice_principal' || role === 'academic_coordinator') {
+      return role;
+    }
+    return role as any;
+  }, [role]);
+
+  // Universal prefetch for offline support
+  useUniversalPrefetch({
+    schoolId,
+    userId: user?.id ?? null,
+    role: prefetchRole,
+    enabled: !!schoolId && !!user && authzState === 'ok',
+  });
+
   const title = useMemo(() => {
     if (tenant.status === "ready" && role) return `${tenant.school?.name} • ${roleLabel[role]}`;
     if (tenant.status === "ready") return tenant.school?.name || "EDUVERSE";
@@ -77,8 +95,15 @@ const TenantDashboard = () => {
     return d;
   }, []);
 
-  // Realtime invalidation callback
+  // Get cached stats for offline mode
+  const cachedKPIs = useMemo(() => {
+    if (!schoolId) return null;
+    return getCachedStats(schoolId, 'admin') as Record<string, number> | null;
+  }, [schoolId]);
+
+  // Realtime invalidation callback - only when online
   const invalidateKpiQueries = useCallback(() => {
+    if (!navigator.onLine) return;
     queryClient.invalidateQueries({ queryKey: ["dashboard_kpi_revenue", schoolId] });
     queryClient.invalidateQueries({ queryKey: ["dashboard_kpi_leads", schoolId] });
     queryClient.invalidateQueries({ queryKey: ["dashboard_kpi_attendance", schoolId] });
@@ -87,12 +112,14 @@ const TenantDashboard = () => {
     queryClient.invalidateQueries({ queryKey: ["dashboard_kpi_staff", schoolId] });
   }, [queryClient, schoolId]);
 
-  // Realtime subscriptions for KPIs
+  // Realtime subscriptions for KPIs - only when online
+  const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+
   useRealtimeTable({
     channel: `dashboard-kpi-payments-${schoolId}`,
     table: "finance_payments",
     filter: schoolId ? `school_id=eq.${schoolId}` : undefined,
-    enabled: !!schoolId,
+    enabled: !!schoolId && isOnline,
     onChange: invalidateKpiQueries,
   });
 
@@ -100,7 +127,7 @@ const TenantDashboard = () => {
     channel: `dashboard-kpi-leads-${schoolId}`,
     table: "crm_leads",
     filter: schoolId ? `school_id=eq.${schoolId}` : undefined,
-    enabled: !!schoolId,
+    enabled: !!schoolId && isOnline,
     onChange: invalidateKpiQueries,
   });
 
@@ -108,7 +135,7 @@ const TenantDashboard = () => {
     channel: `dashboard-kpi-attendance-${schoolId}`,
     table: "attendance_entries",
     filter: schoolId ? `school_id=eq.${schoolId}` : undefined,
-    enabled: !!schoolId,
+    enabled: !!schoolId && isOnline,
     onChange: invalidateKpiQueries,
   });
 
@@ -116,7 +143,7 @@ const TenantDashboard = () => {
     channel: `dashboard-kpi-students-${schoolId}`,
     table: "students",
     filter: schoolId ? `school_id=eq.${schoolId}` : undefined,
-    enabled: !!schoolId,
+    enabled: !!schoolId && isOnline,
     onChange: invalidateKpiQueries,
   });
 
@@ -124,7 +151,7 @@ const TenantDashboard = () => {
     channel: `dashboard-kpi-invoices-${schoolId}`,
     table: "finance_invoices",
     filter: schoolId ? `school_id=eq.${schoolId}` : undefined,
-    enabled: !!schoolId,
+    enabled: !!schoolId && isOnline,
     onChange: invalidateKpiQueries,
   });
 
@@ -132,12 +159,12 @@ const TenantDashboard = () => {
     channel: `dashboard-kpi-staff-${schoolId}`,
     table: "school_memberships",
     filter: schoolId ? `school_id=eq.${schoolId}` : undefined,
-    enabled: !!schoolId,
+    enabled: !!schoolId && isOnline,
     onChange: invalidateKpiQueries,
   });
 
   // Fetch Revenue (MTD payments)
-  const { data: revenueMtd = 0 } = useQuery({
+  const { data: revenueMtd = cachedKPIs?.revenueMtd ?? 0 } = useQuery({
     queryKey: ["dashboard_kpi_revenue", schoolId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -149,7 +176,8 @@ const TenantDashboard = () => {
       if (error) throw error;
       return (data || []).reduce((sum, p) => sum + Number(p.amount ?? 0), 0);
     },
-    enabled: !!schoolId,
+    enabled: !!schoolId && isOnline,
+    staleTime: 5 * 60 * 1000,
   });
 
   // Fetch Admissions (leads count & open leads)
@@ -165,7 +193,8 @@ const TenantDashboard = () => {
         open: openRes.count ?? 0,
       };
     },
-    enabled: !!schoolId,
+    enabled: !!schoolId && isOnline,
+    staleTime: 5 * 60 * 1000,
   });
 
   // Fetch Attendance (7-day rate)
@@ -193,11 +222,12 @@ const TenantDashboard = () => {
         rate: total > 0 ? Math.round((present / total) * 100) : 0,
       };
     },
-    enabled: !!schoolId,
+    enabled: !!schoolId && isOnline,
+    staleTime: 5 * 60 * 1000,
   });
 
   // Fetch Students count
-  const { data: studentsCount = 0 } = useQuery({
+  const { data: studentsCount = cachedKPIs?.totalStudents ?? 0 } = useQuery({
     queryKey: ["dashboard_kpi_students", schoolId],
     queryFn: async () => {
       const { count, error } = await supabase
@@ -207,11 +237,12 @@ const TenantDashboard = () => {
       if (error) throw error;
       return count ?? 0;
     },
-    enabled: !!schoolId,
+    enabled: !!schoolId && isOnline,
+    staleTime: 5 * 60 * 1000,
   });
 
   // Fetch Pending Invoices
-  const { data: pendingInvoices = 0 } = useQuery({
+  const { data: pendingInvoices = cachedKPIs?.pendingInvoices ?? 0 } = useQuery({
     queryKey: ["dashboard_kpi_invoices", schoolId],
     queryFn: async () => {
       const { count, error } = await supabase
@@ -222,7 +253,8 @@ const TenantDashboard = () => {
       if (error) throw error;
       return count ?? 0;
     },
-    enabled: !!schoolId,
+    enabled: !!schoolId && isOnline,
+    staleTime: 5 * 60 * 1000,
   });
 
   // Fetch Staff count
@@ -238,12 +270,14 @@ const TenantDashboard = () => {
         teachers: teachersRes.count ?? 0,
       };
     },
-    enabled: !!schoolId,
+    enabled: !!schoolId && isOnline,
+    staleTime: 5 * 60 * 1000,
   });
 
   if (!role) return <Navigate to={`/${tenant.slug || ""}/auth`} replace />;
 
-  if (loading) {
+  // Don't show loading if we have cached user
+  if (loading && !user) {
     return (
       <div className="min-h-screen bg-background p-8">
         <div className="rounded-3xl bg-surface p-6 shadow-elevated">
@@ -257,9 +291,29 @@ const TenantDashboard = () => {
     return <Navigate to={`/${tenant.slug}/auth`} replace />;
   }
 
+  // Use cached values for offline display
+  const displayLeadsData = leadsData || { 
+    total: cachedKPIs?.totalLeads ?? 0, 
+    open: cachedKPIs?.openLeads ?? 0 
+  };
+  const displayAttendanceData = attendanceData || { 
+    rate: cachedKPIs?.attendanceRate7d ?? 0 
+  };
+  const displayStaffData = staffData || { 
+    total: cachedKPIs?.totalStaff ?? 0, 
+    teachers: cachedKPIs?.totalTeachers ?? 0 
+  };
+
   return (
     <TenantShell title={title} subtitle="Role-isolated workspace" role={role} schoolSlug={tenant.slug}>
       <div className="flex flex-col gap-6">
+        {/* Offline indicator */}
+        {!isOnline && (
+          <div className="rounded-2xl bg-warning/10 border border-warning/20 p-3 text-sm text-warning text-center">
+            📶 Offline Mode — Showing cached data
+          </div>
+        )}
+
         {/* Primary KPIs */}
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
           {/* Revenue KPI */}
@@ -293,9 +347,9 @@ const TenantDashboard = () => {
               <Users className="h-4 w-4 text-muted-foreground" />
             </div>
             <p className="mt-3 font-display text-2xl font-semibold tracking-tight">
-              {staffData?.total ?? 0}
+              {displayStaffData.total}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">{staffData?.teachers ?? 0} teachers</p>
+            <p className="mt-1 text-xs text-muted-foreground">{displayStaffData.teachers} teachers</p>
           </div>
 
           {/* Admissions KPI */}
@@ -305,9 +359,9 @@ const TenantDashboard = () => {
               <UserPlus className="h-4 w-4 text-muted-foreground" />
             </div>
             <p className="mt-3 font-display text-2xl font-semibold tracking-tight">
-              {leadsData?.open ?? 0}
+              {displayLeadsData.open}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">{leadsData?.total ?? 0} leads</p>
+            <p className="mt-1 text-xs text-muted-foreground">{displayLeadsData.total} leads</p>
           </div>
 
           {/* Pending Invoices KPI */}
@@ -329,7 +383,7 @@ const TenantDashboard = () => {
               <ClipboardList className="h-4 w-4 text-muted-foreground" />
             </div>
             <p className="mt-3 font-display text-2xl font-semibold tracking-tight">
-              {attendanceData?.rate ?? 0}%
+              {displayAttendanceData.rate}%
             </p>
             <p className="mt-1 text-xs text-muted-foreground">7-day rate</p>
           </div>
