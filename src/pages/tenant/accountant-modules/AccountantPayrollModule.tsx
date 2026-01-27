@@ -1,11 +1,13 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Play, CheckCircle, Clock, Trash2, Users, Coins, FileText, Download, History } from "lucide-react";
+import { Plus, Play, CheckCircle, Clock, Trash2, Users, Coins, FileText, Download, History, WifiOff, RefreshCw } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useRealtimeTable } from "@/hooks/useRealtime";
+import { useOfflineSalaryRecords, useOfflineStaffMembers } from "@/hooks/useOfflineData";
+import { OfflineDataBanner } from "@/components/offline/OfflineDataBanner";
 import { openBulkPayslipsPDF, downloadBulkPayslipsHTML, PayslipData } from "@/lib/payslip-pdf";
 import { SalaryHistoryDialog } from "@/components/hr/SalaryHistoryDialog";
 
@@ -77,6 +79,18 @@ export function AccountantPayrollModule() {
   const tenant = useTenant(schoolSlug);
   const queryClient = useQueryClient();
   const schoolId = tenant.status === "ready" ? tenant.schoolId : null;
+
+  // Offline hooks
+  const { isOffline, isUsingCache: salariesFromCache, refresh: refreshSalaries } = useOfflineSalaryRecords(schoolId);
+  const { isUsingCache: staffFromCache, refresh: refreshStaff } = useOfflineStaffMembers(schoolId);
+  const isUsingCache = salariesFromCache || staffFromCache;
+
+  const handleRefresh = useCallback(() => {
+    if (!isOffline) {
+      refreshSalaries();
+      refreshStaff();
+    }
+  }, [isOffline, refreshSalaries, refreshStaff]);
 
   const [payRunDialogOpen, setPayRunDialogOpen] = useState(false);
   const [salaryDialogOpen, setSalaryDialogOpen] = useState(false);
@@ -436,12 +450,17 @@ export function AccountantPayrollModule() {
     activeEmployees: activeSalaries.length,
   };
 
-  if (loadingPayRuns || loadingSalaries) {
-    return <p className="text-sm text-muted-foreground">Loading payroll data...</p>;
+  if ((loadingPayRuns || loadingSalaries) && !isUsingCache) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
+      <OfflineDataBanner isOffline={isOffline} isUsingCache={isUsingCache} onRefresh={handleRefresh} />
       {/* Stats Cards */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <Card className="shadow-elevated">

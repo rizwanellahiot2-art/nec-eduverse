@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, TrendingDown, Trash2, Edit, Filter } from "lucide-react";
+import { Plus, TrendingDown, Trash2, Edit, Filter, WifiOff, RefreshCw } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
+import { useOfflineExpenses, useOfflinePaymentMethods } from "@/hooks/useOfflineData";
+import { OfflineDataBanner } from "@/components/offline/OfflineDataBanner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -74,6 +76,9 @@ export function AccountantExpensesModule() {
   const tenant = useTenant(schoolSlug);
   const queryClient = useQueryClient();
   const schoolId = tenant.status === "ready" ? tenant.schoolId : null;
+
+  // Offline hooks
+  const { isOffline, isUsingCache, refresh: refreshOffline } = useOfflineExpenses(schoolId);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
@@ -245,12 +250,17 @@ export function AccountantExpensesModule() {
     })).filter((c) => c.amount > 0).sort((a, b) => b.amount - a.amount),
   };
 
-  if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading expenses...</p>;
+  if (isLoading && !isUsingCache) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
+      <OfflineDataBanner isOffline={isOffline} isUsingCache={isUsingCache} onRefresh={refreshOffline} />
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Card className="shadow-elevated">
