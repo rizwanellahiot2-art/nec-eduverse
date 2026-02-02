@@ -253,6 +253,654 @@ export type Database = {
           },
         ]
       }
+      ai_academic_predictions: {
+        Row: {
+          academic_year: string
+          created_at: string
+          failure_risk: number | null
+          grade_confidence: number | null
+          id: string
+          improvement_probability: number | null
+          predicted_final_grade: number | null
+          prediction_date: string | null
+          promotion_probability: number | null
+          school_id: string
+          student_id: string
+          subject_predictions: Json | null
+          suggested_focus_areas: string[] | null
+          term: string | null
+        }
+        Insert: {
+          academic_year: string
+          created_at?: string
+          failure_risk?: number | null
+          grade_confidence?: number | null
+          id?: string
+          improvement_probability?: number | null
+          predicted_final_grade?: number | null
+          prediction_date?: string | null
+          promotion_probability?: number | null
+          school_id: string
+          student_id: string
+          subject_predictions?: Json | null
+          suggested_focus_areas?: string[] | null
+          term?: string | null
+        }
+        Update: {
+          academic_year?: string
+          created_at?: string
+          failure_risk?: number | null
+          grade_confidence?: number | null
+          id?: string
+          improvement_probability?: number | null
+          predicted_final_grade?: number | null
+          prediction_date?: string | null
+          promotion_probability?: number | null
+          school_id?: string
+          student_id?: string
+          subject_predictions?: Json | null
+          suggested_focus_areas?: string[] | null
+          term?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_academic_predictions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_academic_predictions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_fee_ledger"
+            referencedColumns: ["student_id"]
+          },
+          {
+            foreignKeyName: "ai_academic_predictions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_career_suggestions: {
+        Row: {
+          created_at: string
+          detected_interests: string[] | null
+          field_match_scores: Json | null
+          id: string
+          last_updated_at: string | null
+          recommended_subjects: string[] | null
+          school_id: string
+          student_id: string
+          suggested_fields: string[] | null
+          university_readiness_score: number | null
+        }
+        Insert: {
+          created_at?: string
+          detected_interests?: string[] | null
+          field_match_scores?: Json | null
+          id?: string
+          last_updated_at?: string | null
+          recommended_subjects?: string[] | null
+          school_id: string
+          student_id: string
+          suggested_fields?: string[] | null
+          university_readiness_score?: number | null
+        }
+        Update: {
+          created_at?: string
+          detected_interests?: string[] | null
+          field_match_scores?: Json | null
+          id?: string
+          last_updated_at?: string | null
+          recommended_subjects?: string[] | null
+          school_id?: string
+          student_id?: string
+          suggested_fields?: string[] | null
+          university_readiness_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_career_suggestions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_career_suggestions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_fee_ledger"
+            referencedColumns: ["student_id"]
+          },
+          {
+            foreignKeyName: "ai_career_suggestions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_counseling_queue: {
+        Row: {
+          counselor_user_id: string | null
+          created_at: string
+          detected_indicators: string[] | null
+          id: string
+          outcome: string | null
+          priority: string | null
+          reason_details: string | null
+          reason_type: string
+          scheduled_date: string | null
+          school_id: string
+          session_notes: string | null
+          status: string | null
+          student_id: string
+        }
+        Insert: {
+          counselor_user_id?: string | null
+          created_at?: string
+          detected_indicators?: string[] | null
+          id?: string
+          outcome?: string | null
+          priority?: string | null
+          reason_details?: string | null
+          reason_type: string
+          scheduled_date?: string | null
+          school_id: string
+          session_notes?: string | null
+          status?: string | null
+          student_id: string
+        }
+        Update: {
+          counselor_user_id?: string | null
+          created_at?: string
+          detected_indicators?: string[] | null
+          id?: string
+          outcome?: string | null
+          priority?: string | null
+          reason_details?: string | null
+          reason_type?: string
+          scheduled_date?: string | null
+          school_id?: string
+          session_notes?: string | null
+          status?: string | null
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_counseling_queue_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_counseling_queue_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_fee_ledger"
+            referencedColumns: ["student_id"]
+          },
+          {
+            foreignKeyName: "ai_counseling_queue_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_early_warnings: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          created_at: string
+          description: string | null
+          detected_patterns: string[] | null
+          id: string
+          notified_admin: boolean | null
+          notified_parent: boolean | null
+          notified_teacher: boolean | null
+          recommended_actions: string[] | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          school_id: string
+          severity: string
+          status: string | null
+          student_id: string
+          title: string
+          warning_type: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string
+          description?: string | null
+          detected_patterns?: string[] | null
+          id?: string
+          notified_admin?: boolean | null
+          notified_parent?: boolean | null
+          notified_teacher?: boolean | null
+          recommended_actions?: string[] | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          school_id: string
+          severity?: string
+          status?: string | null
+          student_id: string
+          title: string
+          warning_type: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string
+          description?: string | null
+          detected_patterns?: string[] | null
+          id?: string
+          notified_admin?: boolean | null
+          notified_parent?: boolean | null
+          notified_teacher?: boolean | null
+          recommended_actions?: string[] | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          school_id?: string
+          severity?: string
+          status?: string | null
+          student_id?: string
+          title?: string
+          warning_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_early_warnings_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_early_warnings_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_fee_ledger"
+            referencedColumns: ["student_id"]
+          },
+          {
+            foreignKeyName: "ai_early_warnings_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_parent_updates: {
+        Row: {
+          ai_summary: string | null
+          attendance_status: string | null
+          behavior_remarks: string[] | null
+          created_at: string
+          focus_trend: string | null
+          id: string
+          is_read: boolean | null
+          key_insights: string[] | null
+          parent_user_id: string
+          participation_level: string | null
+          performance_change_percent: number | null
+          read_at: string | null
+          recommendations: string[] | null
+          school_id: string
+          student_id: string
+          teacher_notes: string[] | null
+          update_date: string
+          update_type: string
+        }
+        Insert: {
+          ai_summary?: string | null
+          attendance_status?: string | null
+          behavior_remarks?: string[] | null
+          created_at?: string
+          focus_trend?: string | null
+          id?: string
+          is_read?: boolean | null
+          key_insights?: string[] | null
+          parent_user_id: string
+          participation_level?: string | null
+          performance_change_percent?: number | null
+          read_at?: string | null
+          recommendations?: string[] | null
+          school_id: string
+          student_id: string
+          teacher_notes?: string[] | null
+          update_date?: string
+          update_type?: string
+        }
+        Update: {
+          ai_summary?: string | null
+          attendance_status?: string | null
+          behavior_remarks?: string[] | null
+          created_at?: string
+          focus_trend?: string | null
+          id?: string
+          is_read?: boolean | null
+          key_insights?: string[] | null
+          parent_user_id?: string
+          participation_level?: string | null
+          performance_change_percent?: number | null
+          read_at?: string | null
+          recommendations?: string[] | null
+          school_id?: string
+          student_id?: string
+          teacher_notes?: string[] | null
+          update_date?: string
+          update_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_parent_updates_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_parent_updates_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_fee_ledger"
+            referencedColumns: ["student_id"]
+          },
+          {
+            foreignKeyName: "ai_parent_updates_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_school_reputation: {
+        Row: {
+          ai_recommendations: string[] | null
+          attendance_consistency: number | null
+          complaint_ratio: number | null
+          created_at: string
+          engagement_level: number | null
+          id: string
+          main_strengths: string[] | null
+          nps_score: number | null
+          parent_satisfaction_index: number | null
+          report_month: string
+          reputation_score: number | null
+          risk_factors: string[] | null
+          school_id: string
+          student_success_rate: number | null
+          trust_factors: string[] | null
+        }
+        Insert: {
+          ai_recommendations?: string[] | null
+          attendance_consistency?: number | null
+          complaint_ratio?: number | null
+          created_at?: string
+          engagement_level?: number | null
+          id?: string
+          main_strengths?: string[] | null
+          nps_score?: number | null
+          parent_satisfaction_index?: number | null
+          report_month: string
+          reputation_score?: number | null
+          risk_factors?: string[] | null
+          school_id: string
+          student_success_rate?: number | null
+          trust_factors?: string[] | null
+        }
+        Update: {
+          ai_recommendations?: string[] | null
+          attendance_consistency?: number | null
+          complaint_ratio?: number | null
+          created_at?: string
+          engagement_level?: number | null
+          id?: string
+          main_strengths?: string[] | null
+          nps_score?: number | null
+          parent_satisfaction_index?: number | null
+          report_month?: string
+          reputation_score?: number | null
+          risk_factors?: string[] | null
+          school_id?: string
+          student_success_rate?: number | null
+          trust_factors?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_school_reputation_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_student_profiles: {
+        Row: {
+          attention_span_minutes: number | null
+          best_learning_time: string | null
+          burnout_probability: number | null
+          created_at: string
+          dropout_risk: number | null
+          emotional_trend: string | null
+          focus_drop_detected: boolean | null
+          id: string
+          last_analyzed_at: string | null
+          learning_speed: string | null
+          learning_style: string | null
+          learning_style_confidence: number | null
+          needs_counseling: boolean | null
+          needs_extra_support: boolean | null
+          needs_remedial_classes: boolean | null
+          risk_score: number | null
+          school_id: string
+          should_be_accelerated: boolean | null
+          strong_subjects: string[] | null
+          student_id: string
+          updated_at: string
+          weak_subjects: string[] | null
+        }
+        Insert: {
+          attention_span_minutes?: number | null
+          best_learning_time?: string | null
+          burnout_probability?: number | null
+          created_at?: string
+          dropout_risk?: number | null
+          emotional_trend?: string | null
+          focus_drop_detected?: boolean | null
+          id?: string
+          last_analyzed_at?: string | null
+          learning_speed?: string | null
+          learning_style?: string | null
+          learning_style_confidence?: number | null
+          needs_counseling?: boolean | null
+          needs_extra_support?: boolean | null
+          needs_remedial_classes?: boolean | null
+          risk_score?: number | null
+          school_id: string
+          should_be_accelerated?: boolean | null
+          strong_subjects?: string[] | null
+          student_id: string
+          updated_at?: string
+          weak_subjects?: string[] | null
+        }
+        Update: {
+          attention_span_minutes?: number | null
+          best_learning_time?: string | null
+          burnout_probability?: number | null
+          created_at?: string
+          dropout_risk?: number | null
+          emotional_trend?: string | null
+          focus_drop_detected?: boolean | null
+          id?: string
+          last_analyzed_at?: string | null
+          learning_speed?: string | null
+          learning_style?: string | null
+          learning_style_confidence?: number | null
+          needs_counseling?: boolean | null
+          needs_extra_support?: boolean | null
+          needs_remedial_classes?: boolean | null
+          risk_score?: number | null
+          school_id?: string
+          should_be_accelerated?: boolean | null
+          strong_subjects?: string[] | null
+          student_id?: string
+          updated_at?: string
+          weak_subjects?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_student_profiles_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_student_profiles_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_fee_ledger"
+            referencedColumns: ["student_id"]
+          },
+          {
+            foreignKeyName: "ai_student_profiles_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_teacher_performance: {
+        Row: {
+          ai_insights: string[] | null
+          analysis_month: string
+          attendance_impact_score: number | null
+          created_at: string
+          engagement_score: number | null
+          feedback_sentiment_score: number | null
+          id: string
+          improvement_areas: string[] | null
+          needs_training: boolean | null
+          overall_score: number | null
+          performance_tier: string | null
+          school_id: string
+          student_improvement_score: number | null
+          subject_difficulty_rating: string | null
+          teacher_user_id: string
+        }
+        Insert: {
+          ai_insights?: string[] | null
+          analysis_month: string
+          attendance_impact_score?: number | null
+          created_at?: string
+          engagement_score?: number | null
+          feedback_sentiment_score?: number | null
+          id?: string
+          improvement_areas?: string[] | null
+          needs_training?: boolean | null
+          overall_score?: number | null
+          performance_tier?: string | null
+          school_id: string
+          student_improvement_score?: number | null
+          subject_difficulty_rating?: string | null
+          teacher_user_id: string
+        }
+        Update: {
+          ai_insights?: string[] | null
+          analysis_month?: string
+          attendance_impact_score?: number | null
+          created_at?: string
+          engagement_score?: number | null
+          feedback_sentiment_score?: number | null
+          id?: string
+          improvement_areas?: string[] | null
+          needs_training?: boolean | null
+          overall_score?: number | null
+          performance_tier?: string | null
+          school_id?: string
+          student_improvement_score?: number | null
+          subject_difficulty_rating?: string | null
+          teacher_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_teacher_performance_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_timetable_suggestions: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          class_section_id: string | null
+          conflicts_found: number | null
+          created_at: string
+          id: string
+          optimization_score: number | null
+          school_id: string
+          status: string | null
+          suggestion_data: Json
+          version_number: number | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          class_section_id?: string | null
+          conflicts_found?: number | null
+          created_at?: string
+          id?: string
+          optimization_score?: number | null
+          school_id: string
+          status?: string | null
+          suggestion_data?: Json
+          version_number?: number | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          class_section_id?: string | null
+          conflicts_found?: number | null
+          created_at?: string
+          id?: string
+          optimization_score?: number | null
+          school_id?: string
+          status?: string | null
+          suggestion_data?: Json
+          version_number?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_timetable_suggestions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_notifications: {
         Row: {
           body: string | null
