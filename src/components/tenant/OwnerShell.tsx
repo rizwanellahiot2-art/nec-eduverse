@@ -78,6 +78,7 @@ export function OwnerShell({ title, subtitle, schoolSlug, children }: Props) {
     { to: `${basePath}/security`, icon: Shield, label: "System & Security" },
     { to: `${basePath}/support`, icon: LifeBuoy, label: "Support Tickets" },
     { to: `${basePath}/advisor`, icon: Brain, label: "AI Strategy Advisor" },
+    { to: `${basePath}/ai`, icon: Sparkles, label: "AI Command Center" },
     { to: `${basePath}/messages`, icon: MessageSquare, label: "Messages", badge: unreadCount },
   ];
 
