@@ -19,6 +19,7 @@ import { OwnerBrandModule } from "@/pages/tenant/owner-modules/OwnerBrandModule"
 import { OwnerSecurityModule } from "@/pages/tenant/owner-modules/OwnerSecurityModule";
 import { OwnerSupportModule } from "@/pages/tenant/owner-modules/OwnerSupportModule";
 import { OwnerAdvisorModule } from "@/pages/tenant/owner-modules/OwnerAdvisorModule";
+import { OwnerAIModule } from "@/pages/tenant/owner-modules/OwnerAIModule";
 import { MessagesModule } from "@/pages/tenant/modules/MessagesModule";
 
 // Cache key for owner auth
@@ -227,6 +228,7 @@ export default function OwnerDashboard() {
           <Route path="security" element={<OwnerSecurityModule schoolId={schoolId} />} />
           <Route path="support" element={<OwnerSupportModule schoolId={schoolId} />} />
           <Route path="advisor" element={<OwnerAdvisorModule schoolId={schoolId} />} />
+          <Route path="ai" element={<OwnerAIModule schoolId={schoolId} />} />
           <Route path="messages" element={<MessagesModule schoolId={schoolId} />} />
         </Routes>
       )}
