@@ -4,7 +4,7 @@ import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { BookOpen, CalendarDays, GraduationCap, Headphones, LayoutGrid, ScrollText, MessageSquare, Sparkles, Menu, LogOut } from "lucide-react";
+import { BookOpen, CalendarDays, GraduationCap, Headphones, LayoutGrid, ScrollText, MessageSquare, Sparkles, Menu, LogOut, Brain } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GlobalCommandPalette } from "@/components/global/GlobalCommandPalette";
 import { NotificationsBell } from "@/components/global/NotificationsBell";
@@ -46,6 +46,7 @@ export function StudentShell({ title, subtitle, schoolSlug, children }: Props) {
 
   const navItems = [
     { to: basePath, icon: LayoutGrid, label: "Home", end: true, badge: 0 },
+    { to: `${basePath}/ai-insights`, icon: Brain, label: "AI Insights", badge: 0 },
     { to: `${basePath}/attendance`, icon: CalendarDays, label: "Attendance", badge: 0 },
     { to: `${basePath}/grades`, icon: BookOpen, label: "Grades", badge: 0 },
     { to: `${basePath}/timetable`, icon: ScrollText, label: "Timetable", badge: 0 },

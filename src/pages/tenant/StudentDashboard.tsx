@@ -15,6 +15,7 @@ import { StudentAssignmentsModule } from "@/pages/tenant/student-modules/Student
 import { StudentCertificatesModule } from "@/pages/tenant/student-modules/StudentCertificatesModule";
 import { StudentSupportModule } from "@/pages/tenant/student-modules/StudentSupportModule";
 import { StudentMessagesModule } from "@/pages/tenant/student-modules/StudentMessagesModule";
+import { StudentAIModule } from "@/pages/tenant/student-modules/StudentAIModule";
 
 // Cache key for student auth
 const STUDENT_AUTHZ_CACHE = "eduverse_student_authz_cache";
@@ -192,6 +193,7 @@ const StudentDashboard = () => {
         <Route path="timetable" element={<StudentTimetableModule myStudent={myStudent} schoolId={schoolId} />} />
         <Route path="assignments" element={<StudentAssignmentsModule myStudent={myStudent} schoolId={schoolId} />} />
         <Route path="certificates" element={<StudentCertificatesModule myStudent={myStudent} schoolId={schoolId} />} />
+        <Route path="ai-insights" element={<StudentAIModule myStudent={myStudent} schoolId={schoolId} />} />
         <Route path="messages" element={<StudentMessagesModule />} />
         <Route path="support" element={<StudentSupportModule myStudent={myStudent} schoolId={schoolId} />} />
         <Route path="*" element={<Navigate to={`/${tenant.slug}/student`} replace />} />
