@@ -16,6 +16,7 @@ import {
   ChevronDown,
   Sparkles,
   Menu,
+  Brain,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -76,6 +77,7 @@ export function ParentShell({
 
   const navItems = [
     { to: basePath, icon: Home, label: "Home", end: true, badge: 0 },
+    { to: `${basePath}/ai-insights`, icon: Brain, label: "AI Insights", badge: 0 },
     { to: `${basePath}/attendance`, icon: Calendar, label: "Attendance", badge: 0 },
     { to: `${basePath}/grades`, icon: GraduationCap, label: "Grades", badge: 0 },
     { to: `${basePath}/fees`, icon: Receipt, label: "Fees", badge: 0 },

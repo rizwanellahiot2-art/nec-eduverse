@@ -15,6 +15,7 @@ import ParentMessagesModule from "./parent-modules/ParentMessagesModule";
 import ParentTimetableModule from "./parent-modules/ParentTimetableModule";
 import ParentNotificationsModule from "./parent-modules/ParentNotificationsModule";
 import ParentSupportModule from "./parent-modules/ParentSupportModule";
+import ParentAIModule from "./parent-modules/ParentAIModule";
 
 // Cache key for parent auth
 const PARENT_AUTHZ_CACHE = "eduverse_parent_authz_cache";
@@ -246,6 +247,7 @@ const ParentDashboard = () => {
     >
       <Routes>
         <Route index element={<ParentHomeModule child={selectedChild} schoolId={schoolId} />} />
+        <Route path="ai-insights" element={<ParentAIModule child={selectedChild} schoolId={schoolId} />} />
         <Route path="attendance" element={<ParentAttendanceModule child={selectedChild} schoolId={schoolId} />} />
         <Route path="grades" element={<ParentGradesModule child={selectedChild} schoolId={schoolId} />} />
         <Route path="fees" element={<ParentFeesModule child={selectedChild} schoolId={schoolId} />} />
